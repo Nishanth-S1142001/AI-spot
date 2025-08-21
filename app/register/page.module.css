@@ -1,0 +1,10 @@
+.form_text_fields{
+    display: block;
+    margin-bottom: 5px;
+    margin-left: 5px;;
+    text-transform: uppercase;
+    color: white;
+    letter-spacing: 0.1rem;
+    font-weight: 500;
+    font-size: 10px;
+}

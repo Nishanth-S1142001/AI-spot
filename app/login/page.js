@@ -1,193 +1,140 @@
-"use client";
-import React, { useState, useRef } from 'react';
-import { Eye, EyeOff, Upload, X } from 'lucide-react';
+'use client'
+import { useAuth } from '../contexts/authContext'
+import { doSignInWithEmailAndPassword } from '../../auth'
+import { doSendEmailVerification } from '../../auth'
+import { Navigate } from 'react-router-dom'
+import React, { useState, useRef } from 'react'
+import {Mail, Lock, Eye, EyeOff, Upload, X } from 'lucide-react'
+import NeonBackground from '../ui_components/primaryBackground/page'
+
 
 export default function LoginPage() {
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
-  const [backgroundImage, setBackgroundImage] = useState(null);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const fileInputRef = useRef(null);
+  const [showPassword, setShowPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
 
-  const handleImageUpload = (event) => {
-    const file = event.target.files[0];
-    if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setBackgroundImage(e.target.result);
-      };
-      reader.readAsDataURL(file);
+  // const fileInputRef = useRef(null);
+
+  const { userLoggedIn } = useAuth()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [isSigningIn, setIsSigningIn] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
+  const onSubmit = async (e) => {
+    e.preventDefault()
+    if (!isSigningIn) {
+      setIsSigningIn(true)
+      await doSignInWithEmailAndPassword(email, password)
+      // doSendEmailVerification()
     }
-  };
-
-  const clearBackground = () => {
-    setBackgroundImage(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const handleLogin = () => {
-    console.log('Login attempt:', { username, password, rememberMe });
-    // Add your login logic here
-  };
+  }
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Background Layer */}
-      <div 
-        className="absolute inset-0 bg-gradient-to-br from-purple-900 via-purple-800 to-pink-500"
-        style={{
-          backgroundImage: backgroundImage ? `url(${backgroundImage})` : 'none',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat'
-        }}
-      >
-        {/* Overlay for better readability */}
-        <div className="absolute inset-0 bg-black bg-opacity-20"></div>
-      </div>
+    <div>
+      <NeonBackground />
+      <div className='v-full flex h-full flex-row-reverse'>
+        {userLoggedIn && <Navigate to={'/dashboard'} replace={true} />}
 
-      {/* Decorative Stars */}
-      <div className="absolute inset-0">
-        <div className="absolute top-20 left-20 w-1 h-1 bg-white rounded-full opacity-60"></div>
-        <div className="absolute top-40 right-32 w-1 h-1 bg-white rounded-full opacity-40"></div>
-        <div className="absolute bottom-60 left-40 w-1 h-1 bg-white rounded-full opacity-70"></div>
-        <div className="absolute top-60 left-1/3 w-1 h-1 bg-white rounded-full opacity-50"></div>
-        <div className="absolute bottom-40 right-20 w-1 h-1 bg-white rounded-full opacity-60"></div>
-      </div>
-
-      {/* Floating Meteors */}
-      <div className="absolute inset-0">
-        <div className="absolute top-32 right-1/4 w-16 h-0.5 bg-gradient-to-r from-white to-transparent opacity-30 transform rotate-45 animate-pulse"></div>
-        <div className="absolute bottom-48 left-1/4 w-12 h-0.5 bg-gradient-to-r from-white to-transparent opacity-25 transform rotate-12 animate-pulse"></div>
-      </div>
-
-      {/* Background Upload Controls */}
-      <div className="absolute top-4 right-4 z-10 flex gap-2">
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="bg-white bg-opacity-20 backdrop-blur-sm text-white p-3 rounded-full hover:bg-opacity-30 transition-all duration-300"
-          title="Upload background image"
-        >
-          <Upload size={20} />
-        </button>
-        {backgroundImage && (
-          <button
-            onClick={clearBackground}
-            className="bg-white bg-opacity-20 backdrop-blur-sm text-white p-3 rounded-full hover:bg-opacity-30 transition-all duration-300"
-            title="Clear background image"
-          >
-            <X size={20} />
-          </button>
-        )}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleImageUpload}
-          className="hidden"
-        />
-      </div>
-
-      {/* Main Content */}
-      <div className="relative z-10 flex items-center justify-center min-h-screen px-4">
-        <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 w-full max-w-md">
-          {/* Decorative Header */}
-          <div className="mb-8 text-center">
-            <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-purple-600 to-pink-500 rounded-2xl flex items-center justify-center">
-              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
-                <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-pink-500 rounded-lg"></div>
-              </div>
+        {/* Background Layer */}
+        <div className='relative h-screen w-[40%]'>
+          <div className='absolute h-full w-full rounded-l-[250px] bg-[url("/agent_mirror.jpg")] mask-l-from-90% bg-cover bg-center opacity-25'></div>
+          <div className='transparent absolute flex h-full w-full flex-col items-center justify-center py-8 text-center text-[12px] font-medium tracking-[0.2rem] text-white uppercase'>
+            <h1 className='mb-4 text-2xl font-bold'>Welcome Back</h1>
+            <h1 className='text-[15px] font-bold'>
+              Enter your personal details to use all of our features
+            </h1>
+            <h1 className='mt-16 text-[15px] font-bold'>
+              Don't have an account? Create Account
+            </h1>
+            <div className='transparent mt-6 w-1/2 transform rounded-[5px] border-[1px] border-solid border-white p-2 text-center text-[20px] font-bold tracking-[0.5rem] text-white uppercase shadow-[0_0_10px_rgba(59,130,246)] transition-all duration-300 hover:scale-105 hover:cursor-pointer hover:bg-white hover:text-black hover:shadow-[0_0_50px_rgba(59,130,246)]'>
+              <a href='/register'>SIGN UP</a>
             </div>
-            <h1 className="text-2xl font-bold text-gray-800 mb-2">Welcome Back</h1>
-            <p className="text-gray-600">Sign in to your account</p>
           </div>
+        </div>
 
-          {/* Login Form */}
-          <div className="space-y-6">
-            {/* Username Input */}
-            <div className="space-y-2">
-              <div className="block text-sm font-medium text-gray-700">Username</div>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full px-4 py-3 bg-pink-50 border border-pink-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300"
-                  placeholder="Enter your username"
-                />
+        {/* Main Content */}
+        <div className='z-10 flex w-[60%] items-center justify-center px-4'>
+          <form
+            className='w-[50%] rounded-2xl border-5 bg-transparent p-8 shadow-xl'
+           
+          >
+            {/* Decorative Header */}
+            {/* Login Form */}
+            <div className='space-y-6'>
+              <div className='mb-10 block text-center text-3xl font-medium text-white'>
+                Get exclusive access to our resources
               </div>
-            </div>
+              {/* Username Input
+           
+              <div className="block text-sm font-medium text-white">Username</div> */}
+              <div className='relative'>
+                <div className='space-y-2'>
+                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type='text'
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className='pl-10 border-b-primary w-full border-2 border-transparent px-4 py-3 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
+                    placeholder='Email'
+                  />
+                </div>
+              </div>
 
-            {/* Password Input */}
-            <div className="space-y-2">
-              <div className="block text-sm font-medium text-gray-700">Password</div>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-pink-50 border border-pink-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 pr-12"
-                  placeholder="Enter your password"
-                />
+              {/* Password Input
+            
+              <div className="block text-sm font-medium text-gray-700">Password</div> */}
+              <div className='space-y-2'>
+                <div className='relative'>
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className='pl-10 border-b-primary w-full border-2 border-transparent px-4 py-3 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
+                    placeholder='Password'
+                  />
+                  <button
+                    type='button'
+                    onClick={() => setShowPassword(!showPassword)}
+                    className='absolute top-1/2 right-4 -translate-y-1/2 transform text-gray-400 transition-colors hover:text-gray-600'
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Remember Me & Forgot Password */}
+              <div className='flex items-center justify-between'>
                 <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  type='button'
+                  className='text-sm text-blue-600 transition-colors hover:text-blue-500'
                 >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  Forgot password?
+                </button>
+              </div>
+              {errorMessage && (
+                <span className='font-bold text-red-600'>{errorMessage}</span>
+              )}
+
+              {/* Login Button */}
+              <div className='flex justify-center'>
+                <button  onClick={onSubmit} className='transparent border-primary mt-4 w-1/2 transform rounded-[5px] border-[1px] border-solid p-2 text-center text-[20px] font-bold tracking-[0.5rem] text-white uppercase shadow-[0_0_10px_rgba(59,130,246)] transition-all duration-300 hover:scale-105 hover:cursor-pointer hover:bg-white hover:text-black hover:shadow-[0_0_50px_rgba(59,130,246)]'>
+                  <a href='/register'>Sign In</a>
+                </button>
+              </div>
+
+              {/* Create Account */}
+              <div className='text-center'>
+                <button
+                  type='button'
+                  className='text-lg text-gray-600 transition-colors hover:text-blue-500'
+                >
+                  <a href='/register'>Don't have an account? Create Account</a>
                 </button>
               </div>
             </div>
-
-            {/* Remember Me & Forgot Password */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2 cursor-pointer" onClick={() => setRememberMe(!rememberMe)}>
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 focus:ring-2"
-                />
-                <span className="text-sm text-gray-600">Remember me</span>
-              </div>
-              <button
-                type="button"
-                className="text-sm text-purple-600 hover:text-purple-800 transition-colors"
-              >
-                Forgot password?
-              </button>
-            </div>
-
-            {/* Login Button */}
-            <button
-              onClick={handleLogin}
-              className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg"
-            >
-              Sign In
-            </button>
-
-            {/* Create Account */}
-            <div className="text-center">
-              <button
-                type="button"
-                className="text-sm text-gray-600 hover:text-purple-600 transition-colors"
-              >
-                Don't have an account? Create Account
-              </button>
-            </div>
-          </div>
-
-          {/* Footer Attribution */}
-          <div className="mt-8 text-center">
-            <p className="text-xs text-gray-400">
-              Designed with ❤️ for modern web
-            </p>
-          </div>
+          </form>
         </div>
       </div>
     </div>
-  );
+  )
 }

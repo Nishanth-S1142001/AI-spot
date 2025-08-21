@@ -1,0 +1,55 @@
+.form_text_fields{
+    display: block;
+    margin-bottom: 5px;
+    margin-left: 5px;;
+    text-transform: uppercase;
+    color: white;
+    letter-spacing: 0.1rem;
+    font-weight: 500;
+    font-size: 10px;
+}
+.container {
+  background-color: black;
+  border-radius: 30px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.35);
+  position: relative;
+  max-width: 100%;
+  min-height: 400px;;
+  overflow: hidden;
+
+}
+.container p{
+    font-size: 14px;
+    color: white  ;
+    line-height: 20px;
+    letter-spacing: 0.3px;
+    font-weight: 400 ;
+
+}
+.buttons {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.buttons button {
+    padding: 1.5rem 2rem;
+    margin: 0 5rem;
+    background-color: transparent;
+    border: solid white 1px;
+    font-size: 12px;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.5rem;
+    transition: 0.25s background-color;
+    box-shadow: 0 0 10px rgba(59, 130, 246);
+}
+
+.buttons button:hover {
+    background-color: white;
+    color: black;
+    transition: 0.25s background-color;
+    box-shadow: 0 0 50px rgba(59, 130, 246);
+    cursor: pointer;
+}
