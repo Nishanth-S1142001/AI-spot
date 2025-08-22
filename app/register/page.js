@@ -14,6 +14,7 @@ import { auth } from '../../firebaseConfig'
 import { createUserWithEmailAndPassword } from 'firebase/auth'
 import { useAuth } from '../contexts/authContext'
 import { useRouter } from 'next/navigation'
+import { Navigate, Route, Routes, BrowserRouter } from 'react-router-dom'
 
 export default function RegisterPage() {
   const [error, setError] = useState('')
@@ -115,7 +116,16 @@ export default function RegisterPage() {
     <div>
       <NeonBackground />
       <div className='v-full flex h-full flex-row'>
-        {userLoggedIn && <Navigate to={'/login'} replace={true} />}
+        <BrowserRouter>
+          <Routes>
+            {userLoggedIn && (
+              <Route
+                path='/register'
+                element={<Navigate to='/login' replace />}
+              />
+            )}
+          </Routes>
+        </BrowserRouter>
         {/* Left side UI remains unchanged */}
         <div className='relative h-screen w-[40%]'>
           <div className='absolute h-full w-full rounded-r-[250px] bg-[url("/agent.jpg")] mask-r-from-80% bg-cover bg-center opacity-25'></div>
