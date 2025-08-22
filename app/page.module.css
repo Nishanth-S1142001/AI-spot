@@ -22,7 +22,15 @@
     padding: 2rem 0;
     font-size: 2rem;
 }
-
+.form_text_fields{
+     display: flex;
+    text-transform: uppercase;
+    color: white;
+    letter-spacing: 1.5rem;
+    font-weight: 500;
+    padding: 2rem 0;
+    font-size: 2rem;
+}
 .buttons {
 
     display: flex;
@@ -40,12 +48,14 @@
     text-transform: uppercase;
     letter-spacing: 0.5rem;
     transition: 0.25s background-color;
+    box-shadow: 0 0 10px rgba(59, 130, 246);
 }
 
 .buttons button:hover {
     background-color: white;
     color: black;
     transition: 0.25s background-color;
+    box-shadow: 0 0 50px rgba(59, 130, 246);
     cursor: pointer;
 }
 
