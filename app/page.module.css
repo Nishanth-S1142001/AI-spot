@@ -29,11 +29,12 @@
 .buttons button {
   padding: 0.8rem 2.5rem;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 1000;
   text-transform: uppercase;
   letter-spacing: 0.1rem;
-  border: 2px solid #08d9d6; /* Neon teal border */
-  color: #08d9d6;
+  border: 2px solid #ffffff;
+
+  color: #7ecefa;
   background-color: transparent;
   cursor: pointer;
   transition: all 0.3s ease-in-out;
@@ -41,19 +42,20 @@
 }
 
 .buttons button:hover {
-  background-color: #08d9d6;
-  color: #252a34; /* Dark background color on hover */
-  box-shadow: 0 0 15px #08d9d6;
+  background-color: #ffffff;
+  color: #024a70; /* Dark background color on hover */
+  box-shadow: 0 0 15px #1fa4fd;
+  font-weight: 1000px;
+  border-color: #000000;
 }
 
 /* The second button can have a slightly different style */
 .buttons button:last-child {
-  border-color: #ff2e63; /* Neon pink border */
-  color: #ff2e63;
+  border-color: #ffffff; /* Neon pink border */
 }
 
 .buttons button:last-child:hover {
-  background-color: #ff2e63;
-  color: #252a34;
-  box-shadow: 0 0 15px #ff2e63;
+  background-color: #000000;
+  color: #ffffff;
+  box-shadow: 0 0 15px #ffffff;
 }

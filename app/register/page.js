@@ -24,7 +24,7 @@ export default function RegisterPage() {
   const [agreeToSMS, setAgreeToSMS] = useState(false)
   const [isRegistering, setIsRegistering] = useState(false)
   const { userLoggedIn } = useAuth()
-  const router = useRouter()
+
   const [showCPassword, setShowCPassword] = useState(false)
   const [formData, setFormData] = useState({
     firstName: '',
@@ -33,6 +33,11 @@ export default function RegisterPage() {
     password: '',
     cpassword: ''
   })
+
+  const router = useRouter()
+  const handleLogin = () => {
+    router.push('/login')
+  }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -137,9 +142,9 @@ export default function RegisterPage() {
             <h1 className='mt-16 text-[15px] font-bold'>
               Already have an account?
             </h1>
-            <div className='transparent mt-4 w-1/2 rounded-[5px] border-[1px] border-solid border-white p-2 text-center text-[20px] font-bold tracking-[0.5rem] text-white uppercase shadow-[0_0_10px_rgba(59,130,246)] shadow-sky-500 transition hover:cursor-pointer hover:bg-white hover:text-black hover:shadow-[0_0_50px_rgba(59,130,246)]'>
-              <button>
-                <a href='/login'>SIGN IN</a>
+            <div className='transparent mt-4 w-1/3 rounded-[5px] border-[1px] border-solid border-white p-2 text-center text-[20px] font-bold tracking-[0.5rem] text-white uppercase shadow-[0_0_10px_rgba(59,130,246)] shadow-sky-500 transition hover:cursor-pointer hover:bg-white hover:text-black hover:shadow-[0_0_50px_rgba(59,130,246)]'>
+              <button onClick={handleLogin} type='button'>
+                SIGN IN
               </button>
             </div>
           </div>
@@ -174,7 +179,7 @@ export default function RegisterPage() {
                         name='firstName'
                         value={formData.firstName}
                         onChange={handleInputChange}
-                        className='border-b-primary w-full border-2 border-transparent px-4 py-3 pl-10 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
+                        className='border-b-[#024a70] w-full border-2 border-transparent px-4 py-3 pl-10 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
                         placeholder='First Name'
                         required
                       />
@@ -186,7 +191,7 @@ export default function RegisterPage() {
                         name='lastName'
                         value={formData.lastName}
                         onChange={handleInputChange}
-                        className='border-b-primary w-full border-2 border-transparent px-4 py-3 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
+                        className='border-b-[#024a70] w-full border-2 border-transparent px-4 py-3 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
                         placeholder='Last Name'
                         required
                       />
@@ -203,7 +208,7 @@ export default function RegisterPage() {
                     name='email'
                     value={formData.email}
                     onChange={handleInputChange}
-                    className='border-b-primary w-full border-2 border-transparent px-4 py-3 pl-10 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
+                    className='border-b-[#024a70] w-full border-2 border-transparent px-4 py-3 pl-10 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
                     required
                     placeholder='Email'
                   />
@@ -218,7 +223,7 @@ export default function RegisterPage() {
                     name='password'
                     value={formData.password}
                     onChange={handleInputChange}
-                    className='border-b-primary w-full border-2 border-transparent py-3 pr-10 pl-10 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
+                    className='border-b-[#024a70] w-full border-2 border-transparent py-3 pr-10 pl-10 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
                     required
                     placeholder='Password'
                   />
@@ -244,7 +249,7 @@ export default function RegisterPage() {
                     name='cpassword'
                     value={formData.cpassword}
                     onChange={handleInputChange}
-                    className='border-b-primary w-full border-2 border-transparent py-3 pr-10 pl-10 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
+                    className='border-b-[#024a70] w-full border-2 border-transparent py-3 pr-10 pl-10 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
                     required
                     placeholder='Confirm Password'
                   />
@@ -318,15 +323,12 @@ export default function RegisterPage() {
 
                 {/* Login Link */}
                 <div className='text-center'>
-                  <span className='text-lg text-gray-600'>
-                    Already have an account?{' '}
-                    <a
-                      href='./login'
-                      className='font-medium text-blue-600 hover:underline'
-                    >
-                      Log in
-                    </a>
-                  </span>
+                  <button
+                    className='text-lg font-medium text-gray-600 hover:text-blue-600 hover:underline'
+                    onClick={handleLogin}
+                  >
+                    Already have an account? Log in
+                  </button>
                 </div>
               </div>
             </form>

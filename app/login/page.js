@@ -1,29 +1,69 @@
 'use client'
 import { useAuth } from '../contexts/authContext'
 import { doSignInWithEmailAndPassword } from '../../auth'
-import { doSendEmailVerification } from '../../auth'
-import { Navigate, Route , Routes, BrowserRouter } from 'react-router-dom'
-import React, { useState, useRef } from 'react'
-import { Mail, Lock, Eye, EyeOff, Upload, X } from 'lucide-react'
+import { Navigate, Route, Routes, BrowserRouter } from 'react-router-dom'
+import React, { useState } from 'react'
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import NeonBackground from '../ui_components/primaryBackground/page'
+import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
-  const [rememberMe, setRememberMe] = useState(false)
-
-  // const fileInputRef = useRef(null);
-
   const { userLoggedIn } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isSigningIn, setIsSigningIn] = useState(false)
+
+  // Validation & error states
   const [errorMessage, setErrorMessage] = useState('')
+  const [emailError, setEmailError] = useState('')
+  const [passwordError, setPasswordError] = useState('')
+
+  const router = useRouter()
+  const handleSignup = () => {
+    router.push('/register')
+  }
+
+  const validateForm = () => {
+    let valid = true
+    setEmailError('')
+    setPasswordError('')
+    setErrorMessage('')
+
+    // Email validation
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailError('Please enter a valid email address')
+      valid = false
+    }
+
+    // Password validation
+    if (password.length < 6) {
+      setPasswordError('Password must be at least 6 characters')
+      valid = false
+    }
+
+    return valid
+  }
+
   const onSubmit = async (e) => {
     e.preventDefault()
-    if (!isSigningIn) {
+    if (!isSigningIn && validateForm()) {
       setIsSigningIn(true)
-      await doSignInWithEmailAndPassword(email, password)
-      // doSendEmailVerification()
+      try {
+        await doSignInWithEmailAndPassword(email, password)
+        // if successful → user is signed in
+      } catch (err) {
+        // handle Firebase auth errors
+        if (err.code === 'auth/invalid-credential') {
+          setPasswordError('Incorrect password')
+        } else if (err.code === 'auth/user-not-found') {
+          setEmailError('No account found with this email')
+        } else {
+          setErrorMessage(err.message)
+        }
+      } finally {
+        setIsSigningIn(false)
+      }
     }
   }
 
@@ -41,6 +81,7 @@ export default function LoginPage() {
             )}
           </Routes>
         </BrowserRouter>
+
         {/* Background Layer */}
         <div className='relative h-screen w-[40%]'>
           <div className='absolute h-full w-full rounded-l-[250px] bg-[url("/agent_mirror.jpg")] mask-l-from-90% bg-cover bg-center opacity-25'></div>
@@ -52,40 +93,43 @@ export default function LoginPage() {
             <h1 className='mt-16 text-[15px] font-bold'>
               Don't have an account? Create Account
             </h1>
-            <div className='transparent mt-6 w-1/2 transform rounded-[5px] border-[1px] border-solid border-white p-2 text-center text-[20px] font-bold tracking-[0.5rem] text-white uppercase shadow-[0_0_10px_rgba(59,130,246)] transition-all duration-300 hover:scale-105 hover:cursor-pointer hover:bg-white hover:text-black hover:shadow-[0_0_50px_rgba(59,130,246)]'>
-              <a href='/register'>SIGN UP</a>
-            </div>
+            <button
+              onClick={handleSignup}
+              className='transparent mt-6 w-1/2 transform rounded-[5px] border-[1px] border-solid border-white p-2 text-center text-[20px] font-bold tracking-[0.5rem] text-white uppercase shadow-[0_0_10px_rgba(59,130,246)] transition-all duration-300 hover:scale-105 hover:cursor-pointer hover:bg-white hover:text-black hover:shadow-[0_0_50px_rgba(59,130,246)]'
+            >
+              SIGN UP
+            </button>
           </div>
         </div>
 
         {/* Main Content */}
         <div className='z-10 flex w-[60%] items-center justify-center px-4'>
-          <form className='w-[50%] rounded-2xl border-5 bg-transparent p-8 shadow-xl'     onSubmit={onSubmit}>
-            {/* Decorative Header */}
-            {/* Login Form */}
+          <form
+            className='w-[50%] rounded-2xl border-5 bg-transparent p-8 shadow-xl'
+            onSubmit={onSubmit}
+          >
             <div className='space-y-6'>
               <div className='mb-10 block text-center text-3xl font-medium text-white'>
                 Get exclusive access to our resources
               </div>
-              {/* Username Input
-           
-              <div className="block text-sm font-medium text-white">Username</div> */}
+
+              {/* Email */}
               <div className='relative'>
-                <div className='space-y-2'>
-                  <Mail className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
-                  <input
-                    type='text'
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className='border-b-primary w-full border-2 border-transparent px-4 py-3 pl-10 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
-                    placeholder='Email'
-                  />
-                </div>
+                <Mail className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
+                <input
+                  type='text'
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className='border-b-[#024a70] w-full border-2 border-transparent px-4 py-3 pl-10 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
+                  placeholder='Email'
+                  required
+                />
+                {emailError && (
+                  <p className='mt-1 text-sm text-sky-500'>{emailError}</p>
+                )}
               </div>
 
-              {/* Password Input
-            
-              <div className="block text-sm font-medium text-gray-700">Password</div> */}
+              {/* Password */}
               <div className='space-y-2'>
                 <div className='relative'>
                   <Lock className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
@@ -93,8 +137,9 @@ export default function LoginPage() {
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className='border-b-primary w-full border-2 border-transparent px-4 py-3 pl-10 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
+                    className='border-b-[#024a70] w-full border-2 border-transparent px-4 py-3 pl-10 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
                     placeholder='Password'
+                    required
                   />
                   <button
                     type='button'
@@ -104,9 +149,12 @@ export default function LoginPage() {
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
+                {passwordError && (
+                  <p className='mt-1 text-sm text-sky-500'>{passwordError}</p>
+                )}
               </div>
 
-              {/* Remember Me & Forgot Password */}
+              {/* Forgot Password */}
               <div className='flex items-center justify-between'>
                 <button
                   type='button'
@@ -115,17 +163,21 @@ export default function LoginPage() {
                   Forgot password?
                 </button>
               </div>
+
+              {/* General Error */}
               {errorMessage && (
-                <span className='font-bold text-red-600'>{errorMessage}</span>
+                <span className='font-bold text-sky-500'>{errorMessage}</span>
               )}
 
               {/* Login Button */}
               <div className='flex justify-center'>
                 <button
-              
-                  className='transparent border-primary mt-4 w-1/2 transform rounded-[5px] border-[1px] border-solid p-2 text-center text-[20px] font-bold tracking-[0.5rem] text-white uppercase shadow-[0_0_10px_rgba(59,130,246)] transition-all duration-300 hover:scale-105 hover:cursor-pointer hover:bg-white hover:text-black hover:shadow-[0_0_50px_rgba(59,130,246)]'
+                  disabled={isSigningIn}
+                  className={`transparent border-[#024a70] mt-4 w-1/2 transform rounded-[5px] border-[1px] border-solid p-2 text-center text-[20px] font-bold tracking-[0.5rem] text-white uppercase shadow-[0_0_10px_rgba(59,130,246)] transition-all duration-300 hover:scale-105 hover:cursor-pointer hover:bg-white hover:text-black hover:shadow-[0_0_50px_rgba(59,130,246)] ${
+                    isSigningIn ? 'cursor-not-allowed opacity-50' : ''
+                  }`}
                 >
-               SIGN IN
+                  {isSigningIn ? 'Signing In...' : 'SIGN IN'}
                 </button>
               </div>
 
@@ -133,9 +185,10 @@ export default function LoginPage() {
               <div className='text-center'>
                 <button
                   type='button'
+                  onClick={handleSignup}
                   className='text-lg text-gray-600 transition-colors hover:text-blue-500'
                 >
-                  <a href='/register'>Don't have an account? Create Account</a>
+                  Don't have an account? Create Account
                 </button>
               </div>
             </div>
