@@ -1,9 +1,10 @@
 'use client'
 import Link from 'next/link'
+import Button from '../button'
 
-export default function NavigationHomeBar() {
+export default function NavigationHomeBar({ onLoginClick }) {
   return (
-    <header className=' bg-opacity-30 fixed top-0 left-0 z-50 w-full scroll-smooth  backdrop-blur-sm transition-all'>
+    <header className='bg-opacity-30 fixed top-0 left-0 z-50 w-full scroll-smooth backdrop-blur-sm transition-all'>
       <nav className='container mx-auto flex items-center justify-between scroll-smooth px-6 py-4'>
         <Link href='/'>
           <h1 className='scroll-smooth text-xl font-bold text-white'>
@@ -14,7 +15,7 @@ export default function NavigationHomeBar() {
           <li>
             <Link
               href='/#about'
-              className='transition-colors font-bold hover:text-cyan-400'
+              className='font-bold transition-colors hover:text-blue-400'
             >
               About Us
             </Link>
@@ -22,7 +23,7 @@ export default function NavigationHomeBar() {
           <li>
             <Link
               href='/#services'
-              className='transition-colors font-bold hover:text-cyan-400'
+              className='font-bold transition-colors hover:text-blue-400'
             >
               Services
             </Link>
@@ -30,7 +31,7 @@ export default function NavigationHomeBar() {
           <li>
             <Link
               href='/#pricing'
-              className='scroll-smooth transition-colors hover:text-cyan-400'
+              className='scroll-smooth font-bold transition-colors hover:text-blue-400'
             >
               Pricing
             </Link>
@@ -38,10 +39,13 @@ export default function NavigationHomeBar() {
           <li>
             <Link
               href='/#contact'
-              className='transition-colors hover:text-cyan-400'
+              className='font-bold transition-colors hover:text-blue-400'
             >
               Contact
             </Link>
+          </li>
+          <li>
+            <Button onClick={onLoginClick} text={'LOGIN'}></Button>
           </li>
         </ul>
       </nav>

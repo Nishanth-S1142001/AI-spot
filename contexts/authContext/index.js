@@ -1,8 +1,9 @@
 'use client'
 import React, { useContext, useState, useEffect } from 'react'
-import { auth } from '../../../firebaseConfig'
-// import { GoogleAuthProvider } from "firebase/auth";
+import { auth } from '../../lib/firebase/firebaseConfig'
+import { GoogleAuthProvider } from "firebase/auth";
 import { onAuthStateChanged } from 'firebase/auth'
+import { signOut } from 'firebase/auth'
 
 const AuthContext = React.createContext()
 
@@ -33,10 +34,10 @@ export function AuthProvider({ children }) {
       setIsEmailUser(isEmail)
 
       // check if the auth provider is google or not
-      //   const isGoogle = user.providerData.some(
-      //     (provider) => provider.providerId === GoogleAuthProvider.PROVIDER_ID
-      //   );
-      //   setIsGoogleUser(isGoogle);
+      const isGoogle = user.providerData.some(
+        (provider) => provider.providerId === GoogleAuthProvider.PROVIDER_ID
+      )
+      setIsGoogleUser(isGoogle)
 
       setUserLoggedIn(true)
     } else {
@@ -47,12 +48,23 @@ export function AuthProvider({ children }) {
     setLoading(false)
   }
 
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      setCurrentUser(null);
+      setUserLoggedIn(false);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
   const value = {
     userLoggedIn,
     isEmailUser,
     isGoogleUser,
     currentUser,
-    setCurrentUser
+    setCurrentUser,
+    logout
   }
 
   return (

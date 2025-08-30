@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   User,
   Mail,
@@ -9,23 +9,22 @@ import {
   LockKeyhole,
   ChevronDown
 } from 'lucide-react'
-import NeonBackground from '../ui_components/primaryBackground/page'
-import { auth } from '../../firebaseConfig'
+import NeonBackground from '../../../components/background'
+import { auth } from '../../../lib/firebase/firebaseConfig'
 import { createUserWithEmailAndPassword } from 'firebase/auth'
-import { useAuth } from '../contexts/authContext'
+import { useAuth } from '../../../contexts/authContext'
 import { useRouter } from 'next/navigation'
-import { Navigate, Route, Routes, BrowserRouter } from 'react-router-dom'
+import Button from '../../../components/button'
 
 export default function RegisterPage() {
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
+  const [registerError, setRegisterError] = useState('')
+  const [registerSuccess, setRegisterSuccess] = useState('')
+  const [showRegisterPassword, setshowRegisterPassword] = useState(false)
   const [agreeToTerms, setAgreeToTerms] = useState(false)
   const [agreeToSMS, setAgreeToSMS] = useState(false)
   const [isRegistering, setIsRegistering] = useState(false)
-  const { userLoggedIn } = useAuth()
-
-  const [showCPassword, setShowCPassword] = useState(false)
+  const {userSignedIn } = useAuth()
+  const [showRegisterCPassword, setShowRegisterCPassword] = useState(false)
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -36,7 +35,7 @@ export default function RegisterPage() {
 
   const router = useRouter()
   const handleLogin = () => {
-    router.push('/login')
+    router.push('/?login=true')
   }
 
   const handleInputChange = (e) => {
@@ -48,45 +47,45 @@ export default function RegisterPage() {
   }
 
   // Simple field validation helpers
-  const validateEmail = (email) => /\S+@\S+\.\S+/.test(email)
+  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
   const validatePassword = (password) =>
     password.length >= 8 && /[A-Za-z]/.test(password) && /\d/.test(password)
 
-  const onSubmit = async (e) => {
+  const onRegisterSubmit = async (e) => {
     e.preventDefault()
-    setError('')
-    setSuccess('')
+    setRegisterError('')
+    setRegisterSuccess('')
 
     // Field Validations
     if (!formData.firstName) {
-      setError('Please enter your first name.')
+      setRegisterError('Please enter your first name.')
       return
     }
 
     if (!formData.lastName) {
-      setError('Please enter your last name.')
+      setRegisterError('Please enter your last name.')
       return
     }
 
     if (!validateEmail(formData.email)) {
-      setError('Please enter a valid email address.')
+      setRegisterError('Please enter a valid email address.')
       return
     }
 
     if (!validatePassword(formData.password)) {
-      setError(
+      setRegisterError(
         'Password must be at least 8 characters long and contain letters and numbers.'
       )
       return
     }
 
     if (formData.password !== formData.cpassword) {
-      setError('Passwords do not match.')
+      setRegisterError('Passwords do not match.')
       return
     }
 
     if (!agreeToTerms) {
-      setError('You must agree to the terms and conditions.')
+      setRegisterError('You must agree to the terms and conditions.')
       return
     }
 
@@ -110,27 +109,22 @@ export default function RegisterPage() {
       // Optional: redirect after 2 seconds
       setTimeout(() => router.push('/login'), 2000)
     } catch (err) {
-      console.error('Error during registration:', err)
-      setError(err.message)
+      console.registerError('registerError during registration:', err)
+      setRegisterError(err.message)
     } finally {
       setIsRegistering(false)
     }
   }
 
+  useEffect(() => {
+    if (userSignedIn) {
+      router.push('/userAuthentication/login')
+    }
+  }, [userSignedIn, router])
   return (
     <div>
       <NeonBackground />
       <div className='v-full flex h-full flex-row'>
-        <BrowserRouter>
-          <Routes>
-            {userLoggedIn && (
-              <Route
-                path='/register'
-                element={<Navigate to='/login' replace />}
-              />
-            )}
-          </Routes>
-        </BrowserRouter>
         {/* Left side UI remains unchanged */}
         <div className='relative h-screen w-[40%]'>
           <div className='absolute h-full w-full rounded-r-[250px] bg-[url("/agent.jpg")] mask-r-from-80% bg-cover bg-center opacity-25'></div>
@@ -143,9 +137,9 @@ export default function RegisterPage() {
               Already have an account?
             </h1>
             <div className='transparent mt-4 w-1/3 rounded-[5px] border-[1px] border-solid border-white p-2 text-center text-[20px] font-bold tracking-[0.5rem] text-white uppercase shadow-[0_0_10px_rgba(59,130,246)] shadow-sky-500 transition hover:cursor-pointer hover:bg-white hover:text-black hover:shadow-[0_0_50px_rgba(59,130,246)]'>
-              <button onClick={handleLogin} type='button'>
+              <Button text={"SIGN IN"} onClick={handleLogin} type='button '>
                 SIGN IN
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -154,7 +148,7 @@ export default function RegisterPage() {
         <div className='flex w-full items-center justify-center p-8 lg:w-1/2'>
           <div className='w-[70%]'>
             <form
-              onSubmit={onSubmit}
+              onSubmit={onRegisterSubmit}
               className='rounded-2xl border-5 bg-transparent p-8 shadow-xl'
             >
               <div className='space-y-6'>
@@ -162,10 +156,10 @@ export default function RegisterPage() {
                   Get started with your account
                 </div>
 
-                {/* Error / Success Messages */}
-                {error && <p className='text-center text-red-500'>{error}</p>}
-                {success && (
-                  <p className='text-center text-green-500'>{success}</p>
+                {/* registerError / registerSuccess Messages */}
+                {registerError && <p className='text-center text-red-500'>{registerError}</p>}
+                {registerSuccess && (
+                  <p className='text-center text-green-500'>{registerSuccess}</p>
                 )}
 
                 {/* Name Fields */}
@@ -179,7 +173,7 @@ export default function RegisterPage() {
                         name='firstName'
                         value={formData.firstName}
                         onChange={handleInputChange}
-                        className='border-b-[#024a70] w-full border-2 border-transparent px-4 py-3 pl-10 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
+                        className='w-full border-2 border-transparent border-b-[#024a70] px-4 py-3 pl-10 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
                         placeholder='First Name'
                         required
                       />
@@ -191,7 +185,7 @@ export default function RegisterPage() {
                         name='lastName'
                         value={formData.lastName}
                         onChange={handleInputChange}
-                        className='border-b-[#024a70] w-full border-2 border-transparent px-4 py-3 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
+                        className='w-full border-2 border-transparent border-b-[#024a70] px-4 py-3 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
                         placeholder='Last Name'
                         required
                       />
@@ -208,7 +202,7 @@ export default function RegisterPage() {
                     name='email'
                     value={formData.email}
                     onChange={handleInputChange}
-                    className='border-b-[#024a70] w-full border-2 border-transparent px-4 py-3 pl-10 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
+                    className='w-full border-2 border-transparent border-b-[#024a70] px-4 py-3 pl-10 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
                     required
                     placeholder='Email'
                   />
@@ -218,21 +212,21 @@ export default function RegisterPage() {
                 <div className='relative'>
                   <Lock className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
                   <input
-                    type={showPassword ? 'text' : 'password'}
+                    type={showRegisterPassword ? 'text' : 'password'}
                     id='password'
                     name='password'
                     value={formData.password}
                     onChange={handleInputChange}
-                    className='border-b-[#024a70] w-full border-2 border-transparent py-3 pr-10 pl-10 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
+                    className='w-full border-2 border-transparent border-b-[#024a70] py-3 pr-10 pl-10 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
                     required
                     placeholder='Password'
                   />
                   <button
                     type='button'
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={() => setshowRegisterPassword(!showRegisterPassword)}
                     className='absolute top-1/2 right-3 -translate-y-1/2 text-gray-400'
                   >
-                    {showPassword ? (
+                    {showRegisterPassword ? (
                       <EyeOff className='h-5 w-5' />
                     ) : (
                       <Eye className='h-5 w-5' />
@@ -244,21 +238,21 @@ export default function RegisterPage() {
                 <div className='relative'>
                   <LockKeyhole className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
                   <input
-                    type={showCPassword ? 'text' : 'password'}
+                    type={showRegisterCPassword ? 'text' : 'password'}
                     id='cpassword'
                     name='cpassword'
                     value={formData.cpassword}
                     onChange={handleInputChange}
-                    className='border-b-[#024a70] w-full border-2 border-transparent py-3 pr-10 pl-10 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
+                    className='w-full border-2 border-transparent border-b-[#024a70] py-3 pr-10 pl-10 text-white placeholder-gray-400 transition-all duration-300 focus:border-b-blue-400 focus:ring-2 focus:ring-transparent focus:outline-none'
                     required
                     placeholder='Confirm Password'
                   />
                   <button
                     type='button'
-                    onClick={() => setShowCPassword(!showCPassword)}
+                    onClick={() => setShowRegisterCPassword(!showRegisterCPassword)}
                     className='absolute top-1/2 right-3 -translate-y-1/2 text-gray-400'
                   >
-                    {showCPassword ? (
+                    {showRegisterCPassword ? (
                       <EyeOff className='h-5 w-5' />
                     ) : (
                       <Eye className='h-5 w-5' />
@@ -315,7 +309,7 @@ export default function RegisterPage() {
                   <button
                     type='submit'
                     disabled={isRegistering}
-                    className='transparent mt-4 w-1/2 transform rounded-[5px] border-[1px] border-solid border-white p-2 text-center text-[20px] font-bold tracking-[0.5rem] text-white uppercase shadow-[0_0_10px_rgba(59,130,246)] transition-all duration-300 hover:scale-105 hover:cursor-pointer hover:bg-white hover:text-black hover:shadow-[0_0_50px_rgba(59,130,246)]'
+                    className='w-1/2 rounded-xl bg-gray-600 py-3 text-xl font-bold tracking-wide text-white transition hover:cursor-pointer hover:bg-gray-200 hover:text-black disabled:opacity-50'
                   >
                     {isRegistering ? 'Signing Up...' : 'Sign Up'}
                   </button>

@@ -1,0 +1,22 @@
+// components/ClientNavbar.js
+'use client'
+
+import { usePathname } from 'next/navigation'
+import OtherBar from '../navigationBar/otherBar'
+import { useState } from 'react'
+
+export default function ClientNavbar() {
+  const pathname = usePathname()
+  var homeBar = useState(false)
+
+  if (pathname === '/' || pathname.startsWith('/#')) {
+    homeBar = true
+    return
+  }
+
+ 
+    return <OtherBar />
+ 
+
+    // no navbar on other pages if needed
+}
