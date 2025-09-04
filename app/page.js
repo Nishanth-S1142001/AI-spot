@@ -15,33 +15,41 @@ import {
   Lock,
   Mail,
   User,
-  LockKeyhole
+  LockKeyhole,
+  Zap,
+  Users,
+  Activity,
+  MessageSquare,
+  TrendingUp
 } from 'lucide-react'
 import Button from '../components/button'
 import HyperLinks from '../components/hyperLinks'
 import FormInput from '../components/formInputField'
-import { useAuth } from '../contexts/authContext'
-import {
-  doSignInWithEmailAndPassword,
-  doSignInWithGoogle,
-  doPasswordReset,
-  doCreateUserWithEmailAndPassword
-} from '../lib/firebase/firebaseUtils'
-import styles from './page.module.css'
+
+// import {
+//   doSignInWithEmailAndPassword,
+//   doSignInWithGoogle,
+//   doPasswordReset,
+//   doCreateUserWithEmailAndPassword
+// } from '../lib/firebase/firebaseUtils'
+
 import { useRouter, useSearchParams } from 'next/navigation'
 import NavigationHomeBar from '../components/navigationBar/homeBar'
 import myVideo2 from '../public/robot.mp4'
-import { Form } from 'react-router-dom'
+
+import Card from '../components/card'
+import { supabase } from '../lib/supabase/dbClient'
 
 export default function Home() {
   const [showPassword, setShowPassword] = useState(false)
-  const { userLoggedIn } = useAuth()
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isSigningIn, setIsSigningIn] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [emailError, setEmailError] = useState('')
   const [rEmailError, setrEmailError] = useState('')
+  const [googleError, setGoogleError] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [passwordError, setPasswordError] = useState('')
   const [rEmail, setREmail] = useState('')
@@ -60,7 +68,7 @@ export default function Home() {
   const [agreeToTerms, setAgreeToTerms] = useState(false)
   const [agreeToSMS, setAgreeToSMS] = useState(false)
   const [isRegistering, setIsRegistering] = useState(false)
-  const { userSignedIn } = useAuth()
+
   const [showRegisterCPassword, setShowRegisterCPassword] = useState(false)
   const [formData, setFormData] = useState({
     firstName: '',
@@ -72,7 +80,7 @@ export default function Home() {
 
   const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
   const validatePassword = (password) =>
-    password.length >= 8 && /[A-Za-z]/.test(password) && /\d/.test(password)
+    password.length >= 6 && /[A-Za-z]/.test(password) && /\d/.test(password)
   const validateForm = () => {
     let valid = true
     setEmailError('')
@@ -111,17 +119,18 @@ export default function Home() {
     if (!isSigningIn && validateForm()) {
       setIsSigningIn(true)
       try {
-        await doSignInWithEmailAndPassword(email, password)
-        // if successful → user is signed in  // doSendEmailVerification()
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        })
+        if (error) throw error
+        console.log('Success')
+
+        router.push('/dashboard') // redirect after login
+        // error
+        // if successful → user is signed in   -> verification()
       } catch (err) {
-        // handle Firebase auth errors
-        if (err.code === 'auth/invalid-credential') {
-          setPasswordError('Incorrect password')
-        } else if (err.code === 'auth/user-not-found') {
-          setEmailError('No account found with this email')
-        } else {
-          setErrorMessage(err.message)
-        }
+        setErrorMessage(err.message || 'Login failed. Please try again.')
       } finally {
         setIsSigningIn(false)
       }
@@ -129,15 +138,21 @@ export default function Home() {
   }
 
   const onGoogleSignIn = async (e) => {
+    setGoogleError('')
     e.preventDefault()
     if (!isSigningIn) {
       setIsSigningIn(true)
       try {
-        await doSignInWithGoogle()
-        // success → likely redirect or update context
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: `${window.location.origin}/dashboard`
+          }
+        })
+
+        if (error) throw error
       } catch (err) {
-        console.error(err)
-        setIsSigningIn(false) // only reset on failure
+        setGoogleError(err.message || 'Google login failed. Please try again.')
       }
     }
   }
@@ -146,27 +161,31 @@ export default function Home() {
     if (rEmailValidation()) {
       setRError('')
       setRSuccess('')
-
-      setIsSending(true)
-      console.log('yohiuhoifnldasds')
+      console.log('Reset function')
       try {
-        await doPasswordReset(rEmail)
+        setIsSending(true)
+
+        const { data, error } = await supabase.auth.resetPasswordForEmail(
+          rEmail,
+          {
+            redirectTo: window.location.origin + '/auth/update-password'
+          }
+        )
+
+        if (error) {
+          setRError(error.message)
+          throw error
+        }
         setRSuccess('Password reset email sent! Check your inbox.')
       } catch (rError) {
         console.error('Error sending password reset email:', rError)
         // Handle errors
-        if (rError.code === 'auth/user-not-found') {
-          setRError('No user found with this email.')
-        } else if (rError.code === 'auth/invalid-email') {
-          setRError('Invalid email address.')
-        } else {
-          setRError(rError.message)
-        }
       } finally {
         setIsSending(false)
       }
     }
   }
+
   const handleClose = () => {
     setIsOpen(false)
     setIsLogin(false)
@@ -241,14 +260,25 @@ export default function Home() {
 
     try {
       setIsRegistering(true)
-      // Firebase registration
-      await doCreateUserWithEmailAndPasswordcreateUserWithEmailAndPassword(
-        formData.email,
-        formData.password
-      )
-      setRegisterSuccess(
-        'Registration successful! Redirecting to login...Please login with your new credentials.'
-      )
+      //  Supabase
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            first_name: formData.firstName,
+            last_name: formData.lastName
+          }
+        }
+      })
+      if (signUpError) {
+        setRegisterError(signUpError.message)
+      } else {
+        setRegisterSuccess(
+          'Registration successful! Redirecting to login...Please login with your new credentials.'
+        )
+      }
+
       setFormData({
         firstName: '',
         lastName: '',
@@ -258,9 +288,9 @@ export default function Home() {
       })
 
       // Optional: redirect after 2 seconds
-      setTimeout(() => router.push('/login'), 2000)
+      setTimeout(() => handleLogin(), 2000)
     } catch (err) {
-      console.registerError('registerError during registration:', err)
+      console.error('registerError during registration:', err)
       setRegisterError(err.message)
     } finally {
       setIsRegistering(false)
@@ -268,28 +298,11 @@ export default function Home() {
   }
 
   useEffect(() => {
-    if (userSignedIn) {
-      router.push('/userAuthentication/login')
-    }
-  }, [userSignedIn, router])
-
-  useEffect(() => {
     if (videoRef.current) {
       videoRef.current.playbackRate = 0.5 // Set speed to 0.5x
     }
   }, [])
 
-  useEffect(() => {
-    if (searchParams.get('login') === 'true') {
-      setIsOpen(true)
-    }
-  }, [searchParams])
-
-  useEffect(() => {
-    if (userLoggedIn) {
-      ;(console.log('true:' + userLoggedIn), router.push('/dashboard'))
-    }
-  }, [userLoggedIn, router])
   useEffect(() => {
     if (isOpen && isReset) {
       setRError('')
@@ -315,40 +328,36 @@ export default function Home() {
             {/* Hero Section (Your original content) */}
             <div
               id='home'
-              className='relative flex h-screen flex-col items-center justify-center p-6'
+              className='relative flex h-screen flex-col items-center justify-center bg-transparent p-6'
             >
               {/* Background video */}
-              <video
-                ref={videoRef}
-                src={myVideo2}
-                autoPlay
-                muted
-                loop
-                className='absolute top-18 left-0 h-full w-full mask-b-from-[55%] object-cover opacity-40'
-              />
-              <div className='z-10 flex flex-col items-center justify-center py-8 text-center font-medium tracking-[1rem] text-white uppercase'>
+
+              <div className='z-10 flex flex-col items-center justify-center bg-transparent py-8 text-center font-medium tracking-[1rem] text-white uppercase'>
                 <h1 className='m-2 text-[130px]'>
                   {'build'}{' '}
-                  <span className='bg-black text-[115px] text-white shadow-xl shadow-white'>
+                  <span className='text-[145px] font-bold text-neutral-500 text-shadow-gray-800 text-shadow-lg'>
                     your
                   </span>
                 </h1>
                 <h1 className='m-2 text-[100px]'>
-                  <span className='bg-black text-blue-400 shadow-lg shadow-[#024a70]'>
+                  <span className='text-[125px] font-bold text-neutral-500 text-shadow-gray-800 text-shadow-lg'>
                     no code
                   </span>
                   {' AI agents'}
                 </h1>
-                <h1 className='mt-2 mb-5 text-[50px]'>now</h1>
+                
                 <div>
-                  <Button
+                  <button
+                    className='transparant h-[20vh] w-[80vh] border border-white text-[100px] font-bold text-white uppercase hover:cursor-pointer hover:text-neutral-500 hover:shadow-lg hover:shadow-neutral-500'
                     text={'BUILD NOW'}
                     onClick={() => {
                       setIsOpen(true)
                       setIsLogin(true)
                       setIsReset(false)
                     }}
-                  ></Button>
+                  >
+                    buid now
+                  </button>
                 </div>
               </div>
             </div>
@@ -356,204 +365,243 @@ export default function Home() {
             {/* Main content container for all sections */}
             <main className='bg-opacity-80 relative z-10 text-white'>
               {/* 2. About Us Section */}
-              <section
-                id='about'
-                className='px-4 py-20 shadow-2xl shadow-black'
-              >
-                <div className='container mx-auto max-w-4xl bg-black text-center'>
-                  <h2 className='mb-6 text-4xl font-bold tracking-wider uppercase'>
+              {/* About Section */}
+              <section id='about' className='bg-neutral-900 px-4 py-20'>
+                <div className='container mx-auto max-w-5xl'>
+                  <h2 className='mb-6 text-4xl font-bold tracking-wider text-neutral-100 uppercase'>
                     About Us
                   </h2>
-                  <p className='text-lg leading-relaxed text-gray-300'>
-                    We are pioneers in the no-code AI revolution. Our mission is
-                    to empower creators, entrepreneurs, and businesses of all
-                    sizes to build powerful, autonomous AI agents without
-                    writing a single line of code. We believe the future of
-                    automation is accessible to everyone.
+                  <p className='text-lg leading-relaxed text-neutral-400'>
+                    We are pioneers in the no-code AI revolution, empowering
+                    businesses and individuals to harness the power of
+                    artificial intelligence without technical barriers. Our
+                    platform enables anyone to create intelligent AI agents that
+                    can transform the way they work, communicate, and innovate.
                   </p>
                 </div>
               </section>
               <div className='flex justify-center'></div>
 
               {/* 3. Services Provided Section */}
-              <section
-                id='services'
-                className='bg-opacity-20 bg-tranparent px-4 py-20 shadow-xl shadow-black'
-              >
-                <div className='container mx-auto max-w-6xl text-center'>
-                  <h2 className='mb-12 text-4xl font-bold tracking-wider uppercase'>
+              <section id='services' className='bg-neutral-950 px-4 py-20'>
+                <div className='container mx-auto max-w-6xl'>
+                  <h2 className='mb-16 text-center text-5xl font-extrabold text-neutral-100'>
                     Our Services
                   </h2>
-                  <div className='grid gap-8 md:grid-cols-3'>
-                    {/* Service Card 1 */}
-                    <div className='transform rounded-lg border border-cyan-500/20 bg-gray-800 p-8 transition-all hover:-translate-y-2 hover:border-cyan-500'>
-                      <Bot size={48} className='mx-auto mb-4 text-cyan-400' />
-                      <h3 className='mb-2 text-2xl font-semibold'>
-                        Custom AI Agent Builder
-                      </h3>
-                      <p className='text-gray-400'>
-                        An intuitive drag-and-drop interface to design, train,
-                        and deploy AI agents for any task.
-                      </p>
-                    </div>
-                    {/* Service Card 2 */}
-                    <div className='transform rounded-lg border border-cyan-500/20 bg-gray-800 p-8 transition-all hover:-translate-y-2 hover:border-cyan-500'>
-                      <Code size={48} className='mx-auto mb-4 text-cyan-400' />
-                      <h3 className='mb-2 text-2xl font-semibold'>
-                        API Integration
-                      </h3>
-                      <p className='text-gray-400'>
-                        Seamlessly connect your AI agents to thousands of
-                        third-party apps and services.
-                      </p>
-                    </div>
-                    {/* Service Card 3 */}
-                    <div className='transform rounded-lg border border-cyan-500/20 bg-gray-800 p-8 transition-all hover:-translate-y-2 hover:border-cyan-500'>
-                      <Cloud size={48} className='mx-auto mb-4 text-cyan-400' />
-                      <h3 className='mb-2 text-2xl font-semibold'>
-                        Cloud Deployment
-                      </h3>
-                      <p className='text-gray-400'>
-                        One-click deployment to our secure and scalable cloud
-                        infrastructure.
-                      </p>
-                    </div>
+                  <div className='grid gap-10 sm:grid-cols-2 lg:grid-cols-3'>
+                    {[
+                      {
+                        icon: (
+                          <Bot
+                            size={48}
+                            className='mx-auto mb-4 text-neutral-400'
+                          />
+                        ),
+                        title: 'Custom AI Agent Builder',
+                        desc: 'An intuitive drag-and-drop interface to create bespoke AI agents tailored to your unique needs.'
+                      },
+                      {
+                        icon: (
+                          <MessageSquare
+                            size={48}
+                            className='mx-auto mb-4 text-neutral-400'
+                          />
+                        ),
+                        title: 'Conversational AI',
+                        desc: 'Engage your audience with intelligent, natural language chatbots that understand context and intent.'
+                      },
+                      {
+                        icon: (
+                          <Zap
+                            size={48}
+                            className='mx-auto mb-4 text-neutral-400'
+                          />
+                        ),
+                        title: 'Automation Workflows',
+                        desc: 'Automate complex processes by chaining AI agents together to perform sophisticated tasks.'
+                      },
+                      {
+                        icon: (
+                          <Users
+                            size={48}
+                            className='mx-auto mb-4 text-neutral-400'
+                          />
+                        ),
+                        title: 'Collaboration Tools',
+                        desc: 'Empower your team with AI-enhanced collaboration and productivity tools.'
+                      },
+                      {
+                        icon: (
+                          <TrendingUp
+                            size={48}
+                            className='mx-auto mb-4 text-neutral-400'
+                          />
+                        ),
+                        title: 'Analytics & Insights',
+                        desc: 'Gain deep insights into your data through AI-powered analytics and reporting.'
+                      },
+                      {
+                        icon: (
+                          <Activity
+                            size={48}
+                            className='mx-auto mb-4 text-neutral-400'
+                          />
+                        ),
+                        title: 'Continuous Learning',
+                        desc: 'Our AI agents improve over time, adapting to new data and evolving business needs.'
+                      }
+                    ].map((service, index) => (
+                      <Card
+                        key={index}
+                        className='border border-neutral-800 bg-neutral-900 shadow-lg'
+                      >
+                        {service.icon}
+                        <h3 className='mb-2 text-2xl font-semibold text-neutral-200'>
+                          {service.title}
+                        </h3>
+                        <p className='text-neutral-400'>{service.desc}</p>
+                      </Card>
+                    ))}
                   </div>
                 </div>
               </section>
-
               {/* 4. Testimonials Section */}
-              <section
-                id='testimonials'
-                className='px-4 py-20 shadow-2xl shadow-black'
-              >
-                <div className='container mx-auto max-w-4xl text-center'>
-                  <h2 className='mb-12 text-4xl font-bold tracking-wider uppercase'>
-                    What Our Clients Say
+              <section id='testimonials' className='bg-neutral-900 px-4 py-20'>
+                <div className='container mx-auto max-w-6xl'>
+                  <h2 className='mb-16 text-center text-5xl font-extrabold text-neutral-100'>
+                    Testimonials
                   </h2>
-                  <div className='space-y-8'>
-                    {/* Testimonial 1 */}
-                    <div className='relative rounded-lg bg-gray-800 p-6 text-left'>
-                      <Quote
-                        size={40}
-                        className='absolute top-4 left-4 text-cyan-600 opacity-20'
-                      />
-                      <blockquote className='text-lg text-gray-300 italic'>
-                        "This platform changed the game for our startup. We
-                        automated 80% of our customer support in a week without
-                        hiring a developer. Incredible!"
-                      </blockquote>
-                      <cite className='mt-4 block text-right font-semibold text-cyan-400 not-italic'>
-                        - Jane Doe, CEO of Tech Innovators
-                      </cite>
-                    </div>
-                    {/* Testimonial 2 */}
-                    <div className='relative rounded-lg bg-gray-800 p-6 text-left'>
-                      <Quote
-                        size={40}
-                        className='absolute top-4 left-4 text-cyan-600 opacity-20'
-                      />
-                      <blockquote className='text-lg text-gray-300 italic'>
-                        "The flexibility of the agent builder is unmatched. I
-                        was able to create a complex marketing automation agent
-                        that now saves me 10 hours a week."
-                      </blockquote>
-                      <cite className='mt-4 block text-right font-semibold text-cyan-400 not-italic'>
-                        - John Smith, Marketing Freelancer
-                      </cite>
-                    </div>
+                  <div className='grid gap-10 sm:grid-cols-2'>
+                    {[
+                      {
+                        quote:
+                          'This platform changed the game for our startup. We built an AI customer support agent in hours.',
+                        author: 'Jane Doe, CEO of Tech Innovators'
+                      },
+                      {
+                        quote:
+                          'The no-code interface is incredibly intuitive. Our productivity has skyrocketed since adopting it.',
+                        author: 'John Smith, Operations Manager'
+                      }
+                    ].map((testimonial, index) => (
+                      <Card
+                        key={index}
+                        className='relative border border-neutral-800 bg-neutral-900'
+                      >
+                        <blockquote className='text-lg text-neutral-300 italic'>
+                          "{testimonial.quote}"
+                        </blockquote>
+                        <cite className='mt-4 block text-right font-semibold text-neutral-400 not-italic'>
+                          - {testimonial.author}
+                        </cite>
+                      </Card>
+                    ))}
                   </div>
                 </div>
               </section>
 
               {/* 5. Pricing Section */}
-              <section
-                id='pricing'
-                className='bg-opacity-20 bg-tranparent px-4 py-20 shadow-xl shadow-[#024a70]'
-              >
-                <div className='container mx-auto max-w-6xl text-center'>
-                  <h2 className='mb-12 text-4xl font-bold tracking-wider uppercase'>
-                    Pricing Plans
+              <section id='pricing' className='bg-neutral-950 px-4 py-20'>
+                <div className='container mx-auto max-w-6xl'>
+                  <h2 className='mb-16 text-center text-5xl font-extrabold text-neutral-100'>
+                    Pricing
                   </h2>
-                  <div className='grid gap-8 md:grid-cols-3'>
-                    {/* Plan 1: Starter */}
-                    <div className='flex flex-col rounded-lg border border-gray-700 bg-gray-800 p-8'>
-                      <h3 className='mb-2 text-2xl font-semibold'>Starter</h3>
-                      <p className='mb-4 text-5xl font-bold'>
-                        $49
-                        <span className='text-lg font-normal text-gray-400'>
-                          /mo
-                        </span>
-                      </p>
-                      <ul className='mb-8 flex-grow space-y-2 text-left text-gray-300'>
-                        <li>✔ 1 AI Agent</li>
-                        <li>✔ 10,000 Operations/mo</li>
-                        <li>✔ Basic API Integrations</li>
-                        <li>✔ Email Support</li>
-                      </ul>
-                      <Button text={'Choose Plan'} />
-                    </div>
-                    {/* Plan 2: Pro (Highlighted) */}
-                    <div className='relative flex flex-col rounded-lg border-2 border-cyan-500 bg-gray-800 p-8'>
-                      <span className='absolute top-0 -translate-y-1/2 rounded-full bg-cyan-500 px-3 py-1 text-sm font-bold text-black'>
-                        MOST POPULAR
-                      </span>
-                      <h3 className='mb-2 text-2xl font-semibold'>Pro</h3>
-                      <p className='mb-4 text-5xl font-bold text-cyan-400'>
-                        $99
-                        <span className='text-lg font-normal text-gray-400'>
-                          /mo
-                        </span>
-                      </p>
-                      <ul className='mb-8 flex-grow space-y-2 text-left text-gray-300'>
-                        <li>✔ 10 AI Agents</li>
-                        <li>✔ 100,000 Operations/mo</li>
-                        <li>✔ Advanced API Integrations</li>
-                        <li>✔ Priority Email Support</li>
-                      </ul>
-                      <Button text={'Choose Plan'} />
-                    </div>
-                    {/* Plan 3: Enterprise */}
-                    <div className='flex flex-col rounded-lg border border-gray-700 bg-gray-800 p-8'>
-                      <h3 className='mb-2 text-2xl font-semibold'>
-                        Enterprise
-                      </h3>
-                      <p className='mb-4 text-4xl font-bold'>Custom</p>
-                      <ul className='mb-8 flex-grow space-y-2 text-left text-gray-300'>
-                        <li>✔ Unlimited Agents</li>
-                        <li>✔ Unlimited Operations</li>
-                        <li>✔ Custom Integrations</li>
-                        <li>✔ 24/7 Dedicated Support</li>
-                      </ul>
-                      <Button text={'Choose Plan'} />
-                    </div>
+                  <div className='grid gap-10 sm:grid-cols-2 lg:grid-cols-3'>
+                    {[
+                      {
+                        name: 'Starter',
+                        price: 'Free',
+                        features: [
+                          '✔ 1 AI Agent',
+                          '✔ 1,000 Operations/mo',
+                          '✔ Basic Templates',
+                          '✔ Community Support'
+                        ]
+                      },
+                      {
+                        name: 'Pro',
+                        price: '$99',
+                        features: [
+                          '✔ 10 AI Agents',
+                          '✔ 100,000 Operations/mo',
+                          '✔ Advanced API Integrations',
+                          '✔ Priority Support'
+                        ]
+                      },
+                      {
+                        name: 'Enterprise',
+                        price: 'Custom',
+                        features: [
+                          '✔ Unlimited AI Agents',
+                          '✔ Unlimited Operations',
+                          '✔ Dedicated Account Manager',
+                          '✔ 24/7 Support'
+                        ]
+                      }
+                    ].map((plan, index) => (
+                      <Card
+                        key={index}
+                        className='relative flex flex-col border border-neutral-800 bg-neutral-900'
+                      >
+                        <div className='flex flex-grow flex-col p-8'>
+                          <h3 className='mb-2 text-2xl font-semibold text-neutral-100'>
+                            {plan.name}
+                          </h3>
+                          <p className='mb-4 text-5xl font-bold text-neutral-200'>
+                            {plan.price}
+                            {plan.price !== 'Custom' && (
+                              <span className='text-lg font-normal text-neutral-500'>
+                                /mo
+                              </span>
+                            )}
+                          </p>
+                          <ul className='mb-8 flex-grow space-y-2 text-left text-neutral-400'>
+                            {plan.features.map((feature, idx) => (
+                              <li key={idx}>{feature}</li>
+                            ))}
+                          </ul>
+                          <Button className='bg-neutral-800 text-neutral-100 hover:bg-neutral-700'>
+                            Choose Plan
+                          </Button>
+                        </div>
+                      </Card>
+                    ))}
                   </div>
                 </div>
               </section>
             </main>
-            {/* 6. Contact Us / Footer Section */}
+            {/* Footer Section */}
             <footer
               id='contact'
-              className='bg-tranparent relative z-10 px-4 py-10 text-center text-gray-400'
+              className='relative z-10 bg-neutral-900 px-4 py-10 text-center text-neutral-400'
             >
               <div className='container mx-auto'>
-                <h2 className='mb-4 text-3xl font-bold text-white'>
+                <h2 className='mb-4 text-3xl font-bold text-neutral-100'>
                   Get In Touch
                 </h2>
-                <p className='mb-6'>
+                <p className='mb-6 text-neutral-400'>
                   Have questions? We'd love to hear from you.
                 </p>
-                <p className='mb-8 text-lg text-cyan-400'>
+                <p className='mb-8 text-lg text-neutral-300'>
                   contact@aiagentsinc.com
                 </p>
                 <div className='mb-8 flex justify-center space-x-6'>
-                  <a href='#' className='transition-colors hover:text-white'>
+                  <a
+                    href='#'
+                    className='transition-colors hover:text-neutral-200'
+                  >
                     <Twitter size={28} />
                   </a>
-                  <a href='#' className='transition-colors hover:text-white'>
+                  <a
+                    href='#'
+                    className='transition-colors hover:text-neutral-200'
+                  >
                     <Linkedin size={28} />
                   </a>
-                  <a href='#' className='transition-colors hover:text-white'>
+                  <a
+                    href='#'
+                    className='transition-colors hover:text-neutral-200'
+                  >
                     <Github size={28} />
                   </a>
                 </div>
@@ -576,12 +624,13 @@ export default function Home() {
               onClick={handleClose}
             />
 
-            {/* Modal */}
+            {/* Login */}
+
             <div
               id='login'
               className='fixed z-50 mx-auto flex w-[40%] items-center justify-center'
             >
-              <div className='rounded-lg border border-gray-700 bg-[url(/backgroundImage1.png)] bg-cover bg-center p-8 shadow-2xl'>
+              <div className='rounded-lg border border-neutral-500     inset-0 bg-gradient-to-br from-neutral-900 via-black to-neutral-800 bg-cover bg-center p-8 shadow-2xl'>
                 {/* Header */}
                 <div className='mb-6 flex items-center justify-end'>
                   <div
@@ -605,6 +654,7 @@ export default function Home() {
                       <div className='relative'>
                         <Mail className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
                         <FormInput
+                          className='w-full'
                           type='text'
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
@@ -623,6 +673,7 @@ export default function Home() {
                         <div className='relative'>
                           <Lock className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
                           <FormInput
+                            className='w-full'
                             type={showPassword ? 'text' : 'password'}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
@@ -670,6 +721,7 @@ export default function Home() {
                       {/* Login Button */}
                       <div className='flex justify-center'>
                         <Button
+                          className='w-full'
                           disabled={isSigningIn}
                           text={isSigningIn ? 'Signing In...' : 'SIGN IN'}
                         ></Button>
@@ -697,12 +749,12 @@ export default function Home() {
                         </div>
                       </div>
                       <div className='flex justify-center text-center'>
-                        <button
+                        <Button
                           disabled={isSigningIn}
                           onClick={(e) => {
                             onGoogleSignIn(e)
                           }}
-                          className='flex w-full justify-center rounded-xl py-3 text-white shadow-2xl shadow-black transition hover:cursor-pointer hover:bg-gray-200'
+                          className='flex h-[50px] w-full place-items-center justify-center'
                         >
                           <svg
                             className='h-5 w-5'
@@ -734,11 +786,18 @@ export default function Home() {
                               </clipPath>
                             </defs>
                           </svg>
-                        </button>
+                        </Button>
                       </div>
+                      {googleError && (
+                        <p className='mt-2 text-center text-sm text-red-500'>
+                          {googleError}
+                        </p>
+                      )}
                     </div>
                   </form>
                 )}
+
+                {/* Reset Password */}
 
                 {isReset && !isLogin && !isRegister && (
                   <form
@@ -754,6 +813,7 @@ export default function Home() {
                       <div className='relative'>
                         <Mail className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
                         <FormInput
+                          className='w-full'
                           type='text'
                           value={rEmail}
                           onChange={(e) => setREmail(e.target.value)}
@@ -781,10 +841,11 @@ export default function Home() {
                     </div>
                   </form>
                 )}
+
+                {/* {Register} */}
+
                 {!isReset && !isLogin && isRegister && (
                   <>
-                    {' '}
-                    hi
                     <form
                       className='w-[100%] rounded-2xl bg-transparent p-8 shadow-2xl'
                       onSubmit={onRegisterSubmit}
@@ -812,6 +873,7 @@ export default function Home() {
                             <div>
                               <User className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
                               <FormInput
+                                className='w-full'
                                 type='text'
                                 id='firstName'
                                 name='firstName'
@@ -822,12 +884,15 @@ export default function Home() {
                               />
                             </div>
                             <div>
+                              <User className='absolute h-5 w-5 translate-x-2 translate-y-4 text-gray-400' />
                               <FormInput
+                                className='w-full'
                                 type='text'
                                 id='lastName'
                                 name='lastName'
                                 value={formData.lastName}
                                 onChange={handleInputChange}
+                                placeholder='Last Name'
                                 required={true}
                               />
                             </div>
@@ -838,6 +903,7 @@ export default function Home() {
                         <div className='relative'>
                           <Mail className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
                           <FormInput
+                            className='w-full'
                             type='email'
                             id='email'
                             name='email'
@@ -852,6 +918,7 @@ export default function Home() {
                         <div className='relative'>
                           <Lock className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
                           <FormInput
+                            className='w-full'
                             type={showRegisterPassword ? 'text' : 'password'}
                             id='password'
                             name='password'
@@ -879,6 +946,7 @@ export default function Home() {
                         <div className='relative'>
                           <LockKeyhole className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
                           <FormInput
+                            className='w-full'
                             type={showRegisterCPassword ? 'text' : 'password'}
                             id='cpassword'
                             name='cpassword'
@@ -958,6 +1026,7 @@ export default function Home() {
                         {/* Submit Button */}
                         <div className='flex justify-center'>
                           <Button
+                            className='w-full'
                             type='submit'
                             disabled={isRegistering}
                             text={isRegistering ? 'Signing Up...' : 'Sign Up'}

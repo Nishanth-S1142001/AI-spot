@@ -1,23 +1,22 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
 import OpenAI from "openai";
-import { summaries, addSummary } from "../../../lib/memoryStore";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-export async function GET(req) {
-  const { searchParams } = new URL(req.url);
-  const url = searchParams.get("url");
-
-  if (!url) {
-    return new Response(JSON.stringify({ error: "Missing URL parameter" }), {
-      status: 400,
-    });
-  }
-
+export async function POST(req) {
   try {
+    const { url } = await req.json();
+
+    if (!url) {
+      return new Response(JSON.stringify({ error: "Missing URL parameter" }), {
+        status: 400,
+      });
+    }
+
+    // Scrape website content
     const response = await axios.get("http://api.scraperapi.com", {
       params: {
         api_key: process.env.SCRAPER_API_KEY,
@@ -34,27 +33,38 @@ export async function GET(req) {
       content += $(el).text() + " ";
     });
 
-    const completion = await openai.chat.completions.create({
+    // Generate summary using OpenAI
+    const summaryCompletion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
           content:
-            "You are a helpful assistant that summarizes website content and converts it into the form FAQ.",
+            "You are a helpful assistant that summarizes web content for AI agents. Focus on the key points, main topics, and useful information.",
         },
         {
           role: "user",
-          content: `Summarize the following webpage text and make it into a form of FAQ for a chat bot feed:\n\n${content}`,
+          content: `Please summarize the following webpage content:\n\n${content}`,
         },
       ],
+      max_tokens: 500,
+      temperature: 0.3,
     });
 
-    const summary = completion.choices[0].message.content;
-    addSummary({ url, summary });
+    const summary =
+      summaryCompletion.choices[0]?.message?.content ||
+      "Summary could not be generated.";
 
-    return new Response(JSON.stringify({ summaries }), { status: 200 });
+    return new Response(
+      JSON.stringify({
+        url,
+        content,
+        summary,
+      }),
+      { status: 200 }
+    );
   } catch (error) {
-    console.error("❌ Error scraping:", error.message);
+    console.error("❌ Error scraping:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
     });

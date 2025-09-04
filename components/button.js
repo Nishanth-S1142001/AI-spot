@@ -1,12 +1,24 @@
-"use client"; // add this if you want to use hooks/events
+'use client'
 
-export default function Button({ text, onClick }) {
+export default function Button({
+  text,
+  onClick,
+  disabled,
+  className,
+  children
+}) {
   return (
     <button
       onClick={onClick}
-      className="px-4 rounded-xl  bg-blue-400  py-3 text-lg font-bold tracking-wide text-white transition hover:cursor-pointer hover:bg-gray-200 hover:text-black disabled:opacity-50 hover:shadow-lg hover:shadow-blue-400"
+      disabled={disabled}
+      className={` ${className} m-2 rounded-full px-4 py-2 text-lg font-bold tracking-wide transition ${
+        disabled
+          ? 'cursor-not-allowed bg-neutral-200 text-black opacity-50'
+          : 'hover: cursor-pointer bg-neutral-600 text-white hover:bg-neutral-800 hover:shadow-lg'
+      } `}
     >
       {text}
+      {children}
     </button>
-  );
+  )
 }

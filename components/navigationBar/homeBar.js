@@ -4,8 +4,8 @@ import Button from '../button'
 
 export default function NavigationHomeBar({ onLoginClick }) {
   return (
-    <header className='bg-opacity-30 fixed top-0 left-0 z-50 w-full scroll-smooth backdrop-blur-sm transition-all'>
-      <nav className='container mx-auto flex items-center justify-between scroll-smooth px-6 py-4'>
+    <header className='bg-opacity-30 fixed top-0 left-0 z-50 w-full scroll-smooth backdrop-blur-sm transition-all '>
+      <nav className='container mx-auto flex items-center justify-between scroll-smooth px-6 pt-2'>
         <Link href='/'>
           <h1 className='scroll-smooth text-xl font-bold text-white'>
             AI Agents Inc.

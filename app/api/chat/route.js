@@ -1,42 +1,47 @@
 import OpenAI from "openai";
 import { summaries } from "../../../lib/memoryStore";
-import { scrapeAndSummarize } from "../../../lib/scrapeHelper";
 import { NextResponse } from "next/server";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Simple keyword filtering function
+function filterSummaries(question, allSummaries) {
+  const lowerQ = question.toLowerCase();
+  return allSummaries
+    .filter(s => s.summary.toLowerCase().includes(lowerQ))
+    .map(s => s.summary)
+    .join("\n\n");
+}
+
 export async function POST(req) {
   try {
-    const { question } = await req.json();
+    const { question, summaries: clientSummaries } = await req.json();
 
-    if (!question) {
-      return NextResponse.json({ error: "Missing question" }, { status: 400 });
+    if (!question) return NextResponse.json({ error: "Missing question" }, { status: 400 });
+    if (!clientSummaries || clientSummaries.length === 0) {
+      return NextResponse.json({ error: "No summaries available" }, { status: 400 });
     }
 
-    // If no summaries, scrape a default URL
-    if (!summaries || summaries.length === 0) {
-      await scrapeAndSummarize("https://en.wikipedia.org/wiki/Web_scraping");
-    }
-
-    const context = summaries.map((s) => s.summary).join("\n\n");
+    const context = filterSummaries(question, clientSummaries) || "No matching content found in the FAQ.";
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4o-mini", // or switch to gpt-3.5-turbo for faster responses
       messages: [
         {
           role: "system",
-          content:
-           `"You are a friendly, approachable, and helpful chatbot. 
-            - Always respond in a conversational and polite way. 
-            - Use a friendly tone, emojis sparingly if appropriate, and try to engage the user naturally. 
-            - Only answer questions using the provided context (summaries from scraped websites). 
-            - If the answer is not in the context, politely say "I couldn't find that in the data, but I'm happy to help with something else!"`,
+          content: `
+You are a friendly, approachable, and helpful chatbot.
+- Always respond in a conversational and polite way.
+- Use a friendly tone, emojis sparingly if appropriate, and try to engage the user naturally.
+- Only answer questions using the provided context (summaries from scraped websites).
+- If the answer is not in the context, politely say "I couldn't find that in the data, but I'm happy to help with something else!"
+`,
         },
         {
           role: "user",
-          content: `Question: ${question}\n\nContext:\n${context}`,
+          content: `Context:\n${context}\n\nQuestion:\n${question}`,
         },
       ],
     });

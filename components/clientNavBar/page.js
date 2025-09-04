@@ -4,18 +4,19 @@
 import { usePathname } from 'next/navigation'
 import OtherBar from '../navigationBar/otherBar'
 import { useState } from 'react'
+import Sidebar from '../sideBar'
+import SubSidebar from '../subSideBar'
 
 export default function ClientNavbar() {
   const pathname = usePathname()
-  var homeBar = useState(false)
+   
 
-  if (pathname === '/' || pathname.startsWith('/#')) {
-    homeBar = true
-    return
+  if (pathname !== '/' || !pathname.startsWith('/#')) {
+  
+    return 
   }
-
- 
-    return <OtherBar />
+  return <Sidebar/> && <SubSidebar/>
+    
  
 
     // no navbar on other pages if needed
