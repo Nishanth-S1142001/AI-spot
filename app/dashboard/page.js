@@ -130,11 +130,21 @@ export default function Dashboard() {
         return 'bg-neutral-800 text-neutral-300'
     }
   }
+  if (loading && agents.length === 0 ) {
+    return (
+      <div className='flex min-h-screen items-center bg-neutral-900 justify-center '>
+        <div className='text-center'>
+          <Aperture className='mx-auto mb-4 h-12 w-12 animate-spin  text-neutral-400' />
+          <p className='text-neutral-400 text-lg'>Loading your dashboard...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <>
       <NeonBackground />
-      <div className='flex h-screen w-full flex-row  text-neutral-100'>
+      <div className='flex h-screen w-full flex-row text-neutral-100'>
         <Sidebar />
         <SubSidebar menuItems={menuItems} />
 
@@ -162,7 +172,7 @@ export default function Dashboard() {
           <div className='w-full px-6 py-8'>
             <div className='mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4'>
               <Card>
-                <div className='p-6 flex items-center space-x-6'>
+                <div className='flex items-center space-x-6 p-6'>
                   <Bot className='h-20 w-20 text-neutral-400' />
                   <div>
                     <p className='text-xl font-medium'>Total Agents</p>
@@ -173,7 +183,7 @@ export default function Dashboard() {
                 </div>
               </Card>
               <Card>
-                <div className='p-6 flex items-center space-x-6'>
+                <div className='flex items-center space-x-6 p-6'>
                   <MessageSquare className='h-20 w-20 text-neutral-400' />
                   <div>
                     <p className='text-xl font-medium'>Conversations</p>
@@ -184,7 +194,7 @@ export default function Dashboard() {
                 </div>
               </Card>
               <Card>
-                <div className='p-6 flex items-center space-x-6'>
+                <div className='flex items-center space-x-6 p-6'>
                   <TrendingUp className='h-20 w-20 text-neutral-400' />
                   <div>
                     <p className='text-xl font-medium'>Success Rate</p>
@@ -195,7 +205,7 @@ export default function Dashboard() {
                 </div>
               </Card>
               <Card>
-                <div className='p-6 flex items-center space-x-6'>
+                <div className='flex items-center space-x-6 p-6'>
                   <Activity className='h-20 w-20 text-neutral-400' />
                   <div>
                     <p className='text-xl font-medium'>Credits Used</p>
@@ -345,7 +355,7 @@ export default function Dashboard() {
             {agents.length > 0 && (
               <Card className='mt-8'>
                 <div className='p-6'>
-                  <h2 className='text-xl font-semibold text-neutral-300 mb-4'>
+                  <h2 className='mb-4 text-xl font-semibold text-neutral-300'>
                     Recent Activity
                   </h2>
                   <div className='space-y-4'>

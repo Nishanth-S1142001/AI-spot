@@ -27,6 +27,7 @@ export const dbServer = {
 
   // Agents
   async createAgent(userId, agentData) {
+    console.log('Inserting agent data:', agentData)
     const { data, error } = await supabase
       .from('agents')
       .insert({ ...agentData, user_id: userId })
