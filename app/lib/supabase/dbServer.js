@@ -7,7 +7,10 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 // Server component client
-export const supabase = createServerComponentClient({ cookies })
+export async function getSupabase() {
+  const cookieStore = await cookies()
+  return createServerComponentClient({ cookies: () => cookieStore })
+}
 
 // Admin / service role client (safe for server-side)
 export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
@@ -15,6 +18,7 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 export const dbServer = {
   // Profiles
   async updateProfile(userId, updates) {
+    const supabase = await getSupabase()
     const { data, error } = await supabase
       .from('profiles')
       .update(updates)
@@ -27,6 +31,7 @@ export const dbServer = {
 
   // Agents
   async createAgent(userId, agentData) {
+    const supabase = await getSupabase()
     console.log('Inserting agent data:', agentData)
     const { data, error } = await supabase
       .from('agents')
@@ -38,6 +43,7 @@ export const dbServer = {
   },
 
   async updateAgent(agentId, updates) {
+    const supabase = await getSupabase()
     const { data, error } = await supabase
       .from('agents')
       .update(updates)
@@ -49,15 +55,18 @@ export const dbServer = {
   },
 
   async deleteAgent(agentId) {
-    const { error } = await supabase
-      .from('agents')
-      .delete()
-      .eq('id', agentId)
+    const supabase = await getSupabase()
+    const { error } = await supabase.from('agents').delete().eq('id', agentId)
     if (error) throw error
   },
 
+  // Knowledge Base
+   
+
+
   // Knowledge Sources
   async addKnowledgeSource(agentId, sourceData) {
+    const supabase = await getSupabase()
     const { data, error } = await supabase
       .from('knowledge_sources')
       .insert({ ...sourceData, agent_id: agentId })
@@ -67,8 +76,47 @@ export const dbServer = {
     return data
   },
 
+  async updateKnowledgeSource(sourceId, updates) {
+    const supabase = await getSupabase()
+    const { data, error } = await supabase
+      .from('knowledge_sources')
+      .update(updates)
+      .eq('id', sourceId)
+      .select()
+      .single()
+    if (error) throw error
+    return data
+  },
+
+  // Get knowledge sources for an agent
+  async getKnowledgeSources(agentId) {
+    const supabase = await getSupabase()
+    const { data, error } = await supabase
+      .from('knowledge_sources')
+      .select('*')
+      .eq('agent_id', agentId)
+    if (error) throw error
+    return data
+  },
+
+  // Optional: delete a knowledge source
+  async deleteKnowledgeSource(sourceId) {
+    const supabase = await getSupabase()
+    const { data, error } = await supabase
+      .from('knowledge_sources')
+      .delete()
+      .eq('id', sourceId)
+    if (error) throw error
+  },
   // Conversations
-  async saveConversation(agentId, sessionId, userMessage, agentResponse, metadata = {}) {
+  async saveConversation(
+    agentId,
+    sessionId,
+    userMessage,
+    agentResponse,
+    metadata = {}
+  ) {
+    const supabase = await getSupabase()
     const { data, error } = await supabase
       .from('conversations')
       .insert({
@@ -85,7 +133,14 @@ export const dbServer = {
   },
 
   // Analytics
-  async logAnalytics(agentId, eventType, eventData, tokensUsed = 0, success = true) {
+  async logAnalytics(
+    agentId,
+    eventType,
+    eventData,
+    tokensUsed = 0,
+    success = true
+  ) {
+    const supabase = await getSupabase()
     const { data, error } = await supabase
       .from('analytics')
       .insert({
@@ -103,6 +158,7 @@ export const dbServer = {
 
   // Workflows
   async createWorkflow(agentId, workflowData) {
+    const supabase = await getSupabase()
     const { data, error } = await supabase
       .from('workflows')
       .insert({ ...workflowData, agent_id: agentId })
@@ -114,12 +170,13 @@ export const dbServer = {
 
   // Credits
   async deductCredits(userId, amount) {
+    const supabase = await getSupabase()
     const profile = await supabase
       .from('profiles')
       .select('api_credits')
       .eq('id', userId)
       .single()
-      .then(res => res.data)
+      .then((res) => res.data)
 
     if (!profile) throw new Error('Profile not found')
 
@@ -136,13 +193,14 @@ export const dbServer = {
   },
 
   async hasCredits(userId, required = 1) {
+    const supabase = await getSupabase()
     const profile = await supabase
       .from('profiles')
       .select('api_credits')
       .eq('id', userId)
       .single()
-      .then(res => res.data)
+      .then((res) => res.data)
 
     return profile?.api_credits >= required
-  },
+  }
 }

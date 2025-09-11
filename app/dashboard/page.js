@@ -30,7 +30,7 @@ import SubSidebar from '../../components/subSideBar'
 import FormTextarea from '../../components/textBox'
 
 export default function Dashboard() {
-  const { user, profile } = useAuth()
+  const { user, profile, loading } = useAuth()
   const [agents, setAgents] = useState([])
   const [analytics, setAnalytics] = useState({
     totalConversations: 0,
@@ -38,13 +38,9 @@ export default function Dashboard() {
     creditsUsed: 0,
     successRate: 0
   })
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    if (user) {
-      fetchDashboardData()
-    }
-  }, [user])
+  // const [loading, setLoading] = useState(true)
+  const [authloading, setAuthLoading] = useState(true)
+  const [fetching, setFetching] = useState(true)
 
   const menuItems = [
     {
@@ -64,7 +60,8 @@ export default function Dashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      setLoading(true)
+      setFetching(true)
+      if (!user) return
       const userAgents = await dbClient.getUserAgents(user.id)
       setAgents(userAgents)
 
@@ -97,10 +94,16 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
     } finally {
-      setLoading(false)
+      setFetching(false)
     }
   }
-
+  useEffect(() => {
+    if (user) {
+      console.log(user)
+      fetchDashboardData()
+    }
+    setFetching(false) // let the dashboard render even if profile is missing
+  }, [user])
   const getPurposeIcon = (purpose) => {
     switch (purpose) {
       case 'instagram':
@@ -130,12 +133,16 @@ export default function Dashboard() {
         return 'bg-neutral-800 text-neutral-300'
     }
   }
-  if (loading && agents.length === 0 ) {
+
+  if (loading || fetching) {
     return (
-      <div className='flex min-h-screen items-center bg-neutral-900 justify-center '>
+      <div className='flex min-h-screen items-center justify-center bg-neutral-900 font-mono'>
         <div className='text-center'>
-          <Aperture className='mx-auto mb-4 h-12 w-12 animate-spin  text-neutral-400' />
-          <p className='text-neutral-400 text-lg'>Loading your dashboard...</p>
+          <Aperture className='mx-auto mb-4 h-12 w-12 animate-spin text-neutral-400' />
+          <p className='text-lg text-neutral-400'>Loading ...</p>
+          <p className='text-lg text-neutral-400'>
+            Refresh the window if it takes time...
+          </p>
         </div>
       </div>
     )
@@ -144,7 +151,7 @@ export default function Dashboard() {
   return (
     <>
       <NeonBackground />
-      <div className='flex h-screen w-full flex-row text-neutral-100'>
+      <div className='flex h-screen w-full flex-row font-mono text-neutral-100'>
         <Sidebar />
         <SubSidebar menuItems={menuItems} />
 
@@ -295,58 +302,70 @@ export default function Dashboard() {
                     </div>
                   </div>
                 ) : (
-                  <div className='grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3'>
-                    {agents.map((agent) => (
-                      <Card
-                        key={agent.id}
-                        className='border border-neutral-700 hover:shadow-md'
-                      >
-                        <div className='mb-4 flex items-start justify-between'>
-                          <div className='flex items-center space-x-3'>
-                            {getPurposeIcon(agent.purpose)}
-                            <div>
-                              <h3 className='font-semibold text-neutral-300'>
-                                {agent.name}
-                              </h3>
-                              <span
-                                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getPurposeBadgeColor(agent.purpose)}`}
-                              >
-                                {agent.purpose}
-                              </span>
-                            </div>
-                          </div>
-                          <div
-                            className={`h-3 w-3 rounded-full ${
-                              agent.is_active
-                                ? 'bg-green-500'
-                                : 'bg-neutral-500'
-                            }`}
-                          ></div>
-                        </div>
+                  <>
+                    <Link href='/agents/create'>
+                      <Card className='mb-10 py-12 text-center'>
+                        <Bot className='mx-auto mb-4 h-16 w-16 text-neutral-400' />
 
-                        <p className='mb-4 text-sm text-neutral-400'>
-                          {agent.description || 'No description provided'}
-                        </p>
-
-                        <div className='mb-4 text-xs text-neutral-500'>
-                          Created{' '}
-                          {format(new Date(agent.created_at), 'MMM d, yyyy')}
-                        </div>
-
-                        <div className='flex space-x-2'>
-                          <Link href={`/agents/${agent.id}`} className='flex-1'>
-                            <Button>Manage</Button>
-                          </Link>
-                          <Link
-                            href={`/agents/${agent.id}/test`}
-                            className='flex-1'
-                          >
-                            <Button variant='outline'>Test</Button>
-                          </Link>
-                        </div>
+                        <p className='text-neutral-400'>Build agent....</p>
                       </Card>
-                    ))}
-                  </div>
+                    </Link>
+                    <div className='grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3'>
+                      {agents.map((agent) => (
+                        <Card
+                          key={agent.id}
+                          className='cursor-pointer border border-neutral-700 hover:shadow-md'
+                        >
+                          <div className='mb-4 flex items-start justify-between'>
+                            <div className='flex items-center space-x-3'>
+                              {getPurposeIcon(agent.purpose)}
+                              <div>
+                                <h3 className='font-semibold text-neutral-300'>
+                                  {agent.name}
+                                </h3>
+                                <span
+                                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getPurposeBadgeColor(agent.purpose)}`}
+                                >
+                                  {agent.purpose}
+                                </span>
+                              </div>
+                            </div>
+                            <div
+                              className={`h-3 w-3 rounded-full ${
+                                agent.is_active
+                                  ? 'bg-green-500'
+                                  : 'bg-neutral-500'
+                              }`}
+                            ></div>
+                          </div>
+
+                          <p className='mb-4 text-sm text-neutral-400'>
+                            {agent.description || 'No description provided'}
+                          </p>
+
+                          <div className='mb-4 text-xs text-neutral-500'>
+                            Created{' '}
+                            {format(new Date(agent.created_at), 'MMM d, yyyy')}
+                          </div>
+
+                          <div className='flex space-x-2'>
+                            <Link
+                              href={`/agents/${agent.id}`}
+                              className='flex-1'
+                            >
+                              <Button>Manage</Button>
+                            </Link>
+                            <Link
+                              href={`/agents/${agent.id}/test`}
+                              className='flex-1'
+                            >
+                              <Button variant='outline'>Test</Button>
+                            </Link>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
             </Card>

@@ -71,8 +71,7 @@ export default function Home() {
 
   const [showRegisterCPassword, setShowRegisterCPassword] = useState(false)
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    fullName: '',
     email: '',
     password: '',
     cpassword: ''
@@ -226,13 +225,8 @@ export default function Home() {
     setRegisterSuccess('')
 
     // Field Validations
-    if (!formData.firstName) {
-      setRegisterError('Please enter your first name.')
-      return
-    }
-
-    if (!formData.lastName) {
-      setRegisterError('Please enter your last name.')
+    if (!formData.fullName) {
+      setRegisterError('Please enter your full name.')
       return
     }
 
@@ -266,8 +260,7 @@ export default function Home() {
         password: formData.password,
         options: {
           data: {
-            first_name: formData.firstName,
-            last_name: formData.lastName
+            full_name: formData.fullName
           }
         }
       })
@@ -345,18 +338,18 @@ export default function Home() {
                   </span>
                   {' AI agents'}
                 </h1>
-                
+
                 <div>
                   <button
-                    className='transparant h-[20vh] w-[80vh] border border-white text-[100px] font-bold text-white uppercase hover:cursor-pointer hover:text-neutral-500 hover:shadow-lg hover:shadow-neutral-500'
-                    text={'BUILD NOW'}
+                    className='p-1 transparant h-[20vh] w-[90vh] border border-white text-[100px] font-bold text-white uppercase hover:cursor-pointer hover:text-neutral-500 hover:shadow-lg hover:shadow-neutral-500'
+               
                     onClick={() => {
                       setIsOpen(true)
                       setIsLogin(true)
                       setIsReset(false)
                     }}
                   >
-                    buid now
+                    build now
                   </button>
                 </div>
               </div>
@@ -630,7 +623,7 @@ export default function Home() {
               id='login'
               className='fixed z-50 mx-auto flex w-[40%] items-center justify-center'
             >
-              <div className='rounded-lg border border-neutral-500     inset-0 bg-gradient-to-br from-neutral-900 via-black to-neutral-800 bg-cover bg-center p-8 shadow-2xl'>
+              <div className='inset-0 rounded-lg border border-neutral-500 bg-gradient-to-br from-neutral-900 via-black to-neutral-800 bg-cover bg-center p-8 shadow-2xl'>
                 {/* Header */}
                 <div className='mb-6 flex items-center justify-end'>
                   <div
@@ -868,35 +861,19 @@ export default function Home() {
                         )}
 
                         {/* Name Fields */}
-                        <div className='relative'>
-                          <div className='grid grid-cols-2 gap-4'>
-                            <div>
-                              <User className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
-                              <FormInput
-                                className='w-full'
-                                type='text'
-                                id='firstName'
-                                name='firstName'
-                                value={formData.firstName}
-                                onChange={handleInputChange}
-                                placeholder='First Name'
-                                required={true}
-                              />
-                            </div>
-                            <div>
-                              <User className='absolute h-5 w-5 translate-x-2 translate-y-4 text-gray-400' />
-                              <FormInput
-                                className='w-full'
-                                type='text'
-                                id='lastName'
-                                name='lastName'
-                                value={formData.lastName}
-                                onChange={handleInputChange}
-                                placeholder='Last Name'
-                                required={true}
-                              />
-                            </div>
-                          </div>
+
+                        <div>
+                          <User className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
+                          <FormInput
+                            className='w-full'
+                            type='text'
+                            id='fullName'
+                            name='fulltName'
+                            value={formData.fullName}
+                            onChange={handleInputChange}
+                            placeholder='Full Name'
+                            required={true}
+                          />
                         </div>
 
                         {/* Email Field with Mail Icon */}

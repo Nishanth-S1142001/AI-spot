@@ -38,7 +38,7 @@ export default function Sidebar() {
 
   return (
     <div
-      className={`  flex flex-col h-screen bg-neutral-900 text-white transition-all duration-300 ${
+      className={` font-mono flex flex-col h-screen bg-neutral-900 text-white transition-all duration-300 ${
         isOpen ? 'w-64' : 'w-15'
       }`}
         onMouseEnter={() => setIsOpen(true)}

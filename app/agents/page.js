@@ -77,7 +77,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className='flex h-screen'>
+    <div className='flex h-screen font-mono'>
       <NeonBackground />
      <Sidebar/>
       {/* BEFORE SCRAPE → Center URL input */}

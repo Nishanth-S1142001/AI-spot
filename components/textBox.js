@@ -61,7 +61,7 @@ export default function FormTextarea({
         required={required}
         id={id}
         rows={rows}
-        className={`${className} place-content-center custom-scrollbar resize-y overflow-y-auto border-2 border-transparent border-b-neutral-700 px-4 py-3 pl-10 text-white placeholder-neutral-400 transition-all duration-300 focus:border-b-white focus:ring-2 focus:ring-transparent focus:outline-none`}
+        className={`${className} font-mono place-content-center custom-scrollbar resize-y overflow-y-auto border-2 border-transparent border-b-neutral-700 px-4 py-3 pl-10 text-white placeholder-neutral-400 transition-all duration-300 focus:border-b-white focus:ring-2 focus:ring-transparent focus:outline-none`}
       >
         {children}
       </textarea>

@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { summaries } from "../../../lib/memoryStore";
+// import { summaries } from "../../../lib/memoryStore";
 import { NextResponse } from "next/server";
 
 const openai = new OpenAI({
@@ -17,14 +17,14 @@ function filterSummaries(question, allSummaries) {
 
 export async function POST(req) {
   try {
-    const { question, summaries: clientSummaries } = await req.json();
+    const { userInput,  context, prompt } = await req.json();
 
-    if (!question) return NextResponse.json({ error: "Missing question" }, { status: 400 });
-    if (!clientSummaries || clientSummaries.length === 0) {
+    if (!userInput) return NextResponse.json({ error: "Missing question" }, { status: 400 });
+    if (!context || context.length === 0) {
       return NextResponse.json({ error: "No summaries available" }, { status: 400 });
     }
 
-    const context = filterSummaries(question, clientSummaries) || "No matching content found in the FAQ.";
+    // const context = filterSummaries(question, clientSummaries) || "No matching content found in the FAQ.";
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini", // or switch to gpt-3.5-turbo for faster responses
@@ -35,13 +35,13 @@ export async function POST(req) {
 You are a friendly, approachable, and helpful chatbot.
 - Always respond in a conversational and polite way.
 - Use a friendly tone, emojis sparingly if appropriate, and try to engage the user naturally.
-- Only answer questions using the provided context (summaries from scraped websites).
+- Only respond using the provided context .
 - If the answer is not in the context, politely say "I couldn't find that in the data, but I'm happy to help with something else!"
-`,
+` || prompt.trim(), 
         },
         {
           role: "user",
-          content: `Context:\n${context}\n\nQuestion:\n${question}`,
+          content: `Context:\n${context}\n\nQuestion:\n${userInput}`,
         },
       ],
     });

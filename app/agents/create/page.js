@@ -160,7 +160,7 @@ export default function CreateAgent() {
         type: 'pdf',
         name: file.name,
         content: data.content,
-        summary: data.summary || data.content.slice(0, 200)
+        summary: data.summary || data.content
       }
 
       setFormData((prev) => ({
@@ -280,7 +280,7 @@ export default function CreateAgent() {
         tone: formData.tone,
         system_prompt: prompt,
         knowledge_base: formData.knowledgeSources
-          .map((s) => s.content)
+          .map((s) => s.summary)
           .join('\n\n'),
         sandbox_url: `${process.env.NEXT_PUBLIC_APP_URL}/sandbox/${Date.now()}`
       }
@@ -387,7 +387,7 @@ Always be helpful, accurate, and stay in character.`
   return (
     <>
       <NeonBackground />
-      <div className='flex h-screen w-full flex-row text-neutral-100'>
+      <div className='font-mono flex h-screen w-full flex-row text-neutral-100'>
         <Sidebar />
         <SubSidebar menuItems={menuItems} />
 
@@ -396,6 +396,13 @@ Always be helpful, accurate, and stay in character.`
 
           <div className='mx-4 mb-5 flex h-16 items-center border-b border-neutral-700'>
             {/* Progress Steps */}
+
+            <div className='flex justify-start items-center'>
+              <Button onClick={() => router.back()}>
+                <ArrowLeft className='h-4 w-4' />
+              </Button>
+            </div>
+
             <div className='mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8'>
               <div className='flex items-center justify-center space-x-8'>
                 {[1, 2, 3, 4].map((stepNum) => (
@@ -774,9 +781,9 @@ Always be helpful, accurate, and stay in character.`
                             <div>
                               <p className='mb-1 font-semibold text-neutral-200'>
                                 {source.type === 'url'
-                                  ? 'Content from website:'
+                                  ? `Content from website: ${source.name}`
                                   : source.type === 'pdf'
-                                    ? 'Content from PDF:'
+                                    ? `Content from PDF: ${source.name}`
                                     : 'Content:'}
                               </p>
                               <p className='whitespace-pre-line text-neutral-200'>

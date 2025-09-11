@@ -1,50 +1,85 @@
-import { NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import { v4 as uuidv4 } from 'uuid';
-import PDFParser from 'pdf2json';
+import { NextResponse } from 'next/server'
 
-export const runtime = 'nodejs';
-
-export async function POST(req) {
+export async function POST(request) {
   try {
-    // Read uploaded PDF from FormData
-    const formData = await req.formData();
-    const uploadedFiles = formData.getAll('pdf'); // match your client FormData key
+    const formData = await request.formData()
+    const file = formData.get('pdf')
 
-    if (!uploadedFiles || uploadedFiles.length === 0) {
-      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+    if (!file) {
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    const uploadedFile = uploadedFiles[0];
-    if (!(uploadedFile instanceof File)) {
-      return NextResponse.json({ error: 'Invalid file format' }, { status: 400 });
+    if (file.type !== 'application/pdf') {
+      return NextResponse.json({ error: 'File must be a PDF' }, { status: 400 })
     }
 
-    // Convert File to Buffer
-    const fileBuffer = Buffer.from(await uploadedFile.arrayBuffer());
+    const bytes = await file.arrayBuffer()
+    const uint8Array = new Uint8Array(bytes)
 
-    // Save PDF temporarily
-    const tempFilePath = `/tmp/${uuidv4()}.pdf`;
-    await fs.writeFile(tempFilePath, fileBuffer);
+    const { getDocumentProxy, extractText } = await import('unpdf')
 
-    // Parse PDF with pdf2json
-    let parsedText = '';
-    await new Promise((resolve, reject) => {
-      const pdfParser = new PDFParser();
-      pdfParser.on('pdfParser_dataError', (err) => reject(err.parserError));
-      pdfParser.on('pdfParser_dataReady', () => {
-        parsedText = pdfParser.getRawTextContent();
-        resolve();
-      });
-      pdfParser.loadPDF(tempFilePath);
-    });
+    console.log('[v0] Loading PDF document with unpdf...')
+    // Load the PDF document using unpdf
+    const pdf = await getDocumentProxy(uint8Array)
+    console.log('[v0] PDF loaded successfully, pages:', pdf.numPages)
+
+    console.log('[v0] Extracting text from PDF...')
+    // Extract text from the entire document
+    const { text } = await extractText(pdf, { mergePages: true })
+    console.log('[v0] Total extracted text length:', text.length)
+
+    const summary = await summarizeText(text)
 
     return NextResponse.json({
-      content: parsedText,
-      summary: parsedText.slice(0, 200),
-    });
+      content: text.trim(),
+      summary: summary,
+      pages: pdf.numPages,
+      info: {
+        title: pdf.info?.Title || 'Unknown',
+        author: pdf.info?.Author || 'Unknown'
+      }
+    })
+  } catch (error) {
+    console.error('Error processing PDF:', error)
+    return NextResponse.json(
+      { error: 'Failed to extract PDF content' },
+      { status: 500 }
+    )
+  }
+}
+async function summarizeText(text) {
+  try {
+    // Load OpenAI client (Edge-friendly import)
+    const OpenAI = (await import('openai')).default
+    const client = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY // Make sure to set this in .env.local
+    })
+
+    // If the PDF is too long, truncate or chunk (basic safeguard here)
+    const input = text.length > 4000 ? text.slice(0, 4000) : text
+
+    const response = await client.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a helpful assistant that summarizes PDF documents clearly and concisely. Do not forget to consider the entire content'
+        },
+        {
+          role: 'user',
+          content: `Summarize the following document:\n\n${input}`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 500
+    })
+
+    return (
+      response.choices[0]?.message?.content?.trim() || 'No summary generated.'
+    )
   } catch (err) {
-    console.error('PDF2JSON error:', err);
-    return NextResponse.json({ error: err && err.message ? err.message : String(err) }, { status: 500 });
+    console.error('Error summarizing PDF:', err)
+    return 'Failed to generate summary.'
   }
 }

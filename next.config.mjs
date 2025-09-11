@@ -1,8 +1,5 @@
-import withVideos from 'next-videos';
+import withVideos from 'next-videos'
 /** @type {import('next').NextConfig} */
-const nextConfig = { reactStrictMode: true,
-    experimental:{serverComponentsExternalPackages: ['pdf2json'], }
-     
-};
+const nextConfig = { reactStrictMode: true }
 
-export default withVideos(nextConfig);
+export default withVideos(nextConfig)

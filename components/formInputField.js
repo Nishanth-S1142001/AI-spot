@@ -22,7 +22,7 @@ export default function FormInput({
       placeholder={placeholder}
       required={required}
       id={id}
-      className={`${className}   border-2 border-transparent border-b-neutral-700 px-4 py-3 pl-10 text-white placeholder-neutral-400 transition-all duration-300 focus:border-b-white focus:ring-2 focus:ring-transparent focus:outline-none`}
+      className={`${className} font-mono  border-2 border-transparent border-b-neutral-700 px-4 py-3 pl-10 text-white placeholder-neutral-400 transition-all duration-300 focus:border-b-white focus:ring-2 focus:ring-transparent focus:outline-none`}
     >
       {children}
     </input>

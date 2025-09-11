@@ -32,7 +32,7 @@ export default function SubSidebar({ menuItems }) {
 
   return (
     <div
-      className={`flex h-screen flex-col bg-neutral-900 text-white transition-all duration-300 ${
+      className={`font-mono flex h-screen flex-col bg-neutral-900 text-white transition-all duration-300 ${
         isOpen ? 'w-64' : 'w-16'
       }`}
     >

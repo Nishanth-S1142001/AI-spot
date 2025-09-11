@@ -1,5 +1,7 @@
 'use client'
-
+import NeonBackground from '../../../components/background'
+import Sidebar from '../../../components/sideBar'
+import SubSidebar from '../../../components/subSideBar'
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '../../../components/providers/AuthProvider'
@@ -8,27 +10,36 @@ import { updateAgent, deleteAgent } from '../../actions/agents'
 import toast from 'react-hot-toast'
 import {
   Bot,
-  Settings,
   BarChart3,
   Zap,
   Code,
   Play,
   Copy,
-  Aperture,
-  ExternalLink,
   Edit,
   Trash2,
-  ArrowLeft,
   MessageSquare,
-  Calendar,
-  Instagram,
   Globe,
   Share,
   FileText,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Paperclip,
+  Upload,
+  CircleArrowLeft,
+  CircleArrowRightIcon,
+  Ban,
+  Calendar,
+  ArrowLeft,
+  Settings,
+  ChartNoAxesColumnIncreasing,
+  Home,
+  Aperture
 } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
+import Card from '../../../components/card'
+import Button from '../../../components/button'
+import FormInput from '../../../components/formInputField'
+import FormTextarea from '../../../components/textBox'
 
 export default function AgentManagement() {
   const { id } = useParams()
@@ -132,7 +143,10 @@ export default function AgentManagement() {
       <div className='flex min-h-screen items-center justify-center bg-neutral-900'>
         <div className='text-center'>
           <Aperture className='mx-auto mb-4 h-12 w-12 animate-spin text-neutral-400' />
-          <p className='text-lg text-neutral-400'>Loading your dashboard...</p>
+          <p className='text-lg text-neutral-400'>Loading ...</p>
+          <p className='text-lg text-neutral-400'>
+            Refresh the window if it takes time...
+          </p>
         </div>
       </div>
     )
@@ -140,385 +154,455 @@ export default function AgentManagement() {
 
   if (!agent) {
     return (
-      <div className='flex min-h-screen items-center justify-center bg-gray-50'>
-        <div className='text-center'>
-          <Bot className='mx-auto mb-4 h-16 w-16 text-gray-400' />
-          <h2 className='mb-2 text-xl font-semibold text-gray-900'>
-            Agent not found
-          </h2>
-          <p className='mb-6 text-gray-600'>
-            The agent you're looking for doesn't exist or you don't have access
-            to it.
-          </p>
-          <Link href='/dashboard' className='btn btn-primary'>
-            Back to Dashboard
-          </Link>
+      <>
+        <NeonBackground />
+        <div className='flex min-h-screen items-center justify-center text-neutral-100'>
+          <div className='text-center'>
+            <Bot className='mx-auto mb-4 h-16 w-16 text-neutral-600' />
+            <h2 className='mb-2 text-xl font-semibold text-neutral-200'>
+              Agent not found
+            </h2>
+            <p className='mb-6 text-neutral-400'>
+              The agent you're looking for doesn't exist or you don't have
+              access to it.
+            </p>
+            <Link href='/dashboard' passHref>
+              <Button className='rounded-lg px-4 py-2 text-sm font-semibold transition-colors duration-200'>
+                Back to Dashboard
+              </Button>
+            </Link>
+          </div>
         </div>
-      </div>
+      </>
     )
   }
-
+  const menuItems = [
+    {
+      name: 'Mini Analysis',
+      icon: <ChartNoAxesColumnIncreasing size={20} />,
+      submenu: [
+        { name: 'Total Agents', href: '/mini-analysis/total' },
+        { name: 'Conversations', href: '/mini-analysis/conversations' },
+        { name: 'Success Rate', href: '/mini-analysis/successRate' },
+        { name: 'Credits Used', href: '/mini-analysis/creditsUsed' }
+      ]
+    },
+    { name: 'Analytics', icon: <BarChart3 size={20} /> },
+    { name: 'Workflow', icon: <Zap size={20} /> },
+    { name: 'Dashboard', icon: <Home size={20} /> }
+  ]
   return (
-    <div className='min-h-screen bg-gray-50'>
-      {/* Header */}
-      <div className='border-b border-gray-200 bg-white'>
-        <div className='mx-auto max-w-7xl px-4 sm:px-6 lg:px-8'>
-          <div className='flex h-16 items-center justify-between'>
+    <>
+      <NeonBackground />
+      <div className='font-mono flex h-screen w-full flex-row text-neutral-100'>
+        <Sidebar />
+        <SubSidebar menuItems={menuItems} />
+        <div className='custom-scrollbar relative flex-1 overflow-y-auto'>
+          {/* Header */}
+          <div className='mx-4 mb-5 flex h-16 items-center justify-between border-b border-neutral-700'>
             <div className='flex items-center space-x-4'>
-              <button onClick={() => router.back()} className='btn btn-ghost'>
+              <Button onClick={() => router.back()}>
                 <ArrowLeft className='h-4 w-4' />
-              </button>
+              </Button>
               {getPurposeIcon(agent.purpose)}
               <div>
-                <h1 className='text-lg font-semibold text-gray-900'>
+                <h1 className='text-lg font-semibold text-neutral-400'>
                   {agent.name}
                 </h1>
-                <p className='text-sm text-gray-600 capitalize'>
+                <p className='text-sm text-neutral-400 uppercase'>
                   {agent.purpose} Agent
                 </p>
               </div>
               <div
-                className={`rounded-full px-2 py-1 text-xs font-medium ${
+                className={`h-[20px] w-[20px] rounded-full px-2 py-1 font-medium ${
                   agent.is_active
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-gray-100 text-gray-800'
+                    ? 'bg-green-600 text-green-800'
+                    : 'bg-red-500 text-red-800'
                 }`}
               >
-                {agent.is_active ? 'Active' : 'Inactive'}
+                {/* {agent.is_active ? 'Active' : 'Inactive'} */}
               </div>
             </div>
             <div className='flex items-center space-x-3'>
-              <Link href={`/agents/${id}/test`} className='btn btn-outline'>
-                <Play className='mr-2 h-4 w-4' />
-                Test
+              <Link href={`/agents/${id}/test`} passHref>
+                <Button>
+                  <div className='flex items-center'>
+                    <Play className='mr-2 h-4 w-4' />
+                    Test
+                  </div>
+                </Button>
               </Link>
-              <button onClick={copyShareLink} className='btn btn-outline'>
-                <Share className='mr-2 h-4 w-4' />
-                Share
-              </button>
-              <Link href={`/agents/${id}/edit`} className='btn btn-primary'>
-                <Edit className='mr-2 h-4 w-4' />
-                Edit
+              <Button onClick={copyShareLink}>
+                <div className='flex items-center'>
+                  <Share className='mr-2 h-4 w-4' />
+                  Share
+                </div>
+              </Button>
+              <Link href={`/agents/${id}/edit`} passHref>
+                <Button>
+                  <div className='flex items-center'>
+                    <Edit className='mr-2 h-4 w-4' />
+                    Edit
+                  </div>
+                </Button>
               </Link>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Tabs */}
-      <div className='mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8'>
-        <div className='mb-8 border-b border-gray-200'>
-          <nav className='-mb-px flex space-x-8'>
-            {[
-              { id: 'overview', name: 'Overview', icon: Bot },
-              {
-                id: 'conversations',
-                name: 'Conversations',
-                icon: MessageSquare
-              },
-              { id: 'analytics', name: 'Analytics', icon: BarChart3 },
-              { id: 'workflows', name: 'Workflows', icon: Zap },
-              { id: 'embed', name: 'Deploy', icon: Code }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center space-x-2 border-b-2 px-1 py-2 text-sm font-medium ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                }`}
-              >
-                <tab.icon className='h-4 w-4' />
-                <span>{tab.name}</span>
-              </button>
-            ))}
-          </nav>
-        </div>
+          {/* Tabs */}
+          <div className='mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8'>
+            <div className='mb-8 border-b border-gray-200'>
+              <nav className='-mb-px flex space-x-8'>
+                {[
+                  { id: 'overview', name: 'Overview', icon: Bot },
+                  {
+                    id: 'conversations',
+                    name: 'Conversations',
+                    icon: MessageSquare
+                  },
+                  { id: 'analytics', name: 'Analytics', icon: BarChart3 },
+                  { id: 'workflows', name: 'Workflows', icon: Zap },
+                  { id: 'embed', name: 'Deploy', icon: Code }
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center space-x-2 border-b-2 px-1 py-2 text-lg font-medium ${
+                      activeTab === tab.id
+                        ? 'border-blue-500 text-neutral-200'
+                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-neutral-300'
+                    }`}
+                  >
+                    <tab.icon className='h-4 w-4' />
+                    <span>{tab.name}</span>
+                  </button>
+                ))}
+              </nav>
+            </div>
 
-        {/* Overview Tab */}
-        {activeTab === 'overview' && (
-          <div className='space-y-6'>
-            {/* Agent Details */}
-            <div className='grid gap-6 md:grid-cols-2'>
-              <div className='card'>
+            {/* Overview Tab */}
+            {activeTab === 'overview' && (
+              <div className='space-y-6'>
+                {/* Agent Details */}
+                <div className='grid gap-6 md:grid-cols-2'>
+                  <Card>
+                    <div className='card-header'>
+                      <h3 className='flex items-center justify-center text-lg font-semibold text-neutral-200'>
+                        Agent Details
+                      </h3>
+                    </div>
+                    <div className='card-content space-y-4'>
+                      <div>
+                        <label className='text-sm font-medium text-neutral-400'>
+                          Description
+                        </label>
+                        <p className='text-neutral-200'>
+                          {agent.description || 'No description provided'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className='text-sm font-medium text-neutral-400'>
+                          Personality
+                        </label>
+                        <p className='text-neutral-200'>
+                          {agent.persona || 'No personality defined'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className='text-sm font-medium text-neutral-400'>
+                          Tone
+                        </label>
+                        <p className='text-neutral-200 capitalize'>
+                          {agent.tone}
+                        </p>
+                      </div>
+                      <div>
+                        <label className='text-sm font-medium text-neutral-400'>
+                          Created
+                        </label>
+                        <p className='text-neutral-200'>
+                          {format(
+                            new Date(agent.created_at),
+                            'MMM d, yyyy h:mm a'
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                  <Card>
+                    <div className='card-header'>
+                      <h3 className='flex items-center justify-center text-lg font-semibold text-neutral-100'>
+                        Quick Actions
+                      </h3>
+                    </div>
+                    <div className='flex flex-col items-stretch gap-3'>
+                      <Button
+                        onClick={toggleAgentStatus}
+                        className='w-full'
+                        variant={agent.is_active ? 'destructive' : 'primary'}
+                      >
+                        <div className='flex items-center justify-center'>
+                          {agent.is_active ? (
+                            <>
+                              <Trash2 className='mr-2 h-4 w-4' />
+                              Deactivate Agent
+                            </>
+                          ) : (
+                            <>
+                              <Play className='mr-2 h-4 w-4' />
+                              Activate Agent
+                            </>
+                          )}
+                        </div>
+                      </Button>
+                      <Link href={`/agents/${id}/test`} passHref>
+                        <Button variant='outline' className='w-full'>
+                          <div className='flex items-center justify-center'>
+                            <Play className='mr-2 h-4 w-4' />
+                            Test agent
+                          </div>
+                        </Button>
+                      </Link>
+                      <Button
+                        onClick={copyShareLink}
+                        variant='outline'
+                        className='w-full'
+                      >
+                        <div className='flex items-center justify-center'>
+                          <Share className='mr-2 h-4 w-4' />
+                          Copy Share Link
+                        </div>
+                      </Button>
+                      <Button
+                        onClick={copyEmbedCode}
+                        variant='outline'
+                        className='w-full'
+                      >
+                        <div className='flex items-center justify-center'>
+                          <Code className='mr-2 h-4 w-4' />
+                          Copy Embed Code
+                        </div>
+                      </Button>
+                      <Button
+                        onClick={delete_Agent}
+                        variant='destructive'
+                        className='w-full'
+                      >
+                        <div className='flex items-center justify-center'>
+                          <Trash2 className='mr-2 h-4 w-4' />
+                          Delete Agent
+                        </div>
+                      </Button>
+                    </div>
+                  </Card>
+                </div>
+              </div>
+            )}
+
+            {/* Conversations Tab */}
+            {activeTab === 'conversations' && (
+              <Card>
                 <div className='card-header'>
-                  <h3 className='text-lg font-semibold text-gray-900'>
-                    Agent Details
+                  <h3 className='text-lg font-semibold text-neutral-200'>
+                    Recent Conversations
                   </h3>
                 </div>
                 <div className='card-content space-y-4'>
-                  <div>
-                    <label className='text-sm font-medium text-gray-600'>
-                      Description
-                    </label>
-                    <p className='text-gray-900'>
-                      {agent.description || 'No description provided'}
-                    </p>
-                  </div>
-                  <div>
-                    <label className='text-sm font-medium text-gray-600'>
-                      Personality
-                    </label>
-                    <p className='text-gray-900'>
-                      {agent.persona || 'No personality defined'}
-                    </p>
-                  </div>
-                  <div>
-                    <label className='text-sm font-medium text-gray-600'>
-                      Tone
-                    </label>
-                    <p className='text-gray-900 capitalize'>{agent.tone}</p>
-                  </div>
-                  <div>
-                    <label className='text-sm font-medium text-gray-600'>
-                      Created
-                    </label>
-                    <p className='text-gray-900'>
-                      {format(new Date(agent.created_at), 'MMM d, yyyy h:mm a')}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className='card'>
-                <div className='card-header'>
-                  <h3 className='text-lg font-semibold text-gray-900'>
-                    Quick Actions
-                  </h3>
-                </div>
-                <div className='card-content space-y-3'>
-                  <button
-                    onClick={toggleAgentStatus}
-                    className={`btn w-full ${agent.is_active ? 'btn-destructive' : 'btn-primary'}`}
-                  >
-                    {agent.is_active ? 'Deactivate Agent' : 'Activate Agent'}
-                  </button>
-
-                  <Link
-                    href={`/agents/${id}/test`}
-                    className='btn btn-outline w-full'
-                  >
-                    <Play className='mr-2 h-4 w-4' />
-                    Test in Sandbox
-                  </Link>
-
-                  <button
-                    onClick={copyShareLink}
-                    className='btn btn-outline w-full'
-                  >
-                    <Share className='mr-2 h-4 w-4' />
-                    Copy Share Link
-                  </button>
-
-                  <button
-                    onClick={copyEmbedCode}
-                    className='btn btn-outline w-full'
-                  >
-                    <Code className='mr-2 h-4 w-4' />
-                    Copy Embed Code
-                  </button>
-
-                  <button
-                    onClick={delete_Agent}
-                    className='btn btn-destructive w-full'
-                  >
-                    <Trash2 className='mr-2 h-4 w-4' />
-                    Delete Agent
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Conversations Tab */}
-        {activeTab === 'conversations' && (
-          <div className='card'>
-            <div className='card-header'>
-              <h3 className='text-lg font-semibold text-gray-900'>
-                Recent Conversations
-              </h3>
-            </div>
-            <div className='card-content space-y-4'>
-              {conversations.length > 0 ? (
-                conversations.map((conv) => (
-                  <div
-                    key={conv.id}
-                    className='rounded-lg border border-gray-200 p-4'
-                  >
-                    <div className='mb-3 flex items-start justify-between'>
-                      <span className='text-xs text-gray-500'>
-                        {format(
-                          new Date(conv.created_at),
-                          'MMM d, yyyy h:mm a'
-                        )}
-                      </span>
-                      <span className='text-xs text-gray-500'>
-                        Session: {conv.session_id.slice(-8)}
-                      </span>
-                    </div>
-                    <div className='space-y-3'>
-                      <div className='flex justify-end'>
-                        <div className='max-w-xs rounded-lg bg-blue-100 p-3 text-blue-900'>
-                          <p className='text-sm'>{conv.user_message}</p>
+                  {conversations.length > 0 ? (
+                    conversations.map((conv) => (
+                      <div
+                        key={conv.id}
+                        className='rounded-lg border border-neutral-700 p-4'
+                      >
+                        <div className='mb-3 flex items-start justify-between'>
+                          <span className='text-xs text-neutral-500'>
+                            {format(
+                              new Date(conv.created_at),
+                              'MMM d, yyyy h:mm a'
+                            )}
+                          </span>
+                          <span className='text-xs text-neutral-500'>
+                            Session: {conv.session_id.slice(-8)}
+                          </span>
+                        </div>
+                        <div className='space-y-3'>
+                          <div className='flex justify-end'>
+                            <div className='max-w-xs rounded-lg bg-blue-600 p-3 text-white'>
+                              <p className='text-sm'>{conv.user_message}</p>
+                            </div>
+                          </div>
+                          <div className='flex justify-start'>
+                            <div className='max-w-xs rounded-lg bg-neutral-700 p-3 text-neutral-200'>
+                              <p className='text-sm'>{conv.agent_response}</p>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      <div className='flex justify-start'>
-                        <div className='max-w-xs rounded-lg bg-gray-100 p-3 text-gray-900'>
-                          <p className='text-sm'>{conv.agent_response}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className='py-12 text-center'>
-                  <MessageSquare className='mx-auto mb-3 h-12 w-12 text-gray-400' />
-                  <p className='text-gray-600'>No conversations yet</p>
-                  <Link
-                    href={`/agents/${id}/test`}
-                    className='btn btn-primary mt-3'
-                  >
-                    Start Testing
-                  </Link>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Analytics Tab */}
-        {activeTab === 'analytics' && (
-          <div className='space-y-6'>
-            <div className='grid grid-cols-1 gap-6 md:grid-cols-3'>
-              <div className='card p-6 text-center'>
-                <MessageSquare className='mx-auto mb-2 h-8 w-8 text-blue-600' />
-                <p className='text-2xl font-bold text-gray-900'>
-                  {conversations.length}
-                </p>
-                <p className='text-sm text-gray-600'>Total Conversations</p>
-              </div>
-              <div className='card p-6 text-center'>
-                <BarChart3 className='mx-auto mb-2 h-8 w-8 text-green-600' />
-                <p className='text-2xl font-bold text-gray-900'>
-                  {analytics.filter((a) => a.success).length}
-                </p>
-                <p className='text-sm text-gray-600'>Successful Interactions</p>
-              </div>
-              <div className='card p-6 text-center'>
-                <Zap className='mx-auto mb-2 h-8 w-8 text-purple-600' />
-                <p className='text-2xl font-bold text-gray-900'>
-                  {analytics.reduce((sum, a) => sum + (a.tokens_used || 0), 0)}
-                </p>
-                <p className='text-sm text-gray-600'>Tokens Used</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Workflows Tab */}
-        {activeTab === 'workflows' && (
-          <div className='card'>
-            <div className='card-header flex items-center justify-between'>
-              <h3 className='text-lg font-semibold text-gray-900'>
-                Automation Workflows
-              </h3>
-              <Link
-                href={`/agents/${id}/workflows/create`}
-                className='btn btn-primary'
-              >
-                <Zap className='mr-2 h-4 w-4' /> Create Workflow
-              </Link>
-            </div>
-            <div className='card-content space-y-4'>
-              {agent.workflows?.length > 0 ? (
-                agent.workflows.map((workflow) => (
-                  <div
-                    key={workflow.id}
-                    className='flex items-start justify-between rounded-lg border border-gray-200 p-4'
-                  >
-                    <div>
-                      <h4 className='font-medium text-gray-900'>
-                        {workflow.name}
-                      </h4>
-                      <p className='text-sm text-gray-600'>
-                        {workflow.description}
-                      </p>
-                      <p className='mt-1 text-xs text-gray-500'>
-                        Trigger: {workflow.trigger_type.replace('_', ' ')}
-                      </p>
-                    </div>
-                    <div className='flex items-center space-x-2'>
-                      <span
-                        className={`rounded px-2 py-1 text-xs font-medium ${
-                          workflow.is_active
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}
-                      >
-                        {workflow.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                      <Link
-                        href={`/workflows/${workflow.id}`}
-                        className='btn btn-ghost btn-sm'
-                      >
-                        Edit
+                    ))
+                  ) : (
+                    <div className='py-12 text-center'>
+                      <MessageSquare className='mx-auto mb-3 h-12 w-12 text-neutral-600' />
+                      <p className='text-neutral-400'>No conversations yet</p>
+                      <Link href={`/agents/${id}/test`} passHref>
+                        <Button variant='primary' className='mt-3'>
+                          Start Testing
+                        </Button>
                       </Link>
                     </div>
-                  </div>
-                ))
-              ) : (
-                <div className='py-12 text-center'>
-                  <Zap className='mx-auto mb-3 h-12 w-12 text-gray-400' />
-                  <p className='mb-2 text-gray-600'>No workflows created yet</p>
-                  <p className='mb-6 text-sm text-gray-500'>
-                    Create workflows to automate actions when your agent
-                    receives messages
-                  </p>
-                  <Link
-                    href={`/agents/${id}/workflows/create`}
-                    className='btn btn-primary'
-                  >
-                    Create Your First Workflow
+                  )}
+                </div>
+              </Card>
+            )}
+            {/* Analytics Tab */}
+            {activeTab === 'analytics' && (
+              <div className='space-y-6'>
+                <div className='grid grid-cols-1 gap-6 md:grid-cols-3'>
+                  <Card>
+                    <div className='p-6 text-center'>
+                      <MessageSquare className='mx-auto mb-2 h-8 w-8 text-blue-400' />
+                      <p className='text-2xl font-bold text-neutral-200'>
+                        {conversations.length}
+                      </p>
+                      <p className='text-sm text-neutral-400'>
+                        Total Conversations
+                      </p>
+                    </div>
+                  </Card>
+                  <Card>
+                    <div className='p-6 text-center'>
+                      <BarChart3 className='mx-auto mb-2 h-8 w-8 text-green-400' />
+                      <p className='text-2xl font-bold text-neutral-200'>
+                        {analytics.filter((a) => a.success).length}
+                      </p>
+                      <p className='text-sm text-neutral-400'>
+                        Successful Interactions
+                      </p>
+                    </div>
+                  </Card>
+                  <Card>
+                    <div className='p-6 text-center'>
+                      <Zap className='mx-auto mb-2 h-8 w-8 text-purple-400' />
+                      <p className='text-2xl font-bold text-neutral-200'>
+                        {analytics.reduce(
+                          (sum, a) => sum + (a.tokens_used || 0),
+                          0
+                        )}
+                      </p>
+                      <p className='text-sm text-neutral-400'>Tokens Used</p>
+                    </div>
+                  </Card>
+                </div>
+              </div>
+            )}
+            {/* Workflows Tab */}
+            {activeTab === 'workflows' && (
+              <Card>
+                <div className='card-header flex items-center justify-between'>
+                  <h3 className='text-lg font-semibold text-neutral-200'>
+                    Automation Workflows
+                  </h3>
+                  <Link href={`/agents/${id}/workflows/create`} passHref>
+                    <Button variant='primary'>
+                      <div className='flex items-center'>
+                        <Zap className='mr-2 h-4 w-4' />
+                        Create Workflow
+                      </div>
+                    </Button>
                   </Link>
                 </div>
-              )}
-            </div>
-          </div>
-        )}
+                <div className='card-content space-y-4'>
+                  {agent.workflows?.length > 0 ? (
+                    agent.workflows.map((workflow) => (
+                      <div
+                        key={workflow.id}
+                        className='flex items-start justify-between rounded-lg border border-neutral-700 p-4'
+                      >
+                        <div>
+                          <h4 className='font-medium text-neutral-200'>
+                            {workflow.name}
+                          </h4>
+                          <p className='text-sm text-neutral-400'>
+                            {workflow.description}
+                          </p>
+                          <p className='mt-1 text-xs text-neutral-500'>
+                            Trigger: {workflow.trigger_type.replace('_', ' ')}
+                          </p>
+                        </div>
+                        <div className='flex items-center space-x-2'>
+                          <span
+                            className={`rounded px-2 py-1 text-xs font-medium ${
+                              workflow.is_active
+                                ? 'bg-green-600/20 text-green-400'
+                                : 'bg-neutral-700 text-neutral-400'
+                            }`}
+                          >
+                            {workflow.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                          <Link href={`/workflows/${workflow.id}`} passHref>
+                            <Button variant='ghost' className='btn-sm'>
+                              Edit
+                            </Button>
+                          </Link>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className='py-12 text-center'>
+                      <Zap className='mx-auto mb-3 h-12 w-12 text-neutral-600' />
+                      <p className='mb-2 text-neutral-400'>
+                        No workflows created yet
+                      </p>
+                      <p className='mb-6 text-sm text-neutral-500'>
+                        Create workflows to automate actions when your agent
+                        receives messages
+                      </p>
+                      <Link href={`/agents/${id}/workflows/create`} passHref>
+                        <Button variant='primary'>
+                          Create Your First Workflow
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
 
-        {/* Embed Tab */}
-        {activeTab === 'embed' && (
-          <div className='space-y-6'>
-            <div className='card'>
-              <div className='card-header'>
-                <h3 className='text-lg font-semibold text-gray-900'>
-                  Website Embedding
-                </h3>
-                <p className='text-gray-600'>
-                  Add this agent to your website with a simple iframe.
-                </p>
-              </div>
-              <div className='card-content'>
-                <div className='mb-4 rounded-lg bg-gray-900 p-4'>
-                  <pre className='overflow-x-auto text-sm text-green-400'>
-                    {`<iframe
+            {/* Embed Tab */}
+            {activeTab === 'embed' && (
+              <div className='space-y-6'>
+                <Card>
+                  <div className='card-header'>
+                    <h3 className='text-lg font-semibold text-neutral-200'>
+                      Website Embedding
+                    </h3>
+                    <p className='text-neutral-400'>
+                      Add this agent to your website with a simple iframe.
+                    </p>
+                  </div>
+                  <div className='card-content'>
+                    <div className='mb-4 rounded-lg bg-neutral-900 p-4'>
+                      <pre className='overflow-x-auto text-sm text-green-400'>
+                        {`<iframe
   src="${process.env.NEXT_PUBLIC_APP_URL}/embed/${id}"
   width="350"
   height="500"
   frameborder="0">
 </iframe>`}
-                  </pre>
-                </div>
-                <button onClick={copyEmbedCode} className='btn btn-primary'>
-                  <Copy className='mr-2 h-4 w-4' /> Copy Embed Code
-                </button>
+                      </pre>
+                    </div>
+                    <Button onClick={copyEmbedCode} variant='primary'>
+                      <div className='flex items-center'>
+                        <Copy className='mr-2 h-4 w-4' />
+                        Copy Embed Code
+                      </div>
+                    </Button>
+                  </div>
+                </Card>
               </div>
-            </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
-    </div>
+    </>
   )
 }

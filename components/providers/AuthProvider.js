@@ -24,48 +24,59 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const getInitialSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      if (session?.user) {
-        setUser(session.user)
-        await fetchProfile(session.user.id)
-      }
-      setLoading(false)
-    }
+      try {
+        // Try getUser() first
+        const { data: userData, error: userError } =
+          await supabase.auth.getUser()
 
+        if (userData?.user) {
+          setUser(userData.user)
+           fetchProfile(userData.user.id)
+        } else {
+          // fallback to getSession() if no user found
+          const {
+            data: { session }
+          } = await supabase.auth.getSession()
+          if (session?.user) {
+            setUser(session.user)
+            await fetchProfile(session.user.id)
+          }
+        }
+      } catch (err) {
+        console.error('Error getting initial session:', err)
+      } finally {
+        setLoading(false) // important: always flip loading
+      }
+    }
     getInitialSession()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
-          setUser(session.user)
-          await fetchProfile(session.user.id)
-          router.push('/dashboard')
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null)
-          setProfile(null)
-          router.push('/')
-        }
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        setUser(session.user)
+        fetchProfile(session.user.id)
+      if(router.pathname === '/') router.push('/dashboard')
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null)
+        setProfile(null)
+        router.push('/')
       }
-    )
+    })
 
     return () => subscription.unsubscribe()
   }, [])
 
   const fetchProfile = async (userId) => {
     try {
-      // Use client-safe db helpers
       let data = await dbClient.getProfile(userId)
-
       if (!data) {
-        // If profile doesn't exist, create via supabase.auth (optional, can be server-side)
         const { data: newProfile, error } = await supabase
           .from('profiles')
           .insert({
             id: userId,
             email: user?.email,
-            full_name: user?.user_metadata?.full_name || '',
+            full_name: user?.user_metadata?.full_name || ''
           })
           .select()
           .single()
@@ -73,7 +84,6 @@ export function AuthProvider({ children }) {
         if (error) throw error
         data = newProfile
       }
-
       setProfile(data)
     } catch (error) {
       console.error('Error fetching profile:', error)
@@ -85,15 +95,18 @@ export function AuthProvider({ children }) {
       email,
       password,
       options: {
-        data: { full_name: fullName, last_name: lastName },
-      },
+        data: { full_name: fullName, last_name: lastName }
+      }
     })
     if (error) throw error
     return data
   }
 
   const signIn = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    })
     if (error) throw error
     return data
   }
@@ -105,7 +118,7 @@ export function AuthProvider({ children }) {
 
   const resetPassword = async (email) => {
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
+      redirectTo: `${window.location.origin}/auth/reset-password`
     })
     if (error) throw error
     return data
@@ -139,7 +152,7 @@ export function AuthProvider({ children }) {
     signOut,
     resetPassword,
     updateProfile,
-    supabase,
+    supabase
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
