@@ -9,15 +9,20 @@ import { dbClient } from '../../../../lib/supabase/dbClient'
 import { useAuth } from '../../../../components/providers/AuthProvider'
 import SubSidebar from '../../../../components/subSideBar'
 import { updateAgent } from '../../../actions/agents'
+import { menuItems } from '../../../../config/menuconfig'
+import Button from '../../../../components/button'
+import { subMenuItems } from '../../../../config/submenuconfig'
 import {
   BarChart3,
   Aperture,
+  ArrowLeft,
   ChartNoAxesColumnIncreasing,
   Zap,
   Settings,
   User,
   Home,
   SendHorizonal,
+  Globe,
   RefreshCw
 } from 'lucide-react'
 
@@ -50,21 +55,20 @@ export default function AgentTest() {
 
   const MAX_INSTRUCTIONS = 20 // limit instruction history
 
-  const menuItems = [
-    {
-      name: 'Mini Analysis',
-      icon: <ChartNoAxesColumnIncreasing size={20} />,
-      submenu: [
-        { name: 'Total Agents', href: '/mini-analysis/total' },
-        { name: 'Conversations', href: '/mini-analysis/conversations' },
-        { name: 'Success Rate', href: '/mini-analysis/successRate' },
-        { name: 'Credits Used', href: '/mini-analysis/creditsUsed' }
-      ]
-    },
-    { name: 'Analytics', icon: <BarChart3 size={20} /> },
-    { name: 'Workflow', icon: <Zap size={20} /> },
-    { name: 'Dashboard', icon: <Home size={20} /> }
-  ]
+  const getPurposeIcon = (purpose) => {
+    switch (purpose) {
+      //   case 'instagram':
+      //     return <Instagram className="h-5 w-5 text-pink-500" />
+      //   case 'messenger':
+      //     return <MessageSquare className="h-5 w-5 text-blue-500" />
+      //   case 'calendar':
+      //     return <Calendar className="h-5 w-5 text-green-500" />
+      case 'website':
+        return <Globe className='h-5 w-5 text-purple-500' />
+      //   default:
+      //     return <Bot className="h-5 w-5 text-gray-500" />
+    }
+  }
 
   const fetchAgentData = async () => {
     try {
@@ -211,13 +215,35 @@ export default function AgentTest() {
   return (
     <div className='flex h-screen overflow-hidden font-mono'>
       <NeonBackground />
-      <Sidebar />
-      <SubSidebar menuItems={menuItems} />
+      <Sidebar menuItems={menuItems} />
+      <SubSidebar menuItems={subMenuItems} />
 
       <div className='flex flex-1 flex-col text-neutral-100'>
         {/* Top Header */}
         <div className='mx-4 flex h-16 flex-shrink-0 items-center justify-between border-b border-neutral-700'>
-          <span className='text-xl font-bold'>AgentBuilder</span>
+          <div className='flex items-center space-x-4'>
+            <Button onClick={() => router.back()}>
+              <ArrowLeft className='h-4 w-4' />
+            </Button>
+            {getPurposeIcon(agent.purpose)}
+            <div>
+              <h1 className='text-lg font-semibold text-neutral-400'>
+                {agent.name}
+              </h1>
+              <p className='text-sm text-neutral-400 uppercase'>
+                {agent.purpose} Agent
+              </p>
+            </div>
+            <div
+              className={`h-[20px] w-[20px] rounded-full px-2 py-1 font-medium ${
+                agent.is_active
+                  ? 'bg-green-600 text-green-800'
+                  : 'bg-red-500 text-red-800'
+              }`}
+            >
+              {/* {agent.is_active ? 'Active' : 'Inactive'} */}
+            </div>
+          </div>
           <div className='flex items-center space-x-4'>
             <div className='text-lg'>
               Credits:{' '}

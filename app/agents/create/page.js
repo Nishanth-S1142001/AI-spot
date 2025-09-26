@@ -15,6 +15,7 @@ import FormInput from '../../../components/formInputField'
 import hyperLink from '../../../components/hyperLinks'
 import FormTextarea from '../../../components/textBox'
 import { FilePond } from 'react-filepond'
+import { menuItems } from '../../../config/menuconfig'
 import {
   Bot,
   Paperclip,
@@ -44,6 +45,7 @@ import {
   Aperture
 } from 'lucide-react'
 import NeonBackground from '../../../components/background'
+import { subMenuItems } from '../../../config/submenuconfig'
 
 export default function CreateAgent() {
   const { user } = useAuth()
@@ -318,22 +320,8 @@ export default function CreateAgent() {
     }
   }
 
-  //dashboard menu items
-  const menuItems = [
-    {
-      name: 'Mini Analysis',
-      icon: <ChartNoAxesColumnIncreasing size={20} />,
-      submenu: [
-        { name: 'Total Agents', href: '/mini-analysis/total' },
-        { name: 'Conversations', href: '/mini-analysis/conversations' },
-        { name: 'Success Rate', href: '/mini-analysis/successRate' },
-        { name: 'Credits Used', href: '/mini-analysis/creditsUsed' }
-      ]
-    },
-    { name: 'Analytics', icon: <BarChart3 size={20} /> },
-    { name: 'Workflow', icon: <Zap size={20} /> },
-    { name: 'Dashboard', icon: <Home size={20} /> }
-  ]
+ 
+   
 
   //This will generate system prompt
   const generateSystemPrompt = () => {
@@ -388,8 +376,8 @@ Always be helpful, accurate, and stay in character.`
     <>
       <NeonBackground />
       <div className='font-mono flex h-screen w-full flex-row text-neutral-100'>
-        <Sidebar />
-        <SubSidebar menuItems={menuItems} />
+        <Sidebar menuItems={menuItems} />
+        <SubSidebar menuItems={subMenuItems} />
 
         <div className='custom-scrollbar relative flex-1 overflow-y-auto'>
           {/* Header */}

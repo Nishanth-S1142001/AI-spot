@@ -8,6 +8,8 @@ import { useAuth } from '../../../components/providers/AuthProvider'
 import { dbClient } from '../../../lib/supabase/dbClient'
 import { updateAgent, deleteAgent } from '../../actions/agents'
 import toast from 'react-hot-toast'
+import { menuItems } from '../../../config/menuconfig'
+import { subMenuItems } from '../../../config/submenuconfig'
 import {
   Bot,
   BarChart3,
@@ -28,6 +30,8 @@ import {
   CircleArrowRightIcon,
   Ban,
   Calendar,
+  CirclePower,
+
   ArrowLeft,
   Settings,
   ChartNoAxesColumnIncreasing,
@@ -55,25 +59,26 @@ export default function AgentManagement() {
     if (id && user) fetchAgentData()
   }, [id, user])
 
+ 
   const fetchAgentData = async () => {
     try {
       setLoading(true)
-      const agentData = await dbClient.getAgent(id)
+      const [agentData, conversationData, analyticsData] = await Promise.all([
+        dbClient.getAgent(id),
+        dbClient.getConversations(id, 20),
+        dbClient.getAnalytics(id)
+      ])
       setAgent(agentData)
-      console.log(agentData)
-      const conversationData = await dbClient.getConversations(id, 20)
       setConversations(conversationData)
-
-      const analyticsData = await dbClient.getAnalytics(id)
       setAnalytics(analyticsData)
     } catch (error) {
       console.error('Error fetching agent data:', error)
       toast.error('Failed to load agent data')
+      setAgent(null)
     } finally {
       setLoading(false)
     }
   }
-
   const toggleAgentStatus = async () => {
     try {
       const updatedAgent = await updateAgent(id, {
@@ -176,27 +181,13 @@ export default function AgentManagement() {
       </>
     )
   }
-  const menuItems = [
-    {
-      name: 'Mini Analysis',
-      icon: <ChartNoAxesColumnIncreasing size={20} />,
-      submenu: [
-        { name: 'Total Agents', href: '/mini-analysis/total' },
-        { name: 'Conversations', href: '/mini-analysis/conversations' },
-        { name: 'Success Rate', href: '/mini-analysis/successRate' },
-        { name: 'Credits Used', href: '/mini-analysis/creditsUsed' }
-      ]
-    },
-    { name: 'Analytics', icon: <BarChart3 size={20} /> },
-    { name: 'Workflow', icon: <Zap size={20} /> },
-    { name: 'Dashboard', icon: <Home size={20} /> }
-  ]
+  
   return (
     <>
       <NeonBackground />
-      <div className='font-mono flex h-screen w-full flex-row text-neutral-100'>
-        <Sidebar />
-        <SubSidebar menuItems={menuItems} />
+      <div className='flex h-screen w-full flex-row font-mono text-neutral-100'>
+        <Sidebar menuItems={menuItems} />
+        <SubSidebar menuItems={subMenuItems} />
         <div className='custom-scrollbar relative flex-1 overflow-y-auto'>
           {/* Header */}
           <div className='mx-4 mb-5 flex h-16 items-center justify-between border-b border-neutral-700'>
@@ -331,11 +322,11 @@ export default function AgentManagement() {
                   </Card>
                   <Card>
                     <div className='card-header'>
-                      <h3 className='flex items-center justify-center text-lg font-semibold text-neutral-100'>
+                      <h3 className='flex mb-5 items-center justify-center text-lg font-semibold text-neutral-100'>
                         Quick Actions
                       </h3>
                     </div>
-                    <div className='flex flex-col items-stretch gap-3'>
+                    <div className='grid grid-cols-2 items-stretch gap-3'>
                       <Button
                         onClick={toggleAgentStatus}
                         className='w-full'
@@ -344,12 +335,12 @@ export default function AgentManagement() {
                         <div className='flex items-center justify-center'>
                           {agent.is_active ? (
                             <>
-                              <Trash2 className='mr-2 h-4 w-4' />
+                              <CirclePower className='text-red-600 mr-2 h-4 w-4' />
                               Deactivate Agent
                             </>
                           ) : (
                             <>
-                              <Play className='mr-2 h-4 w-4' />
+                              <Play className='mr-2 h-4 w-4  text-green-500' />
                               Activate Agent
                             </>
                           )}

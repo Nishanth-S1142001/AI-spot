@@ -1,72 +1,61 @@
 'use client'
 
 import React, { useState } from 'react'
-// The "next/link" and "next/navigation" imports could not be resolved in this environment.
-// Using standard <a> tags and removing the router logic for now.
-// import Link from 'next/link'
-// import { usePathname } from 'next/navigation'
 import {
   Home,
   User,
   Settings,
   LogOut,
-  ChevronLeft,
   ChevronDown,
-  UnfoldHorizontalIcon,
-  FoldHorizontal
+  MousePointer,
+  PanelLeftOpen,
+  PanelLeftClose
 } from 'lucide-react'
 
 export default function SubSidebar({ menuItems }) {
-  // The usePathname hook from next/navigation is not supported here.
-  // const pathname = usePathname()
-  const [isOpen, setIsOpen] = useState(true)
+  // Modes: "hover" or "toggle"
+  const [mode, setMode] = useState('hover')
+  const [isOpen, setIsOpen] = useState(false)
   const [openSubmenu, setOpenSubmenu] = useState(null)
 
   const toggleSubmenu = (index) => {
     setOpenSubmenu(openSubmenu === index ? null : index)
   }
 
-  const toggleSidebar = () => {
-    setIsOpen(!isOpen)
-  }
+  // Sidebar open logic
+  const sidebarOpen = mode === 'hover' ? isOpen : isOpen
 
   return (
     <div
-      className={`font-mono flex h-screen flex-col bg-neutral-900 text-white transition-all duration-300 ${
-        isOpen ? 'w-64' : 'w-16'
+      className={`flex h-screen flex-col bg-neutral-900 font-mono text-white transition-all duration-300 ${
+        sidebarOpen ? 'w-64' : 'w-16'
       }`}
+      onMouseEnter={() => mode === 'hover' && setIsOpen(true)}
+      onMouseLeave={() => mode === 'hover' && setIsOpen(false)}
     >
-      <div className='flex items-center justify-end p-4'>
-        
-        <button
-          onClick={toggleSidebar}
-          className='rounded-md p-2 hover:bg-neutral-800'
-        >
-          <FoldHorizontal
-            size={20}
-            className={`transition-transform    ${!isOpen && 'rotate-180' }`}
-            
-          />
-        </button>
-      </div>
       {/* Menu Items */}
-      <nav className='mt-4 flex-1'>
+      <nav className='mt-4 mb-2 flex-1 border-l border-l-neutral-700'>
         {menuItems.map((item, idx) => {
-          // The isActive logic is removed because usePathname is not available.
-          // const isActive = pathname === item.href
           return (
             <div key={idx}>
               {/* Main Menu */}
               <a
-                href={item.href} // Using standard <a> tag
+                href={item.href}
                 className={`mx-2 my-1 flex cursor-pointer items-center justify-between rounded-md p-3 transition-colors hover:bg-neutral-700`}
-                onClick={() => item.submenu && toggleSubmenu(idx)}
+                onClick={(e) => {
+                  if (item.submenu) {
+                    e.preventDefault()
+                    toggleSubmenu(idx)
+                  }
+                }}
               >
                 <div className='flex items-center gap-4'>
                   {item.icon}
-                  <span className={`${!isOpen && 'hidden'}`}>{item.name}</span>
+                  <span className={`${!sidebarOpen && 'hidden'}`}>
+                    {item.name}
+                  </span>
                 </div>
-                {item.submenu && isOpen && (
+                {item.submenu && sidebarOpen && (
                   <ChevronDown
                     size={18}
                     className={`transition-transform ${
@@ -77,13 +66,13 @@ export default function SubSidebar({ menuItems }) {
               </a>
 
               {/* Submenu */}
-              {item.submenu && openSubmenu === idx && isOpen && (
+              {item.submenu && openSubmenu === idx && sidebarOpen && (
                 <div className='ml-12 flex flex-col'>
                   {item.submenu.map((sub, subIdx) => (
-                    <a // Using standard <a> tag
+                    <a
                       key={subIdx}
                       href={sub.href}
-                      className={`my-1 rounded-md p-2 hover:bg-neutral-700`}
+                      className='my-1 rounded-md p-2 hover:bg-neutral-700'
                     >
                       {sub.name}
                     </a>
@@ -94,9 +83,46 @@ export default function SubSidebar({ menuItems }) {
           )
         })}
       </nav>
+      {/* Mode Switcher */}
+      <div
+        className={`flex border-t border-neutral-700 p-2 ${
+          sidebarOpen
+            ? 'flex-row justify-between '
+            : 'flex-col items-center  gap-2 '
+        }`}
+      >
+        {/* Hover Mode Button */}
+        <button
+          onClick={() => {
+            setMode('hover')
+            setIsOpen(false)
+          }}
+          className={`rounded-md p-2 hover:bg-neutral-800 ${
+            mode === 'hover' ? 'bg-neutral-700' : ''
+          }`}
+          title='Hover Mode'
+        >
+          <MousePointer size={18} />
+        </button>
 
-      
-      
+        {/* Toggle Mode Button */}
+        <button
+          onClick={() => {
+            if (mode !== 'toggle') {
+              setMode('toggle')
+              setIsOpen(true)
+            } else {
+              setIsOpen((prev) => !prev)
+            }
+          }}
+          className={`rounded-md p-2 hover:bg-neutral-800 ${
+            mode === 'toggle' ? 'bg-neutral-700' : ''
+          }`}
+          title='Toggle Mode'
+        >
+          {isOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+        </button>
+      </div>
     </div>
   )
 }

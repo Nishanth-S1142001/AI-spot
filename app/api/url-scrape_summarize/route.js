@@ -2,6 +2,25 @@ import axios from "axios";
 import * as cheerio from "cheerio";
 import OpenAI from "openai";
 
+const instruction = ` You are a content refinement system.  
+You will be given raw text scraped from a website. The text may contain menus, ads, boilerplate, duplicate sections, or formatting issues.  
+
+Your job is to:
+1. Remove irrelevant content such as navigation links, ads, disclaimers, cookie notices, or repeated text.  
+2. Keep only the meaningful body content (headings, paragraphs, lists, FAQs, descriptions).  
+3. Rewrite the content in clear, concise, human-friendly language while keeping the original meaning intact.  
+4. Preserve important factual information, numbers, and domain-specific terms.  
+5. Organize the cleaned content into a structured format:
+   - Headings and subheadings
+   - Bullet points where needed
+   - Short paragraphs for readability  
+6. Preserve the hierarchy of the content:
+   - Keep headings (H1, H2, H3, etc.)
+   - Keep subheadings under their respective headings
+   - Keep body text under the right heading/subheading
+7. Output should be well-formatted and structured, ready for chatbot training.  
+
+Do not invent new information. Do not provide commentary or opinions.  `
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
@@ -58,11 +77,11 @@ export async function POST(req) {
         {
           role: "system",
           content:
-            "You are a helpful assistant that summarizes web content for AI agents. Extract the main ideas in clear bullet points. Ignore navigation, ads, or irrelevant text.",
+            ` ${instruction} `
         },
         {
           role: "user",
-          content: `Please summarize the following webpage content:\n\n${content}`,
+          content: `Follow the instructions  ${instruction}  for the following content :\n\n${content}`,
         },
       ],
       max_tokens: 500,
