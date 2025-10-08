@@ -4,65 +4,99 @@ import React, { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  Home,
-  User,
-  Settings,
-  LogOut,
+  // Removed MousePointer as it's no longer used
   ChevronDown,
-  BadgeQuestionMark,
-  MousePointer,
   PanelLeftOpen,
   PanelLeftClose
 } from 'lucide-react'
 
-export default function Sidebar( {menuItems}) {
+export default function Sidebar({ menuItems, activeMenu, onSelect }) {
   const pathname = usePathname()
 
-  // Modes: "hover" or "toggle"
-  const [mode, setMode] = useState('hover')
-  const [isOpen, setIsOpen] = useState(false)
+  // We use 'isCollapsed' to manage the manual open/close state.
+  const [isCollapsed, setIsCollapsed] = useState(false)
   const [openSubmenu, setOpenSubmenu] = useState(null)
 
- 
+  // We use local state to track if the mouse is hovering over the sidebar
+  const [isHovering, setIsHovering] = useState(false)
 
   const toggleSubmenu = (index) => {
     setOpenSubmenu(openSubmenu === index ? null : index)
   }
 
-  // Determine sidebar open state based on mode
-  const sidebarOpen = mode === 'hover' ? isOpen : isOpen // in toggle, manual open/close
+  // Define the visibility state:
+  const isSidebarOpen = isHovering || !isCollapsed
+
+  // Define the width class based only on isSidebarOpen
+  const sidebarWidthClass = isSidebarOpen ? 'w-64' : 'w-15' // Keeping 'w-15' as per your original code
 
   return (
     <div
-      className={`flex h-screen flex-col bg-neutral-900 font-mono text-white transition-all duration-300 ${
-        sidebarOpen ? 'w-64' : 'w-15'
-      }`}
-      onMouseEnter={() => mode === 'hover' && setIsOpen(true)}
-      onMouseLeave={() => mode === 'hover' && setIsOpen(false)}
+      className={`flex h-screen flex-col bg-neutral-900 font-mono text-white transition-all duration-300 ${sidebarWidthClass}`}
+      onMouseEnter={() => isCollapsed && setIsHovering(true)}
+      onMouseLeave={() => isCollapsed && setIsHovering(false)}
     >
-      {/* Menu Items */}
-      <nav className='mt-4 flex-1'>
+      {/* 1. TOGGLE BUTTON AT THE TOP (NEW LOCATION) */}
+      <div className='mt-4 flex justify-end border-r border-b border-neutral-700 p-2'>
+        <button
+          // Toggles the manual collapsed state
+          onClick={() => {
+            setIsCollapsed((prev) => !prev)
+            // If the sidebar is currently expanded by hover when we click, immediately hide it
+            if (isHovering) setIsHovering(false)
+            // Close any open submenu when collapsing
+            if (!isCollapsed) setOpenSubmenu(null)
+          }}
+          className={`rounded-md p-2 hover:bg-neutral-800`}
+          title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+        >
+          {isCollapsed ? (
+            <PanelLeftOpen size={18} />
+          ) : (
+            <PanelLeftClose size={18} />
+          )}
+        </button>
+      </div>
+
+      {/* 2. Menu Items (Now starts immediately after the button) */}
+      <nav className='custom-scrollbar mt-4 flex-1 overflow-y-auto'>
         {menuItems.map((item, idx) => {
+          const isCurrentlyActive = item.key && activeMenu === item.key
+          if (item.divider) {
+            return (
+              <hr
+                key={`divider-${idx}`}
+                className='my-2 border-t border-neutral-700'
+              />
+            )
+          }
           const isActive = pathname === item.href
           return (
             <div key={idx}>
               {/* Main Menu */}
               <div
                 className={`mx-2 my-1 flex cursor-pointer items-center justify-between rounded-md p-3 transition-colors hover:bg-neutral-700 ${
-                  isActive ? 'bg-neutral-700 font-semibold' : ''
+                  isCurrentlyActive ? 'bg-neutral-700 font-semibold' : ''
                 }`}
-                onClick={() => item.submenu && toggleSubmenu(idx)}
+                onClick={() => {
+                  if (item.submenu) {
+                    toggleSubmenu(idx)
+                  }
+                  if (item.key) {
+                    onSelect(item.key)
+                  }
+                }}
               >
                 <div className='flex items-center gap-4'>
                   {item.icon}
-                  <span className={`${!sidebarOpen && 'hidden'}`}>
+                  <span className={`${!isSidebarOpen && 'hidden'}`}>
                     {item.name}
                   </span>
                 </div>
-                {item.submenu && sidebarOpen && (
+                {item.submenu && isSidebarOpen && (
                   <ChevronDown
                     size={18}
-                    className={`transition-transform ${
+                    className={`text-orange-500 transition-transform ${
                       openSubmenu === idx ? 'rotate-180' : ''
                     }`}
                   />
@@ -70,7 +104,7 @@ export default function Sidebar( {menuItems}) {
               </div>
 
               {/* Submenu */}
-              {item.submenu && openSubmenu === idx && sidebarOpen && (
+              {item.submenu && openSubmenu === idx && isSidebarOpen && (
                 <div className='ml-12 flex flex-col'>
                   {item.submenu.map((sub, subIdx) => (
                     <Link
@@ -92,47 +126,13 @@ export default function Sidebar( {menuItems}) {
         })}
       </nav>
 
-      {/* Mode Switcher */}
-      <div
-        className={`flex border-t border-neutral-700 p-2 ${
-          sidebarOpen
-            ? 'flex-row justify-between'
-            : 'flex-col items-center gap-2  border-r border-neutral-600'
-        }`}
+      {/* 3. The old "Mode Switcher" area is now only for additional footer items, 
+           or simply removed if nothing else goes here. */}
+      {/* Since you wanted the button removed, I've commented out the original footer div here: */}
+      {/* <div
+        className={`flex border-t border-neutral-700 p-2 justify-center`}
       >
-       
-        {/* Hover Mode Button */}
-        <button
-          onClick={() => {
-            setMode('hover')
-            setIsOpen(false)
-          }}
-          className={`rounded-md p-2 hover:bg-neutral-800 ${
-            mode === 'hover' ? 'bg-neutral-700' : ''
-          }`}
-          title='Hover Mode'
-        >
-          <MousePointer size={18} />
-        </button>
-
-        {/* Toggle Mode Button */}
-        <button
-          onClick={() => {
-            if (mode !== 'toggle') {
-              setMode('toggle')
-              setIsOpen(true)
-            } else {
-              setIsOpen((prev) => !prev)
-            }
-          }}
-          className={`rounded-md p-2 hover:bg-neutral-800 ${
-            mode === 'toggle' ? 'bg-neutral-700' : ''
-          }`}
-          title='Toggle Mode'
-        >
-          {isOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
-        </button>
-      </div>
+      </div> */}
     </div>
   )
 }

@@ -4,14 +4,14 @@ import React, { useState, useEffect, useRef } from 'react'
 import NeonBackground from '../../../../components/background'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
-import Sidebar from '../../../../components/sideBar'
+
 import { dbClient } from '../../../../lib/supabase/dbClient'
 import { useAuth } from '../../../../components/providers/AuthProvider'
-import SubSidebar from '../../../../components/subSideBar'
+
 import { updateAgent } from '../../../actions/agents'
-import { menuItems } from '../../../../config/menuconfig'
+
 import Button from '../../../../components/button'
-import { subMenuItems } from '../../../../config/submenuconfig'
+
 import {
   BarChart3,
   Aperture,
@@ -23,7 +23,9 @@ import {
   Home,
   SendHorizonal,
   Globe,
-  RefreshCw
+  RefreshCw,
+  LoaderPinwheel,
+  Bot
 } from 'lucide-react'
 
 export default function AgentTest() {
@@ -33,10 +35,10 @@ export default function AgentTest() {
   const instructionsButtonRef = useRef(null)
 
   const { id } = useParams()
-  const { user } = useAuth()
+  const { user, profile, loading } = useAuth()
 
   const [agent, setAgent] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [fetching, setFetching] = useState(true)
   const [loadingResponse, setLoadingResponse] = useState(false)
   const [typingDots, setTypingDots] = useState('')
   const [error, setError] = useState('')
@@ -72,7 +74,7 @@ export default function AgentTest() {
 
   const fetchAgentData = async () => {
     try {
-      setLoading(true)
+      setFetching(true)
       const agentData = await dbClient.getAgent(id, user.id)
       if (!agentData) throw new Error('Agent not found or access denied')
       setAgent(agentData)
@@ -82,13 +84,13 @@ export default function AgentTest() {
       console.error(err)
       setError(err.message)
     } finally {
-      setLoading(false)
+      setFetching(false)
     }
   }
 
   useEffect(() => {
     if (id && user && !agent) fetchAgentData()
-    else setLoading(false)
+    else setFetching(false)
   }, [id, user, agent])
 
   useEffect(() => {
@@ -163,7 +165,7 @@ export default function AgentTest() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           instructions: newMessages,
-          content: agent.knowledge_base
+          content: agent?.knowledge_base
         })
       })
       const data = await res.json()
@@ -174,7 +176,7 @@ export default function AgentTest() {
       } else {
         const { content: updatedContent } = data
         setBotBody(updatedContent || '')
-        await updateAgent(agent.id, { knowledge_base: updatedContent })
+        await updateAgent(agent?.id, { knowledge_base: updatedContent })
       }
     } catch (err) {
       console.error('Bot Body error:', err)
@@ -190,7 +192,7 @@ export default function AgentTest() {
     ])
   }
 
-  if (loading) {
+  if (loading || fetching) {
     return (
       <div className='flex min-h-screen items-center justify-center bg-neutral-900 font-mono'>
         <div className='text-center'>
@@ -215,39 +217,20 @@ export default function AgentTest() {
   return (
     <div className='flex h-screen overflow-hidden font-mono'>
       <NeonBackground />
-      <Sidebar menuItems={menuItems} />
-      <SubSidebar menuItems={subMenuItems} />
 
       <div className='flex flex-1 flex-col text-neutral-100'>
         {/* Top Header */}
         <div className='mx-4 flex h-16 flex-shrink-0 items-center justify-between border-b border-neutral-700'>
-          <div className='flex items-center space-x-4'>
-            <Button onClick={() => router.back()}>
-              <ArrowLeft className='h-4 w-4' />
-            </Button>
-            {getPurposeIcon(agent.purpose)}
-            <div>
-              <h1 className='text-lg font-semibold text-neutral-400'>
-                {agent.name}
-              </h1>
-              <p className='text-sm text-neutral-400 uppercase'>
-                {agent.purpose} Agent
-              </p>
-            </div>
-            <div
-              className={`h-[20px] w-[20px] rounded-full px-2 py-1 font-medium ${
-                agent.is_active
-                  ? 'bg-green-600 text-green-800'
-                  : 'bg-red-500 text-red-800'
-              }`}
-            >
-              {/* {agent.is_active ? 'Active' : 'Inactive'} */}
-            </div>
+          <Button onClick={() => router.back()}>
+            <ArrowLeft className='h-4 w-4' />
+          </Button>
+          <div>
+            <p>Agent Playground</p>
           </div>
           <div className='flex items-center space-x-4'>
             <div className='text-lg'>
               Credits:{' '}
-              <span className='font-semibold text-neutral-400'>{0}</span>
+              <span className='font-semibold text-neutral-400'>{profile?.api_credits}</span>
             </div>
             <Link href='/settings'>
               <Settings className='h-6 w-6 text-neutral-400 hover:text-neutral-200' />
@@ -272,20 +255,46 @@ export default function AgentTest() {
               {chatMessages.map((msg, idx) => (
                 <div
                   key={idx}
-                  className={`max-w-[70%] p-2 ${
-                    msg.role === 'user'
-                      ? 'ml-auto rounded-l-xl rounded-b-xl bg-neutral-600 text-neutral-200'
-                      : 'rounded-r-xl rounded-b-xl bg-neutral-200 text-neutral-700'
+                  className={`flex items-start space-x-2 ${
+                    msg.role === 'user' ? 'justify-end' : 'justify-start'
                   }`}
                 >
-                  {msg.content}
+                  {/* Assistant Icon */}
+                  {msg.role === 'assistant' &&
+                    (idx === chatMessages.length - 1 && loadingResponse ? (
+                      <LoaderPinwheel className='mt-1 h-5 w-5 animate-spin text-orange-600' />
+                    ) : (
+                      <></>
+                    ))}
+                  {msg.role === 'assistant' &&
+                    (idx === chatMessages.length - 1 && !loadingResponse ? (
+                      <LoaderPinwheel className='mt-1 h-5 w-5 text-orange-600' />
+                    ) : (
+                      <LoaderPinwheel className='mt-1 h-5 w-5 text-orange-600' />
+                    ))}
+
+                  {/* Chat Bubble */}
+                  <div
+                    className={`max-w-[70%] p-2 ${
+                      msg.role === 'user'
+                        ? 'rounded-l-xl rounded-b-xl bg-neutral-600 text-neutral-200'
+                        : 'rounded-r-xl rounded-b-xl text-white'
+                    }`}
+                  >
+                    {msg.content}
+                  </div>
+
+                  {/* Optional: user side icon (for symmetry) */}
                 </div>
               ))}
+
+              {/* Bot typing animation */}
               {loadingResponse && (
-                <div className='h-[40px] max-w-[70%] rounded-r-xl rounded-b-xl bg-neutral-200 p-2 text-2xl text-neutral-700'>
-                  {typingDots}
+                <div className='flex items-end space-x-2'>
+                  <LoaderPinwheel className='h-5 w-5 animate-spin text-orange-600' />
                 </div>
               )}
+
               <div ref={chatEndRef} />
             </div>
 
@@ -320,7 +329,26 @@ export default function AgentTest() {
           <div className='m-10 flex w-1/2 flex-col overflow-hidden rounded-xl border border-neutral-700'>
             <div className='sticky top-0 z-10 flex-shrink-0 p-4'>
               <div className='m-2 border-b border-neutral-600'>
-                <h2 className='m-2 text-lg font-semibold'>Bot trainer</h2>
+                <div className='flex items-center space-x-4'>
+                  {getPurposeIcon(agent?.purpose)}
+                  <div>
+                    <h1 className='text-lg font-semibold text-neutral-400'>
+                      {agent?.name}
+                    </h1>
+                    <p className='text-sm text-neutral-400 uppercase'>
+                      {agent?.purpose} Agent
+                    </p>
+                  </div>
+                  <div
+                    className={`h-[20px] w-[20px] rounded-full px-2 py-1 font-medium ${
+                      agent?.is_active
+                        ? 'bg-green-600 text-green-800'
+                        : 'bg-red-500 text-red-800'
+                    }`}
+                  >
+                    {/* {agent.is_active ? 'Active' : 'Inactive'} */}
+                  </div>
+                </div>
               </div>
             </div>
 

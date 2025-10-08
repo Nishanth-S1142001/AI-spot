@@ -6,30 +6,17 @@ import { useAuth } from '../../components/providers/AuthProvider'
 import { dbClient } from '../../lib/supabase/dbClient'
 import {
   Bot,
-  Plus,
   MessageSquare,
   Calendar,
   Instagram,
   Globe,
   Settings,
-  BarChart3,
-  Zap,
   User,
-  ChartNoAxesColumnIncreasing,
-  TrendingUp,
-  Activity,
-  Home,
   Aperture
 } from 'lucide-react'
 import Link from 'next/link'
-import { format } from 'date-fns'
-import Sidebar from '../../components/sideBar'
-import Card from '../../components/card'
-import Button from '../../components/button'
-import SubSidebar from '../../components/subSideBar'
-import FormTextarea from '../../components/textBox'
-import { subMenuItems } from '../../config/submenuconfig'
-import { menuItems } from '../../config/menuconfig'
+import SideBarLayout from '../../components/sideBarLayout'
+
 export default function Dashboard() {
   const { user, profile, loading } = useAuth()
   const [agents, setAgents] = useState([])
@@ -42,9 +29,6 @@ export default function Dashboard() {
   // const [loading, setLoading] = useState(true)
   const [authloading, setAuthLoading] = useState(true)
   const [fetching, setFetching] = useState(true)
-
- 
- 
 
   const fetchDashboardData = async () => {
     try {
@@ -138,14 +122,17 @@ export default function Dashboard() {
 
   return (
     <>
+      {/* 1. NeonBackground is fixed and z-0 */}
       <NeonBackground />
-      <div className='flex h-screen w-full flex-row font-mono text-neutral-100'>
-        <Sidebar   menuItems={menuItems} />
-        <SubSidebar  menuItems={ subMenuItems }/>
 
-        <div className='relative flex-1 overflow-y-auto'>
-          {/* Header */}
-          <div className='mx-4 flex h-16 items-center justify-between border-b border-neutral-700'>
+      {/* 2. SideBarLayout is z-10 or higher and contains all layout + content */}
+      {/* Remove 'h-screen' and 'overflow-hidden' from main div, let SideBarLayout handle it */}
+      <SideBarLayout>
+        {/* Everything inside SideBarLayout is rendered as {children} */}
+        <div className='relative w-full flex-1 font-mono text-neutral-100'>
+          {/* Header is here */}
+          <div className='sticky top-0 z-20 flex h-16 items-center justify-between border-b border-neutral-700 backdrop-blur-sm'>
+            {/* Added a sticky header with dark transparent background to float over scrolling content */}
             <span className='text-xl font-bold'>AgentBuilder</span>
             <div className='flex items-center space-x-4'>
               <div className='text-lg'>
@@ -162,56 +149,8 @@ export default function Dashboard() {
               </Link>
             </div>
           </div>
-
           {/* Analytics */}
           <div className='w-full px-6 py-8'>
-            <div className='mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4'>
-              <Card>
-                <div className='flex items-center space-x-6 p-6'>
-                  <Bot className='h-20 w-20 text-neutral-400' />
-                  <div>
-                    <p className='text-xl font-medium'>Total Agents</p>
-                    <p className='text-2xl font-bold text-neutral-300'>
-                      {analytics.totalAgents}
-                    </p>
-                  </div>
-                </div>
-              </Card>
-              <Card>
-                <div className='flex items-center space-x-6 p-6'>
-                  <MessageSquare className='h-20 w-20 text-neutral-400' />
-                  <div>
-                    <p className='text-xl font-medium'>Conversations</p>
-                    <p className='text-2xl font-bold text-neutral-300'>
-                      {analytics.totalConversations}
-                    </p>
-                  </div>
-                </div>
-              </Card>
-              <Card>
-                <div className='flex items-center space-x-6 p-6'>
-                  <TrendingUp className='h-20 w-20 text-neutral-400' />
-                  <div>
-                    <p className='text-xl font-medium'>Success Rate</p>
-                    <p className='text-2xl font-bold text-neutral-300'>
-                      {analytics.successRate.toFixed(1)}%
-                    </p>
-                  </div>
-                </div>
-              </Card>
-              <Card>
-                <div className='flex items-center space-x-6 p-6'>
-                  <Activity className='h-20 w-20 text-neutral-400' />
-                  <div>
-                    <p className='text-xl font-medium'>Credits Used</p>
-                    <p className='text-2xl font-bold text-neutral-300'>
-                      {analytics.creditsUsed}
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            </div>
-
             {/* Welcome Section */}
             <div className='mt-40 mb-20 flex flex-col items-center'>
               <h1 className='mb-2 text-6xl font-bold text-neutral-300'>
@@ -223,194 +162,10 @@ export default function Dashboard() {
             </div>
 
             {/* Agents */}
-            <Card>
-              <div className='p-6'>
-                {agents.length === 0 ? (
-                  <div className='flex flex-row items-center justify-center space-x-10'>
-                    <Link href='/agents/create'>
-                      <Card className='py-12 text-center'>
-                        <Bot className='mx-auto mb-4 h-16 w-16 text-neutral-400' />
-                        <h3 className='mb-2 text-lg font-medium text-neutral-300'>
-                          No agents yet
-                        </h3>
-                        <p className='text-neutral-400'>
-                          Create your first AI agent to get started.
-                        </p>
-                      </Card>
-                    </Link>
-
-                    <div className='flex flex-col space-y-6 text-center text-2xl'>
-                      <Link href='/agents/create'>
-                        <Card className='p-6 hover:bg-neutral-800'>
-                          <div className='flex items-center space-x-3'>
-                            <Plus className='h-12 w-12 text-neutral-400' />
-                            <div className='flex flex-col'>
-                              <h3 className='font-medium text-neutral-300'>
-                                Create Agent
-                              </h3>
-                              <p className='text-neutral-400'>
-                                Build a new AI agent
-                              </p>
-                            </div>
-                          </div>
-                        </Card>
-                      </Link>
-
-                      <Link href='/analytics'>
-                        <Card className='p-6 hover:bg-neutral-800'>
-                          <div className='flex items-center space-x-3'>
-                            <BarChart3 className='h-12 w-12 text-neutral-400' />
-                            <div className='flex flex-col'>
-                              <h3 className='font-medium text-neutral-300'>
-                                Analytics
-                              </h3>
-                              <p className='text-neutral-400'>
-                                View detailed metrics
-                              </p>
-                            </div>
-                          </div>
-                        </Card>
-                      </Link>
-
-                      <Link href='/workflows'>
-                        <Card className='p-6 hover:bg-neutral-800'>
-                          <div className='flex items-center space-x-3'>
-                            <Zap className='h-12 w-12 text-neutral-400' />
-                            <div className='flex flex-col'>
-                              <h3 className='font-medium text-neutral-300'>
-                                Workflows
-                              </h3>
-                              <p className='text-neutral-400'>
-                                Automation builder
-                              </p>
-                            </div>
-                          </div>
-                        </Card>
-                      </Link>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <Link href='/agents/create'>
-                      <Card className='mb-10 py-12 text-center'>
-                        <Bot className='mx-auto mb-4 h-16 w-16 text-neutral-400' />
-
-                        <p className='text-neutral-400'>Build agent....</p>
-                      </Card>
-                    </Link>
-                    <div className='grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3'>
-                      {agents.map((agent) => (
-                        <Card
-                          key={agent.id}
-                          className='cursor-pointer border border-neutral-700 hover:shadow-md'
-                        >
-                          <div className='mb-4 flex items-start justify-between'>
-                            <div className='flex items-center space-x-3'>
-                              {getPurposeIcon(agent.purpose)}
-                              <div>
-                                <h3 className='font-semibold text-neutral-300'>
-                                  {agent.name}
-                                </h3>
-                                <span
-                                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getPurposeBadgeColor(agent.purpose)}`}
-                                >
-                                  {agent.purpose}
-                                </span>
-                              </div>
-                            </div>
-                            <div
-                              className={`h-3 w-3 rounded-full ${
-                                agent.is_active
-                                  ? 'bg-green-500'
-                                  : 'bg-neutral-500'
-                              }`}
-                            ></div>
-                          </div>
-
-                          <p className='mb-4 text-sm text-neutral-400'>
-                            {agent.description || 'No description provided'}
-                          </p>
-
-                          <div className='mb-4 text-xs text-neutral-500'>
-                            Created{' '}
-                            {format(new Date(agent.created_at), 'MMM d, yyyy')}
-                          </div>
-
-                          <div className='flex space-x-2'>
-                            <Link
-                              href={`/agents/${agent.id}`}
-                              className='flex-1'
-                            >
-                              <Button>Manage</Button>
-                            </Link>
-                            <Link
-                              href={`/agents/${agent.id}/test`}
-                              className='flex-1'
-                            >
-                              <Button variant='outline'>Test</Button>
-                            </Link>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            </Card>
-
             {/* Recent Activity */}
-            {agents.length > 0 && (
-              <Card className='mt-8'>
-                <div className='p-6'>
-                  <h2 className='mb-4 text-xl font-semibold text-neutral-300'>
-                    Recent Activity
-                  </h2>
-                  <div className='space-y-4'>
-                    {agents.slice(0, 5).map((agent) => (
-                      <div
-                        key={agent.id}
-                        className='flex items-center justify-between border-b border-neutral-700 pb-3 last:border-b-0'
-                      >
-                        <div className='flex items-center space-x-3'>
-                          {getPurposeIcon(agent.purpose)}
-                          <div>
-                            <p className='font-medium text-neutral-300'>
-                              {agent.name}
-                            </p>
-                            <p className='text-sm text-neutral-500'>
-                              Last updated{' '}
-                              {format(
-                                new Date(agent.updated_at),
-                                'MMM d, h:mm a'
-                              )}
-                            </p>
-                          </div>
-                        </div>
-                        <div className='flex items-center space-x-2'>
-                          <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                              agent.is_active
-                                ? 'bg-green-900 text-green-200'
-                                : 'bg-neutral-800 text-neutral-300'
-                            }`}
-                          >
-                            {agent.is_active ? 'Active' : 'Inactive'}
-                          </span>
-                          <Link href={`/agents/${agent.id}`}>
-                            <Button variant='ghost' size='sm'>
-                              View
-                            </Button>
-                          </Link>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </Card>
-            )}
           </div>
         </div>
-      </div>
+      </SideBarLayout>
     </>
   )
 }

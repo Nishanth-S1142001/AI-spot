@@ -8,8 +8,7 @@ import { useAuth } from '../../../components/providers/AuthProvider'
 import { dbClient } from '../../../lib/supabase/dbClient'
 import { updateAgent, deleteAgent } from '../../actions/agents'
 import toast from 'react-hot-toast'
-import { menuItems } from '../../../config/menuconfig'
-import { subMenuItems } from '../../../config/submenuconfig'
+import SideBarLayout from '../../../components/sideBarLayout'
 import {
   Bot,
   BarChart3,
@@ -185,9 +184,9 @@ export default function AgentManagement() {
   return (
     <>
       <NeonBackground />
-      <div className='flex h-screen w-full flex-row font-mono text-neutral-100'>
-        <Sidebar menuItems={menuItems} />
-        <SubSidebar menuItems={subMenuItems} />
+           <SideBarLayout>
+      <div className='flex w-full flex-row font-mono text-neutral-100'>
+    
         <div className='custom-scrollbar relative flex-1 overflow-y-auto'>
           {/* Header */}
           <div className='mx-4 mb-5 flex h-16 items-center justify-between border-b border-neutral-700'>
@@ -594,6 +593,7 @@ export default function AgentManagement() {
           </div>
         </div>
       </div>
+      </SideBarLayout>
     </>
   )
 }
