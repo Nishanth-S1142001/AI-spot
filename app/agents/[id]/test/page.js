@@ -208,7 +208,7 @@ export default function AgentTest() {
 
   if (error) {
     return (
-      <div className='flex min-h-screen items-center justify-center bg-neutral-900 font-mono text-red-500'>
+      <div className='flex min-h-screen items-center justify-center bg-neutral-900 font-mono text-orange-500'>
         <p>{error}</p>
       </div>
     )
@@ -343,7 +343,7 @@ export default function AgentTest() {
                     className={`h-[20px] w-[20px] rounded-full px-2 py-1 font-medium ${
                       agent?.is_active
                         ? 'bg-green-600 text-green-800'
-                        : 'bg-red-500 text-red-800'
+                        : 'bg-orange-500 text-orange-800'
                     }`}
                   >
                     {/* {agent.is_active ? 'Active' : 'Inactive'} */}

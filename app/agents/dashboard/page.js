@@ -94,7 +94,9 @@ const AgentCardWithInfo = ({ agent, getPurposeIcon }) => {
               style={{ animationDelay: '0.5s' }}
             /> */}
             <div className='absolute inset-0 flex items-center justify-center'>
-              <div className={`h-[200px] w-[200px] rounded-full ${inactiveBg} blur-[80px]`} />
+              <div
+                className={`h-[200px] w-[200px] rounded-full ${inactiveBg} blur-[80px]`}
+              />
             </div>
             <div
               className={`relative flex h-28 w-28 items-center justify-center rounded-full border-4 ${activeBg}`}
@@ -413,7 +415,7 @@ export default function Dashboard() {
                             className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                               agent.is_active
                                 ? 'bg-green-900 text-green-200'
-                                : 'bg-neutral-800 text-neutral-300'
+                                : 'bg-red-600/80 text-white'
                             }`}
                           >
                             {agent.is_active ? 'Active' : 'Inactive'}

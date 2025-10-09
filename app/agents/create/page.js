@@ -513,7 +513,8 @@ Always be helpful, accurate, and stay in character. Additional optional Informat
                 <div className='space-y-6 p-6'>
                   <div>
                     <h2 className='text-xl font-semibold text-neutral-200'>
-                      Basic <span className='text-red-500'> Information</span>
+                      Basic{' '}
+                      <span className='text-orange-500'> Information</span>
                     </h2>
                     <p className='text-white'>
                       Set up your agent&apos;s core details and personality.
@@ -600,7 +601,7 @@ Always be helpful, accurate, and stay in character. Additional optional Informat
                 <div className='space-y-6 p-6'>
                   <div>
                     <h2 className='text-xl font-semibold text-neutral-200'>
-                      Type <span className='text-red-500'> of Agent</span>
+                      Type <span className='text-orange-500'> of Agent</span>
                     </h2>
                     <p className='text-white'>
                       Set up your agent's purpose, optional integrations and the
@@ -703,7 +704,7 @@ Always be helpful, accurate, and stay in character. Additional optional Informat
             <Card className='mr-10 mb-10 ml-10'>
               <div>
                 <h2 className='text-xl font-semibold text-neutral-200'>
-                  Knowledge <span className='text-red-500'> Base</span>
+                  Knowledge <span className='text-orange-500'> Base</span>
                 </h2>
                 <p className='text-white'>
                   Train your agent with relevant information and context.
@@ -825,7 +826,7 @@ Always be helpful, accurate, and stay in character. Additional optional Informat
                               <LinkIcon className='mt-1 h-5 w-5 text-blue-500' />
                             )}
                             {source.type === 'pdf' && (
-                              <FileText className='mt-1 h-5 w-5 text-red-500' />
+                              <FileText className='mt-1 h-5 w-5 text-orange-500' />
                             )}
                             {source.type === 'text' && (
                               <FileText className='mt-1 h-5 w-5 text-neutral-500' />
@@ -848,7 +849,7 @@ Always be helpful, accurate, and stay in character. Additional optional Informat
                           {/* Remove button */}
                           <Button
                             onClick={() => removeKnowledgeSource(source.id)}
-                            className='ml-4 text-sm text-red-400 hover:text-red-300'
+                            className='ml-4 text-sm text-orange-400 hover:text-orange-300'
                             variant='ghost'
                           >
                             Remove
@@ -948,7 +949,7 @@ Always be helpful, accurate, and stay in character. Additional optional Informat
                                 className='flex items-center gap-2'
                               >
                                 {source.type === 'pdf' && (
-                                  <FileText className='h-4 w-4 text-red-500' />
+                                  <FileText className='h-4 w-4 text-orange-500' />
                                 )}
                                 {source.type === 'url' && (
                                   <LinkIcon className='h-4 w-4 text-blue-500' />
@@ -999,7 +1000,7 @@ Always be helpful, accurate, and stay in character. Additional optional Informat
                         )}
 
                         {promptError && (
-                          <p className='mt-2 text-sm text-red-400'>
+                          <p className='mt-2 text-sm text-orange-400'>
                             {promptError}
                           </p>
                         )}

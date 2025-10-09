@@ -542,7 +542,7 @@ ${selectedDomain ? selectedDomain.prompt : ''}
                 <div className='space-y-6 p-6'>
                   <div>
                     <h2 className='text-xl font-semibold text-neutral-200'>
-                      Basic <span className='text-red-500'> Information</span>
+                      Basic <span className='text-orange-500'> Information</span>
                     </h2>
                     <p className='text-white'>
                       Update your agent&apos;s core details and personality.
@@ -625,7 +625,7 @@ ${selectedDomain ? selectedDomain.prompt : ''}
                 <div className='space-y-6 p-6'>
                   <div>
                     <h2 className='text-xl font-semibold text-neutral-200'>
-                      Type <span className='text-red-500'> of Agent</span>
+                      Type <span className='text-orange-500'> of Agent</span>
                     </h2>
                     <p className='text-white'>
                       Set up your agent's purpose, optional integrations and the
@@ -811,7 +811,7 @@ ${selectedDomain ? selectedDomain.prompt : ''}
                         )}
 
                         {promptError && (
-                          <p className='mt-2 text-sm text-red-400'>
+                          <p className='mt-2 text-sm text-orange-400'>
                             {promptError}
                           </p>
                         )}
