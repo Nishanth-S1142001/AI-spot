@@ -1,35 +1,30 @@
 'use client'
 
-import NeonBackground from '../../components/background'
-import { useState, useEffect } from 'react'
-import { useAuth } from '../../components/providers/AuthProvider'
-import { dbClient } from '../../lib/supabase/dbClient'
+import { format } from 'date-fns'
 import {
-  Bot,
-  Plus,
-  MessageSquare,
-  Calendar,
-  Instagram,
-  Globe,
-  Settings,
-  BarChart3,
-  Zap,
-  Users,
-  User,
-  ChartNoAxesColumnIncreasing,
-  TrendingUp,
   Activity,
- 
-  LogOut,
+  BarChart3,
+  Bot,
+  Calendar,
+  ChartNoAxesColumnIncreasing,
+  Globe,
   Home,
-  Aperture
+  Instagram,
+  MessageSquare,
+  Plus,
+  Settings,
+  TrendingUp,
+  User,
+  Zap
 } from 'lucide-react'
 import Link from 'next/link'
-import { format } from 'date-fns'
+import { useEffect, useState } from 'react'
+import { useAuth } from '../../components/providers/AuthProvider'
 import Sidebar from '../../components/sideBar'
-import Card from '../../components/card'
-import Button from '../../components/button'
 import SubSidebar from '../../components/subSideBar'
+import NeonBackground from '../../components/ui/background'
+import Card from '../../components/ui/card'
+import { dbClient } from '../../lib/supabase/dbClient'
 
 export default function Dashboard() {
   const { user, profile } = useAuth()

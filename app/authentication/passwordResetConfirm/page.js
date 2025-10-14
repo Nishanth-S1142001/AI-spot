@@ -1,8 +1,8 @@
 'use client'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
-import { doPasswordReset } from '../../../lib/firebase/firebaseUtils'
 import { auth } from '../../../lib/firebase/firebaseConfig'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { doPasswordReset } from '../../../lib/firebase/firebaseUtils'
 
 export default function ResetPasswordConfirmPage() {
   const searchParams = useSearchParams()

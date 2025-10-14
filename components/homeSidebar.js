@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState } from 'react'
-import { ChevronDown, PanelLeftOpen, PanelLeftClose } from 'lucide-react'
+import { ChevronDown, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { useState } from 'react'
 
 import { homeMenuItems } from '../config/menuconfig'
 

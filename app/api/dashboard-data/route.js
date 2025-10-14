@@ -17,7 +17,7 @@ export async function GET(request) {
     let totalInteractions = 0
 
     for (const agent of userAgents) {
-      const agentAnalytics = await dbClient.getAnalytics(agent.id)
+      const agentAnalytics = await dbClient.getAnalytics(agent?.id)
       agentAnalytics.forEach((record) => {
         if (record.event_type === "conversation") {
           totalConversations++

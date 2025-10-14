@@ -1,36 +1,35 @@
 'use client'
-import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { X } from 'lucide-react'
-import NeonBackground from '../components/background'
+import { useEffect, useRef, useState } from 'react'
+import NeonBackground from '../components/ui/background'
 // ... (import all lucide-react icons here)
 import {
+  Activity,
   Bot,
-  Twitter,
-  Linkedin,
-  Github,
   Eye,
   EyeOff,
+  Github,
+  Linkedin,
   Lock,
-  Mail,
-  User,
   LockKeyhole,
-  Zap,
-  Users,
-  Activity,
+  Mail,
   MessageSquare,
-  TrendingUp
+  TrendingUp,
+  Twitter,
+  User,
+  Users,
+  Zap
 } from 'lucide-react'
 
-import Button from '../components/button'
-import HyperLinks from '../components/hyperLinks'
-import FormInput from '../components/formInputField'
-
 import { useRouter, useSearchParams } from 'next/navigation'
-import NavigationHomeBar from '../components/navigationBar/homeBar'
+import NavigationBar from '../components/navigationBar/homeBar'
+import Button from '../components/ui/button'
+import FormInput from '../components/ui/formInputField'
+import HyperLinks from '../components/ui/hyperLinks'
+import Modal from '../components/ui/modal'
 
-import Card from '../components/card'
-import { supabase } from '../lib/supabase/dbClient'
 import HomeSidebar from '../components/homeSidebar'
+import Card from '../components/ui/card'
+import { supabase } from '../lib/supabase/dbClient'
 
 export default function Home() {
   // State for Sidebar
@@ -120,7 +119,7 @@ export default function Home() {
         if (error) throw error
         console.log('Success')
 
-        router.push('/dashboard') // orangeirect after login
+        router.push('/dashboard') //redirect after login
         // error
         // if successful → user is signed in   -> verification()
       } catch (err) {
@@ -140,7 +139,7 @@ export default function Home() {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
-            orangeirectTo: `${window.location.origin}/dashboard`
+            redirectTo: `${window.location.origin}/dashboard`
           }
         })
 
@@ -270,7 +269,7 @@ export default function Home() {
         setRegisterError(signUpError.message)
       } else {
         setRegisterSuccess(
-          'Registration successful! orangeirecting to login...Please login with your new corangeentials.'
+          'Registration successful! redirecting to login...Please login with your new corangeentials.'
         )
       }
 
@@ -281,7 +280,7 @@ export default function Home() {
         cpassword: ''
       })
 
-      // Optional: orangeirect after 2 seconds
+      // Optional: redirect after 2 seconds
       setTimeout(() => handleLogin(), 2000)
     } catch (err) {
       console.error('registerError during registration:', err)
@@ -312,7 +311,7 @@ export default function Home() {
   const mainContentMargin = isSidebarOpen ? 'ml-64' : 'ml-16'
   const navbarLeftPosition = isSidebarOpen ? 'left-64' : 'left-16'
   return (
-    <div className='flex h-screen overflow-hidden'>
+    <div className='flex h-screen flex-col overflow-x-hidden font-mono sm:flex-row'>
       <NeonBackground />
       <div
         className={`fixed inset-0 z-20 transition-all duration-500 ${
@@ -337,10 +336,10 @@ export default function Home() {
         - top-0 to pin to the top of the scrollable container
       */}
         <div
-          className={`fixed top-0 z-30 transition-all duration-300 ${navbarLeftPosition} right-0`}
+          className={`fixed top-0 z-30 w-full transition-all duration-300 sm:w-auto ${navbarLeftPosition} right-0`}
         >
           {/* The width of this wrapper is now dynamically calculated: 100% of the viewport MINUS the sidebar width. */}
-          <NavigationHomeBar onLoginClick={handleLogin} />
+          <NavigationBar onLoginClick={handleLogin} />
         </div>
 
         {/* IMPORTANT: Add padding to the top of the content 
@@ -352,7 +351,7 @@ export default function Home() {
         >
           {/* Hero Content (your existing content) */}
           <div
-            id='home'
+            id='/'
             className='relative flex h-screen flex-col items-center justify-center p-4'
           >
             {/* The blur effect div needs to cover the entire main content area */}
@@ -362,25 +361,26 @@ export default function Home() {
               <div className='h-[800px] w-[800px] rounded-full bg-orange-500/30 blur-[120px]' />
             </div>
             {/* <div
-              id='home-content'
-              className='relative z-10 flex h-screen flex-col items-center justify-center text-center font-extrabold'
-            >
-              <h1 className='text-[80px] text-white'>
-                Build{' '}
-                <span className='text-[100px] font-bold text-orange-600'>
-                  YOUR
-                </span>
-              </h1>
-              <h1 className='text-[80px] tracking-[0.5rem] text-white'>
-                <span className='text-[100px] font-bold text-orange-600'>
-                  NO CODE
-                </span>{' '}
-                AI AGENTS
-              </h1>
+  id='home-content'
+  className='relative z-10 flex h-screen flex-col items-center justify-center text-center font-extrabold px-4'
+>
+  <h1 className='text-4xl sm:text-6xl lg:text-8xl text-white leading-tight'>
+    Build{' '}
+    <span className='text-5xl sm:text-7xl lg:text-9xl font-bold text-orange-600'>
+      YOUR
+    </span>
+  </h1>
+  <h1 className='text-4xl sm:text-6xl lg:text-8xl tracking-wide text-white leading-tight'>
+    <span className='text-5xl sm:text-7xl lg:text-9xl font-bold text-orange-600'>
+      NO CODE
+    </span>{' '}
+    AI AGENTS
+  </h1>
 
-              <div>
-                <button
-                  className='transparant h-fit w-fit border border-orange-600 p-4 text-[80px] font-bold text-white uppercase hover:cursor-pointer hover:text-neutral-500 hover:shadow-lg hover:shadow-orange-600'
+  <div className='mt-8'>
+    <button
+      className='border border-orange-600 px-6 py-3 text-2xl sm:text-3xl lg:text-4xl font-bold text-white uppercase hover:text-neutral-500 hover:shadow-lg hover:shadow-orange-600 transition-all duration-300'
+
                   onClick={() => {
                     setIsOpen(true)
                     setIsLogin(true)
@@ -505,7 +505,7 @@ export default function Home() {
                 <h2 className='mb-16 text-left text-5xl font-extrabold text-neutral-100'>
                   Testimonials
                 </h2>
-                <div className='grid gap-10 sm:grid-cols-2'>
+                <div className='grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3'>
                   {[
                     {
                       quote:
@@ -540,7 +540,7 @@ export default function Home() {
                 <h2 className='mb-16 text-left text-5xl font-extrabold text-neutral-100'>
                   Pricing
                 </h2>
-                <div className='grid gap-10 sm:grid-cols-2 lg:grid-cols-3'>
+                <div className='grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3'>
                   {[
                     {
                       name: 'Starter',
@@ -608,7 +608,7 @@ export default function Home() {
           {/* Footer Section */}
           <footer
             id='contact'
-            className='relative z-10 bg-neutral-900 px-4 py-10 text-center text-neutral-400'
+            className='relative z-10 bg-neutral-900 px-4 py-12 text-center text-sm text-neutral-400 sm:text-base'
           >
             <div className='container mx-auto'>
               <h2 className='mb-4 text-3xl font-bold text-neutral-100'>
@@ -651,417 +651,404 @@ export default function Home() {
         {/* Modal Backdrop and Content (Your modal structure remains here) */}
         {isOpen && (
           <>
-             
-
             {/* Modal Container */}
-            <div
-              id='auth-modal'
-              className='fixed inset-0 z-50 flex items-center justify-center p-4' // Centering class added
+            <Modal
+              isOpen
+              onClose={handleClose}
+              title='Authentication'
+              size='lg'
             >
-              <div className='mx-auto flex w-[40%] max-w-lg min-w-[400px] items-center justify-center'>
-                <div className='w-full rounded-lg border border-neutral-500 bg-gradient-to-br from-neutral-900 via-black to-neutral-800 bg-cover bg-center p-8 shadow-2xl'>
-                  {/* Header */}
-                  <div className='mb-6 flex items-center justify-end'>
-                    <div
-                      onClick={handleClose}
-                      className='cursor-pointer p-1 text-gray-400 transition-colors hover:text-white'
-                      title='Close'
-                    >
-                      <X size={20} />
-                    </div>
-                  </div>
-                  {isLogin && !isReset && !isRegister && (
-                    <form
-                      className='w-full rounded-2xl bg-transparent p-8 shadow-2xl'
-                      onSubmit={onSubmit}
-                    >
-                      <div className='space-y-6'>
-                        <div className='mb-10 block text-center text-3xl font-extrabold text-white'>
-                          Get <span className='text-orange-500'>exclusive </span>access to our resources
-                        </div>
+              <div className='space-y-6'>
+                {isLogin && !isReset && !isRegister && (
+                  <form
+                    className='w-full rounded-2xl bg-transparent p-8 shadow-2xl'
+                    onSubmit={onSubmit}
+                  >
+                    <div className='space-y-6'>
+                      <div className='mb-10 block text-center text-3xl font-extrabold text-white'>
+                        Get <span className='text-orange-500'>exclusive </span>
+                        access to our resources
+                      </div>
 
-                        {/* Email */}
-                        <div className='relative'>
-                          <Mail className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
-                          <FormInput
-                            className='w-full'
-                            type='text'
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder='Email'
-                            requiorange={true}
-                          />
-                          {emailError && (
-                            <p className='mt-1 text-sm text-sky-500'>
-                              {emailError}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Password */}
-                        <div className='space-y-2'>
-                          <div className='relative'>
-                            <Lock className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
-                            <FormInput
-                              className='w-full'
-                              type={showPassword ? 'text' : 'password'}
-                              value={password}
-                              onChange={(e) => setPassword(e.target.value)}
-                              placeholder='Password'
-                              requiorange={true}
-                            />
-                            <div
-                              type='button'
-                              onClick={() => setShowPassword(!showPassword)}
-                              className='absolute top-1/2 right-4 -translate-y-1/2 transform text-gray-400 transition-colors hover:text-gray-600'
-                            >
-                              {showPassword ? (
-                                <EyeOff size={20} />
-                              ) : (
-                                <Eye size={20} />
-                              )}
-                            </div>
-                          </div>
-                          {passwordError && (
-                            <p className='mt-1 text-sm text-sky-500'>
-                              {passwordError}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Forgot Password */}
-                        <div className='flex items-center justify-end'>
-                          <HyperLinks
-                            onClick={() => {
-                              handleReset()
-                            }}
-                            text={'Forgot password?'}
-                          >
-                            Forgot password?
-                          </HyperLinks>
-                        </div>
-
-                        {/* General Error */}
-                        {errorMessage && (
-                          <span className='font-bold text-sky-500'>
-                            {errorMessage}
-                          </span>
-                        )}
-
-                        {/* Login Button */}
-                        <div className='flex justify-center'>
-                          <Button
-                            className='w-full'
-                            disabled={isSigningIn}
-                            text={isSigningIn ? 'Signing In...' : 'SIGN IN'}
-                          ></Button>
-                        </div>
-
-                        {/* Create Account */}
-                        <div className='text-center'>
-                          <HyperLinks
-                            onClick={handleSignup}
-                            text={'Have not signed up? Click here'}
-                          ></HyperLinks>
-                        </div>
-
-                        {/* Divider */}
-                        <div className='mb-6'>
-                          <div className='relative'>
-                            <div className='absolute inset-0 flex items-center'>
-                              <div className='w-full border-t border-gray-600'></div>
-                            </div>
-                            <div className='relative flex justify-center text-sm'>
-                              <span className='bg-gray-800 px-4 text-gray-400'>
-                                Or continue with
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className='flex justify-center text-center'>
-                          <Button
-                            disabled={isSigningIn}
-                            onClick={(e) => {
-                              onGoogleSignIn(e)
-                            }}
-                            className='flex h-[50px] w-full place-items-center justify-center'
-                          >
-                            <svg
-                              className='h-5 w-5'
-                              viewBox='0 0 48 48'
-                              fill='none'
-                              xmlns='http://www.w3.org/2000/svg'
-                            >
-                              <g clipPath='url(#clip0_17_40)'>
-                                <path
-                                  d='M47.532 24.5528C47.532 22.9214 47.3997 21.2811 47.1175 19.6761H24.48V28.9181H37.4434C36.9055 31.8988 35.177 34.5356 32.6461 36.2111V42.2078H40.3801C44.9217 38.0278 47.532 31.8547 47.532 24.5528Z'
-                                  fill='#4285F4'
-                                />
-                                <path
-                                  d='M24.48 48.0016C30.9529 48.0016 36.4116 45.8764 40.3888 42.2078L32.6549 36.2111C30.5031 37.675 27.7252 38.5039 24.4888 38.5039C18.2275 38.5039 12.9187 34.2798 11.0139 28.6006H3.03296V34.7825C7.10718 42.8868 15.4056 48.0016 24.48 48.0016Z'
-                                  fill='#34A853'
-                                />
-                                <path
-                                  d='M11.0051 28.6006C9.99973 25.6199 9.99973 22.3922 11.0051 19.4115V13.2296H3.03298C-0.371021 20.0112 -0.371021 28.0009 3.03298 34.7825L11.0051 28.6006Z'
-                                  fill='#FBBC04'
-                                />
-                                <path
-                                  d='M24.48 9.49932C27.9016 9.44641 31.2086 10.7339 33.6866 13.0973L40.5387 6.24523C36.2 2.17101 30.4414 -0.068932 24.48 0.00161733C15.4055 0.00161733 7.10718 5.11644 3.03296 13.2296L11.005 19.4115C12.901 13.7235 18.2187 9.49932 24.48 9.49932Z'
-                                  fill='#EA4335'
-                                />
-                              </g>
-                              <defs>
-                                <clipPath id='clip0_17_40'>
-                                  <rect width='48' height='48' fill='white' />
-                                </clipPath>
-                              </defs>
-                            </svg>
-                          </Button>
-                        </div>
-                        {googleError && (
-                          <p className='mt-2 text-center text-sm text-orange-500'>
-                            {googleError}
+                      {/* Email */}
+                      <div className='relative'>
+                        <Mail className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
+                        <FormInput
+                          className='w-full'
+                          type='text'
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder='Email'
+                          requiorange={true}
+                        />
+                        {emailError && (
+                          <p className='mt-1 text-sm text-sky-500'>
+                            {emailError}
                           </p>
                         )}
                       </div>
-                    </form>
-                  )}
 
-                  {/* Reset Password */}
-                  {isReset && !isLogin && !isRegister && (
+                      {/* Password */}
+                      <div className='space-y-2'>
+                        <div className='relative'>
+                          <Lock className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
+                          <FormInput
+                            className='w-full'
+                            type={showPassword ? 'text' : 'password'}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder='Password'
+                            requiorange={true}
+                          />
+                          <div
+                            type='button'
+                            onClick={() => setShowPassword(!showPassword)}
+                            className='absolute top-1/2 right-4 -translate-y-1/2 transform text-gray-400 transition-colors hover:text-gray-600'
+                          >
+                            {showPassword ? (
+                              <EyeOff size={20} />
+                            ) : (
+                              <Eye size={20} />
+                            )}
+                          </div>
+                        </div>
+                        {passwordError && (
+                          <p className='mt-1 text-sm text-sky-500'>
+                            {passwordError}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Forgot Password */}
+                      <div className='flex items-center justify-end'>
+                        <HyperLinks
+                          onClick={() => {
+                            handleReset()
+                          }}
+                          text={'Forgot password?'}
+                        >
+                          Forgot password?
+                        </HyperLinks>
+                      </div>
+
+                      {/* General Error */}
+                      {errorMessage && (
+                        <span className='font-bold text-sky-500'>
+                          {errorMessage}
+                        </span>
+                      )}
+
+                      {/* Login Button */}
+                      <div className='flex justify-center'>
+                        <Button
+                          className='w-full'
+                          disabled={isSigningIn}
+                          text={isSigningIn ? 'Signing In...' : 'SIGN IN'}
+                        ></Button>
+                      </div>
+
+                      {/* Create Account */}
+                      <div className='text-center'>
+                        <HyperLinks
+                          onClick={handleSignup}
+                          text={'Have not signed up? Click here'}
+                        ></HyperLinks>
+                      </div>
+
+                      {/* Divider */}
+                      <div className='mb-6'>
+                        <div className='relative'>
+                          <div className='absolute inset-0 flex items-center'>
+                            <div className='w-full border-t border-gray-600'></div>
+                          </div>
+                          <div className='relative flex justify-center text-sm'>
+                            <span className='bg-gray-800 px-4 text-gray-400'>
+                              Or continue with
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className='flex justify-center text-center'>
+                        <Button
+                          disabled={isSigningIn}
+                          onClick={(e) => {
+                            onGoogleSignIn(e)
+                          }}
+                          className='flex h-[50px] w-full place-items-center justify-center'
+                        >
+                          <svg
+                            className='h-5 w-5'
+                            viewBox='0 0 48 48'
+                            fill='none'
+                            xmlns='http://www.w3.org/2000/svg'
+                          >
+                            <g clipPath='url(#clip0_17_40)'>
+                              <path
+                                d='M47.532 24.5528C47.532 22.9214 47.3997 21.2811 47.1175 19.6761H24.48V28.9181H37.4434C36.9055 31.8988 35.177 34.5356 32.6461 36.2111V42.2078H40.3801C44.9217 38.0278 47.532 31.8547 47.532 24.5528Z'
+                                fill='#4285F4'
+                              />
+                              <path
+                                d='M24.48 48.0016C30.9529 48.0016 36.4116 45.8764 40.3888 42.2078L32.6549 36.2111C30.5031 37.675 27.7252 38.5039 24.4888 38.5039C18.2275 38.5039 12.9187 34.2798 11.0139 28.6006H3.03296V34.7825C7.10718 42.8868 15.4056 48.0016 24.48 48.0016Z'
+                                fill='#34A853'
+                              />
+                              <path
+                                d='M11.0051 28.6006C9.99973 25.6199 9.99973 22.3922 11.0051 19.4115V13.2296H3.03298C-0.371021 20.0112 -0.371021 28.0009 3.03298 34.7825L11.0051 28.6006Z'
+                                fill='#FBBC04'
+                              />
+                              <path
+                                d='M24.48 9.49932C27.9016 9.44641 31.2086 10.7339 33.6866 13.0973L40.5387 6.24523C36.2 2.17101 30.4414 -0.068932 24.48 0.00161733C15.4055 0.00161733 7.10718 5.11644 3.03296 13.2296L11.005 19.4115C12.901 13.7235 18.2187 9.49932 24.48 9.49932Z'
+                                fill='#EA4335'
+                              />
+                            </g>
+                            <defs>
+                              <clipPath id='clip0_17_40'>
+                                <rect width='48' height='48' fill='white' />
+                              </clipPath>
+                            </defs>
+                          </svg>
+                        </Button>
+                      </div>
+                      {googleError && (
+                        <p className='mt-2 text-center text-sm text-orange-500'>
+                          {googleError}
+                        </p>
+                      )}
+                    </div>
+                  </form>
+                )}
+
+                {/* Reset Password */}
+                {isReset && !isLogin && !isRegister && (
+                  <form
+                    className='w-full rounded-2xl bg-transparent p-8 shadow-2xl'
+                    onSubmit={onResetSubmit}
+                  >
+                    <div className='space-y-6'>
+                      <div className='mb-10 block text-center text-3xl font-medium text-white'>
+                        Enter your email to reset password
+                      </div>
+
+                      {/* Email */}
+                      <div className='relative'>
+                        <Mail className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
+                        <FormInput
+                          className='w-full'
+                          type='text'
+                          value={rEmail}
+                          onChange={(e) => setREmail(e.target.value)}
+                          placeholder='Email'
+                          requiorange={true}
+                        />
+                      </div>
+
+                      {/* Message */}
+                      {rSuccess && (
+                        <p className='mt-1 text-sm text-green-500'>
+                          {rSuccess}
+                        </p>
+                      )}
+                      {rError && (
+                        <p className='mt-1 text-sm text-orange-500'>{rError}</p>
+                      )}
+
+                      <div className='flex justify-center'>
+                        <Button
+                          text={isSending ? 'Sending...' : 'Send Reset Link'}
+                          disabled={!rEmail || isSending}
+                        ></Button>
+                      </div>
+                    </div>
+                  </form>
+                )}
+
+                {/* {Register} */}
+                {!isReset && !isLogin && isRegister && (
+                  <>
                     <form
                       className='w-full rounded-2xl bg-transparent p-8 shadow-2xl'
-                      onSubmit={onResetSubmit}
+                      onSubmit={onRegisterSubmit}
                     >
                       <div className='space-y-6'>
                         <div className='mb-10 block text-center text-3xl font-medium text-white'>
-                          Enter your email to reset password
+                          Get started with your account
                         </div>
 
-                        {/* Email */}
+                        {/* registerError / registerSuccess Messages */}
+                        {registerError && (
+                          <p className='text-center text-orange-500'>
+                            {registerError}
+                          </p>
+                        )}
+                        {registerSuccess && (
+                          <p className='text-center text-green-500'>
+                            {registerSuccess}
+                          </p>
+                        )}
+
+                        {/* Name Fields */}
+
                         <div className='relative'>
-                          <Mail className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
+                          <User className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
                           <FormInput
                             className='w-full'
                             type='text'
-                            value={rEmail}
-                            onChange={(e) => setREmail(e.target.value)}
-                            placeholder='Email'
+                            id='fullName'
+                            name='fullName' // Fix name prop here
+                            value={formData.fullName}
+                            onChange={handleInputChange}
+                            placeholder='Full Name'
                             requiorange={true}
                           />
                         </div>
 
-                        {/* Message */}
-                        {rSuccess && (
-                          <p className='mt-1 text-sm text-green-500'>
-                            {rSuccess}
-                          </p>
-                        )}
-                        {rError && (
-                          <p className='mt-1 text-sm text-orange-500'>{rError}</p>
-                        )}
+                        {/* Email Field with Mail Icon */}
+                        <div className='relative'>
+                          <Mail className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
+                          <FormInput
+                            className='w-full'
+                            type='email'
+                            id='email'
+                            name='email'
+                            value={formData.email}
+                            onChange={handleInputChange}
+                            requiorange={true}
+                            placeholder='Email'
+                          />
+                        </div>
 
+                        {/* Password Field with Lock + Eye Icons */}
+                        <div className='relative'>
+                          <Lock className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
+                          <FormInput
+                            className='w-full'
+                            type={showRegisterPassword ? 'text' : 'password'}
+                            id='password'
+                            name='password'
+                            value={formData.password}
+                            onChange={handleInputChange}
+                            requiorange={true}
+                            placeholder='Password'
+                          />
+                          <button
+                            type='button'
+                            onClick={() =>
+                              setshowRegisterPassword(!showRegisterPassword)
+                            }
+                            className='absolute top-1/2 right-3 -translate-y-1/2 text-gray-400'
+                          >
+                            {showRegisterPassword ? (
+                              <EyeOff className='h-5 w-5' />
+                            ) : (
+                              <Eye className='h-5 w-5' />
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Confirm Password */}
+                        <div className='relative'>
+                          <LockKeyhole className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
+                          <FormInput
+                            className='w-full'
+                            type={showRegisterCPassword ? 'text' : 'password'}
+                            id='cpassword'
+                            name='cpassword'
+                            value={formData.cpassword}
+                            onChange={handleInputChange}
+                            requiorange={true}
+                            placeholder='Confirm Password'
+                          />
+                          <button
+                            type='button'
+                            onClick={() =>
+                              setShowRegisterCPassword(!showRegisterCPassword)
+                            }
+                            className='absolute top-1/2 right-3 -translate-y-1/2 text-gray-400'
+                          >
+                            {showRegisterCPassword ? (
+                              <EyeOff className='h-5 w-5' />
+                            ) : (
+                              <Eye className='h-5 w-5' />
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Checkboxes */}
+                        <div className='space-y-3'>
+                          <div className='flex items-start space-x-3'>
+                            <input
+                              type='checkbox'
+                              id='terms'
+                              checked={agreeToTerms}
+                              onChange={(e) =>
+                                setAgreeToTerms(e.target.checked)
+                              }
+                              className='mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500'
+                              requiorange
+                            />
+                            <label
+                              htmlFor='terms'
+                              className='text-lg leading-relaxed text-white'
+                            >
+                              By creating an account I agree to our{' '}
+                              <a
+                                href='#'
+                                className='text-blue-400 hover:underline'
+                              >
+                                Terms of Use
+                              </a>{' '}
+                              and{' '}
+                              <a
+                                href='#'
+                                className='text-blue-400 hover:underline'
+                              >
+                                Privacy Policy
+                              </a>
+                            </label>
+                          </div>
+                          <div className='flex items-start space-x-3'>
+                            <input
+                              type='checkbox'
+                              id='sms'
+                              checked={agreeToSMS}
+                              onChange={(e) => setAgreeToSMS(e.target.checked)}
+                              className='mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500'
+                            />
+                            <label
+                              htmlFor='sms'
+                              className='text-lg leading-relaxed text-white'
+                            >
+                              By creating an account I am also consenting to
+                              receive SMS messages and emails, including product
+                              new feature updates, events, and marketing
+                              promotions.
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* Submit Button */}
                         <div className='flex justify-center'>
                           <Button
-                            text={isSending ? 'Sending...' : 'Send Reset Link'}
-                            disabled={!rEmail || isSending}
+                            className='w-full'
+                            type='submit'
+                            disabled={isRegistering}
+                            text={isRegistering ? 'Signing Up...' : 'Sign Up'}
                           ></Button>
+                        </div>
+
+                        {/* Login Link */}
+                        <div className='text-center'>
+                          <HyperLinks
+                            className='text-lg font-medium text-gray-600 hover:text-blue-600 hover:underline'
+                            onClick={handleLogin}
+                            text={'Already have an account? Log in'}
+                          ></HyperLinks>
                         </div>
                       </div>
                     </form>
-                  )}
-
-                  {/* {Register} */}
-                  {!isReset && !isLogin && isRegister && (
-                    <>
-                      <form
-                        className='w-full rounded-2xl bg-transparent p-8 shadow-2xl'
-                        onSubmit={onRegisterSubmit}
-                      >
-                        <div className='space-y-6'>
-                          <div className='mb-10 block text-center text-3xl font-medium text-white'>
-                            Get started with your account
-                          </div>
-
-                          {/* registerError / registerSuccess Messages */}
-                          {registerError && (
-                            <p className='text-center text-orange-500'>
-                              {registerError}
-                            </p>
-                          )}
-                          {registerSuccess && (
-                            <p className='text-center text-green-500'>
-                              {registerSuccess}
-                            </p>
-                          )}
-
-                          {/* Name Fields */}
-
-                          <div className='relative'>
-                            <User className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
-                            <FormInput
-                              className='w-full'
-                              type='text'
-                              id='fullName'
-                              name='fullName' // Fix name prop here
-                              value={formData.fullName}
-                              onChange={handleInputChange}
-                              placeholder='Full Name'
-                              requiorange={true}
-                            />
-                          </div>
-
-                          {/* Email Field with Mail Icon */}
-                          <div className='relative'>
-                            <Mail className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
-                            <FormInput
-                              className='w-full'
-                              type='email'
-                              id='email'
-                              name='email'
-                              value={formData.email}
-                              onChange={handleInputChange}
-                              requiorange={true}
-                              placeholder='Email'
-                            />
-                          </div>
-
-                          {/* Password Field with Lock + Eye Icons */}
-                          <div className='relative'>
-                            <Lock className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
-                            <FormInput
-                              className='w-full'
-                              type={showRegisterPassword ? 'text' : 'password'}
-                              id='password'
-                              name='password'
-                              value={formData.password}
-                              onChange={handleInputChange}
-                              requiorange={true}
-                              placeholder='Password'
-                            />
-                            <button
-                              type='button'
-                              onClick={() =>
-                                setshowRegisterPassword(!showRegisterPassword)
-                              }
-                              className='absolute top-1/2 right-3 -translate-y-1/2 text-gray-400'
-                            >
-                              {showRegisterPassword ? (
-                                <EyeOff className='h-5 w-5' />
-                              ) : (
-                                <Eye className='h-5 w-5' />
-                              )}
-                            </button>
-                          </div>
-
-                          {/* Confirm Password */}
-                          <div className='relative'>
-                            <LockKeyhole className='absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400' />
-                            <FormInput
-                              className='w-full'
-                              type={showRegisterCPassword ? 'text' : 'password'}
-                              id='cpassword'
-                              name='cpassword'
-                              value={formData.cpassword}
-                              onChange={handleInputChange}
-                              requiorange={true}
-                              placeholder='Confirm Password'
-                            />
-                            <button
-                              type='button'
-                              onClick={() =>
-                                setShowRegisterCPassword(!showRegisterCPassword)
-                              }
-                              className='absolute top-1/2 right-3 -translate-y-1/2 text-gray-400'
-                            >
-                              {showRegisterCPassword ? (
-                                <EyeOff className='h-5 w-5' />
-                              ) : (
-                                <Eye className='h-5 w-5' />
-                              )}
-                            </button>
-                          </div>
-
-                          {/* Checkboxes */}
-                          <div className='space-y-3'>
-                            <div className='flex items-start space-x-3'>
-                              <input
-                                type='checkbox'
-                                id='terms'
-                                checked={agreeToTerms}
-                                onChange={(e) =>
-                                  setAgreeToTerms(e.target.checked)
-                                }
-                                className='mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500'
-                                requiorange
-                              />
-                              <label
-                                htmlFor='terms'
-                                className='text-lg leading-relaxed text-white'
-                              >
-                                By creating an account I agree to our{' '}
-                                <a
-                                  href='#'
-                                  className='text-blue-400 hover:underline'
-                                >
-                                  Terms of Use
-                                </a>{' '}
-                                and{' '}
-                                <a
-                                  href='#'
-                                  className='text-blue-400 hover:underline'
-                                >
-                                  Privacy Policy
-                                </a>
-                              </label>
-                            </div>
-                            <div className='flex items-start space-x-3'>
-                              <input
-                                type='checkbox'
-                                id='sms'
-                                checked={agreeToSMS}
-                                onChange={(e) =>
-                                  setAgreeToSMS(e.target.checked)
-                                }
-                                className='mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500'
-                              />
-                              <label
-                                htmlFor='sms'
-                                className='text-lg leading-relaxed text-white'
-                              >
-                                By creating an account I am also consenting to
-                                receive SMS messages and emails, including
-                                product new feature updates, events, and
-                                marketing promotions.
-                              </label>
-                            </div>
-                          </div>
-
-                          {/* Submit Button */}
-                          <div className='flex justify-center'>
-                            <Button
-                              className='w-full'
-                              type='submit'
-                              disabled={isRegistering}
-                              text={isRegistering ? 'Signing Up...' : 'Sign Up'}
-                            ></Button>
-                          </div>
-
-                          {/* Login Link */}
-                          <div className='text-center'>
-                            <HyperLinks
-                              className='text-lg font-medium text-gray-600 hover:text-blue-600 hover:underline'
-                              onClick={handleLogin}
-                              text={'Already have an account? Log in'}
-                            ></HyperLinks>
-                          </div>
-                        </div>
-                      </form>
-                    </>
-                  )}
-                </div>
+                  </>
+                )}
               </div>
-            </div>
+            </Modal>
           </>
         )}
       </div>

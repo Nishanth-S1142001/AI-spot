@@ -1,47 +1,44 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
-import NeonBackground from '../../../../components/background'
-import { useRouter, useParams } from 'next/navigation'
-import Link from 'next/link'
-
-import { dbClient } from '../../../../lib/supabase/dbClient'
-import { useAuth } from '../../../../components/providers/AuthProvider'
-
-import { updateAgent } from '../../../actions/agents'
-
-import Button from '../../../../components/button'
-
 import {
-  BarChart3,
   Aperture,
   ArrowLeft,
-  ChartNoAxesColumnIncreasing,
-  Zap,
-  Settings,
-  User,
-  Home,
-  SendHorizonal,
+ 
   Globe,
-  RefreshCw,
   LoaderPinwheel,
-  Bot
+  RefreshCw,
+  SendHorizonal,
+  Settings,
+  User
 } from 'lucide-react'
+import Link from 'next/link'
+import { useParams, useRouter } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
+import { useAuth } from '../../../../components/providers/AuthProvider'
+import NeonBackground from '../../../../components/ui/background'
+import Button from '../../../../components/ui/button'
+import { dbClient } from '../../../../lib/supabase/dbClient'
+import { updateAgent } from '../../../actions/agents'
+import LoadingState from '../../../../components/common/loading-state'
+ 
+// Generate a random, simple Session ID for the playground testing
+const generateSessionId = () => Math.random().toString(36).substring(2, 15)
 
 export default function AgentTest() {
   const router = useRouter()
   const chatEndRef = useRef(null)
   const chatButtonRef = useRef(null)
   const instructionsButtonRef = useRef(null)
-
   const { id } = useParams()
   const { user, profile, loading } = useAuth()
-
   const [agent, setAgent] = useState(null)
   const [fetching, setFetching] = useState(true)
   const [loadingResponse, setLoadingResponse] = useState(false)
   const [typingDots, setTypingDots] = useState('')
   const [error, setError] = useState('')
+
+  // State to hold a unique session ID for the playground
+  const [sessionId, setSessionId] = useState(generateSessionId())
 
   const [prompt, setPrompt] = useState('')
   const [chatMessages, setChatMessages] = useState([
@@ -59,27 +56,25 @@ export default function AgentTest() {
 
   const getPurposeIcon = (purpose) => {
     switch (purpose) {
-      //   case 'instagram':
-      //     return <Instagram className="h-5 w-5 text-pink-500" />
-      //   case 'messenger':
-      //     return <MessageSquare className="h-5 w-5 text-blue-500" />
-      //   case 'calendar':
-      //     return <Calendar className="h-5 w-5 text-green-500" />
       case 'website':
         return <Globe className='h-5 w-5 text-purple-500' />
-      //   default:
-      //     return <Bot className="h-5 w-5 text-gray-500" />
+      default:
+        return <Aperture className='h-5 w-5 text-gray-500' /> // Added default case
     }
   }
 
   const fetchAgentData = async () => {
     try {
       setFetching(true)
+      // Note: Assuming dbClient.getAgent requires agentId and optional userId for access check
       const agentData = await dbClient.getAgent(id, user.id)
       if (!agentData) throw new Error('Agent not found or access denied')
       setAgent(agentData)
+      // Note: The system_prompt is handled on the server. botBody now only holds the knowledge base for display/editing.
       setPrompt(agentData.system_prompt)
-      setBotBody(agentData.knowledge_base)
+      // The API server uses 'knowledge_sources', but the UI state uses 'knowledge_base'
+      // We will assume agentData.knowledge_base is what the UI should display/edit
+      setBotBody(agentData.knowledge_base || '')
     } catch (err) {
       console.error(err)
       setError(err.message)
@@ -91,18 +86,7 @@ export default function AgentTest() {
   useEffect(() => {
     if (id && user && !agent) fetchAgentData()
     else setFetching(false)
-  }, [id, user, agent])
-
-  useEffect(() => {
-    if (loadingResponse) {
-      const interval = setInterval(() => {
-        setTypingDots((prev) => (prev.length < 3 ? prev + '.' : ''))
-      }, 500)
-      return () => clearInterval(interval)
-    } else {
-      setTypingDots('')
-    }
-  }, [loadingResponse])
+  }, [id, user]) // Removed 'agent' from dependency array to prevent infinite loop
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -117,31 +101,43 @@ export default function AgentTest() {
 
   const sendChatMessage = async () => {
     if (!chatInput.trim() || !agent) return
-    setChatMessages((prev) => [...prev, { role: 'user', content: chatInput }])
+
+    const userMessage = chatInput
+    setChatMessages((prev) => [...prev, { role: 'user', content: userMessage }])
     setChatInput('')
     setLoadingResponse(true)
     setError('')
 
     try {
-      const res = await fetch('/api/chat', {
+      console.log('Sending message to agent ID:', id, 'Session ID:', sessionId)
+      const res = await fetch(`/api/agents/${id}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userInput: chatInput,
-          context: botBody,
-          prompt
+          message: userMessage,
+          sessionId: sessionId,
+          userId: user?.id,
+          metadata: { playground: true }
         })
       })
+
       const data = await res.json()
+      const botResponseContent = data.response || '⚠️ No response from bot'
+
+      if (data.error) setError(data.error)
+
+      // Update UI
       setChatMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: data.answer || '⚠️ No response from bot' }
+        { role: 'assistant', content: botResponseContent }
       ])
+
+      // Save to database
     } catch (err) {
       console.error(err)
       setChatMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: '⚠️ Error fetching response' }
+        { role: 'assistant', content: '⚠️ Unexpected network error.' }
       ])
     } finally {
       setLoadingResponse(false)
@@ -152,31 +148,42 @@ export default function AgentTest() {
     if (!instructionsInput.trim() || !agent) return
     setError('')
     setBodyResponse(true)
-
-    const newMessages = [...instructionMessages, instructionsInput].slice(
-      -MAX_INSTRUCTIONS
+    const instructionText = instructionsInput
+    setInstructionMessages((prev) =>
+      [...prev, instructionText].slice(-MAX_INSTRUCTIONS)
     )
-    setInstructionMessages(newMessages)
     setInstructionsInput('')
 
+    // --- REFACTORED INSTRUCTIONS LOGIC to use API ---
     try {
-      const res = await fetch('/api/botInstructions', {
+      // NOTE: We assume a new API endpoint like /api/agents/[id]/knowledge
+      // or /api/agents/[id]/update-knowledge is created for this.
+      const res = await fetch(`/api/agents/${id}/knowledge-update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          instructions: newMessages,
-          content: agent?.knowledge_base
+          // Send the new instruction and the current knowledge base
+          instruction: instructionText,
+          currentKnowledge: botBody,
+          userId: user?.id
         })
       })
+
       const data = await res.json()
 
       if (data.error) {
         console.error('Bot update error:', data.error)
         alert('Error updating bot: ' + data.error)
       } else {
-        const { content: updatedContent } = data
-        setBotBody(updatedContent || '')
-        await updateAgent(agent?.id, { knowledge_base: updatedContent })
+        const { knowledge_base: updatedContent } = data // Assume API returns updated content in 'knowledge_base'
+
+        if (updatedContent) {
+          setBotBody(updatedContent)
+          // Use the existing client-side action to persist to the DB after AI processing
+          await updateAgent(agent?.id, { knowledge_base: updatedContent })
+        } else {
+          alert('Bot knowledge update failed: No content returned.')
+        }
       }
     } catch (err) {
       console.error('Bot Body error:', err)
@@ -184,29 +191,28 @@ export default function AgentTest() {
     } finally {
       setBodyResponse(false)
     }
+    // --- END REFACTORED INSTRUCTIONS LOGIC ---
   }
 
   const refreshChat = () => {
+    // Generate a new Session ID to ensure a fresh conversation history on the server
+    setSessionId(generateSessionId())
     setChatMessages([
       { role: 'assistant', content: 'Hi! How can I help you today?' }
     ])
   }
 
-  if (loading || fetching) {
+  if (loading) {
     return (
-      <div className='flex min-h-screen items-center justify-center bg-neutral-900 font-mono'>
-        <div className='text-center'>
-          <Aperture className='mx-auto mb-4 h-12 w-12 animate-spin text-neutral-400' />
-          <p className='text-lg text-neutral-400'>Loading ...</p>
-          <p className='text-lg text-neutral-400'>
-            Refresh if it takes time...
-          </p>
-        </div>
-      </div>
+      <LoadingState
+        message='Loading... (Refresh the window if delayed)'
+        className='min-h-screen'
+      />
     )
   }
 
-  if (error) {
+  if (error && !loadingResponse) {
+    // Only show full error if not actively loading a response
     return (
       <div className='flex min-h-screen items-center justify-center bg-neutral-900 font-mono text-orange-500'>
         <p>{error}</p>
@@ -214,6 +220,7 @@ export default function AgentTest() {
     )
   }
 
+  // The rest of the UI is unchanged
   return (
     <div className='flex h-screen overflow-hidden font-mono'>
       <NeonBackground />
@@ -230,7 +237,9 @@ export default function AgentTest() {
           <div className='flex items-center space-x-4'>
             <div className='text-lg'>
               Credits:{' '}
-              <span className='font-semibold text-neutral-400'>{profile?.api_credits}</span>
+              <span className='font-semibold text-neutral-400'>
+                {profile?.api_credits}
+              </span>
             </div>
             <Link href='/settings'>
               <Settings className='h-6 w-6 text-neutral-400 hover:text-neutral-200' />
@@ -259,19 +268,16 @@ export default function AgentTest() {
                     msg.role === 'user' ? 'justify-end' : 'justify-start'
                   }`}
                 >
-                  {/* Assistant Icon */}
-                  {msg.role === 'assistant' &&
-                    (idx === chatMessages.length - 1 && loadingResponse ? (
-                      <LoaderPinwheel className='mt-1 h-5 w-5 animate-spin text-orange-600' />
-                    ) : (
-                      <></>
-                    ))}
-                  {msg.role === 'assistant' &&
-                    (idx === chatMessages.length - 1 && !loadingResponse ? (
-                      <LoaderPinwheel className='mt-1 h-5 w-5 text-orange-600' />
-                    ) : (
-                      <LoaderPinwheel className='mt-1 h-5 w-5 text-orange-600' />
-                    ))}
+                  {/* Assistant Icon - Simplified for cleaner JSX */}
+                  {msg.role === 'assistant' && (
+                    <LoaderPinwheel
+                      className={`mt-1 h-5 w-5 text-orange-600 ${
+                        idx === chatMessages.length - 1 && loadingResponse
+                          ? 'animate-spin'
+                          : ''
+                      }`}
+                    />
+                  )}
 
                   {/* Chat Bubble */}
                   <div
@@ -285,15 +291,16 @@ export default function AgentTest() {
                   </div>
 
                   {/* Optional: user side icon (for symmetry) */}
+                  {/* {msg.role === 'user' && <User className='mt-1 h-5 w-5 text-neutral-400' />} */}
                 </div>
               ))}
 
-              {/* Bot typing animation */}
-              {loadingResponse && (
+              {/* Bot typing animation is handled by the last message's icon now, but keeping this for potential future use */}
+              {/* {loadingResponse && (
                 <div className='flex items-end space-x-2'>
                   <LoaderPinwheel className='h-5 w-5 animate-spin text-orange-600' />
                 </div>
-              )}
+              )} */}
 
               <div ref={chatEndRef} />
             </div>
@@ -311,15 +318,17 @@ export default function AgentTest() {
                       chatButtonRef.current?.click()
                     }
                   }}
-                  disabled={bodyResponse}
+                  disabled={loadingResponse || bodyResponse}
                 />
                 <button
                   ref={chatButtonRef}
                   onClick={sendChatMessage}
-                  disabled={!chatInput}
-                  className='rounded-r-lg px-4 py-2 text-white disabled:cursor-none'
+                  disabled={
+                    !chatInput.trim() || loadingResponse || bodyResponse
+                  }
+                  className='rounded-r-lg px-4 py-2 text-white disabled:opacity-50'
                 >
-                  <SendHorizonal className='h-8 w-8 text-neutral-400 hover:cursor-pointer' />
+                  <SendHorizonal className='h-8 w-8 text-neutral-400 hover:cursor-pointer hover:text-cyan-400' />
                 </button>
               </div>
             </div>
@@ -346,7 +355,7 @@ export default function AgentTest() {
                         : 'bg-orange-500 text-orange-800'
                     }`}
                   >
-                    {/* {agent.is_active ? 'Active' : 'Inactive'} */}
+                    {/* Status indicator - visual only */}
                   </div>
                 </div>
               </div>
@@ -381,14 +390,17 @@ export default function AgentTest() {
                     instructionsButtonRef.current?.click()
                   }
                 }}
+                disabled={loadingResponse || bodyResponse}
               />
               <button
                 ref={instructionsButtonRef}
                 onClick={sendInstructions}
-                disabled={!instructionsInput}
-                className='rounded-r-lg px-4 py-2 text-white disabled:cursor-none'
+                disabled={
+                  !instructionsInput.trim() || loadingResponse || bodyResponse
+                }
+                className='rounded-r-lg px-4 py-2 text-white disabled:opacity-50'
               >
-                <SendHorizonal className='h-8 w-8 text-neutral-400 hover:cursor-pointer' />
+                <SendHorizonal className='h-8 w-8 text-neutral-400 hover:cursor-pointer hover:text-cyan-400' />
               </button>
             </div>
           </div>

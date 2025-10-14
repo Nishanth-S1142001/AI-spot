@@ -1,9 +1,9 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
-import { dbClient } from '../../lib/supabase/dbClient' // client-safe helpers
-import { createSupabaseClient } from '../../lib/supabase/supabaseClient'
 import { useRouter } from 'next/navigation'
+import { createContext, useContext, useEffect, useState } from 'react'
+import { dbClient } from '../../lib/supabase/dbClient'; // client-safe helpers
+import { createSupabaseClient } from '../../lib/supabase/supabaseClient'
 
 const AuthContext = createContext({})
 

@@ -1,14 +1,14 @@
 'use client'
 
-import React, { useState } from 'react'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import {
   // Removed MousePointer as it's no longer used
   ChevronDown,
-  PanelLeftOpen,
-  PanelLeftClose
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { useState } from 'react'
 
 export default function Sidebar({ menuItems, activeMenu, onSelect }) {
   const pathname = usePathname()

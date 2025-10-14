@@ -1,29 +1,28 @@
 // menuConfig.js
 import {
-  Home,
-  User,
-  Settings,
-  BadgeQuestionMark,
-  LayoutDashboard,
-  BarChart3,
   Activity,
-  Bot,
-  Bell,
-  MessageCircle,
-  Telescope,
-  Blocks,
   BadgeInfo,
-  MessagesSquare,
-  Sigma,
-  MessageSquareMore,
+  BadgeQuestionMark,
+  BarChart3,
+  Bell,
+  Blocks,
+  Bot,
   CloudCheck,
   CreditCard,
-  Workflow,
-  Slack,
+  Home,
+  LayoutDashboard,
+  MessageCircle,
+  MessageSquareMore,
+  MessagesSquare,
+  Podcast,
   ReceiptIndianRupee,
-  Podcast
+  Settings,
+  Sigma,
+  Slack,
+  Telescope,
+  User,
+  Workflow
 } from 'lucide-react'
-import { href } from 'react-router-dom'
 
 export const menuItems = [
   {
@@ -136,8 +135,8 @@ export const subMenuItems = {
           icon: <CloudCheck className='text-orange-500' size={16} />
         },
         {
-          name: 'Corangeits Used',
-          href: '/mini-analysis/corangeitsUsed',
+          name: 'Credits Used',
+          href: '/mini-analysis/CreditsUsed',
           icon: <CreditCard className='text-orange-500' size={16} />
         }
       ]

@@ -1,51 +1,31 @@
 'use client'
 
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '../../../components/providers/AuthProvider'
-import { dbClient } from '../../../lib/supabase/dbClient'
-import { createAgent, addKnowledgeSource } from '../../actions/agents'
+import { useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import toast from 'react-hot-toast'
+import { useAuth } from '../../../components/providers/AuthProvider'
+import { addKnowledgeSource, createAgent } from '../../actions/agents'
 
-import Card from '../../../components/card'
-import Button from '../../../components/button'
-import FormInput from '../../../components/formInputField'
-import hyperLink from '../../../components/hyperLinks'
 import FormTextarea from '../../../components/textBox'
-import { FilePond } from 'react-filepond'
+import Button from '../../../components/ui/button'
+import Card from '../../../components/ui/card'
+import FormInput from '../../../components/ui/formInputField'
 
 import {
-  Bot,
-  Paperclip,
-  Upload,
+  Aperture,
+  ArrowLeft,
+   
   CircleArrowLeft,
   CircleArrowRightIcon,
-  Ban,
-  Link as LinkIcon,
   FileText,
-  Instagram,
-  MessageSquare,
-  Calendar,
   Globe,
-  ArrowLeft,
-  Save,
-  Smartphone,
-  Eye,
-  Plus,
-  Settings,
-  BarChart3,
-  Zap,
-  User,
-  ChartNoAxesColumnIncreasing,
-  TrendingUp,
-  Activity,
-  Home,
-  Aperture
+  Link as LinkIcon,
+  Paperclip,
+  Save
 } from 'lucide-react'
-import NeonBackground from '../../../components/background'
-import SideBarLayout from '../../../components/sideBarLayout'
-
+import NeonBackground from '../../../components/ui/background'
+import LoadingState from '../../../components/common/loading-state'
 export default function CreateAgent() {
   const { user, profile, loading } = useAuth()
   const router = useRouter()
@@ -68,7 +48,7 @@ export default function CreateAgent() {
   const [scrapedSummary, setScrapedSummary] = useState([])
 
   const purposes = [
-    { id: 'website', name: 'Website Bot', icon: Globe, color: 'gray' }
+    { id: 'website', name: 'Website', icon: Globe, color: 'gray' }
   ]
 
   const tones = [
@@ -388,7 +368,7 @@ Help users draw meaningful conclusions and make data-driven decisions.`
       }
       // Save knowledge sources
       for (const source of formData.knowledgeSources) {
-        await addKnowledgeSource(agent.id, {
+        await addKnowledgeSource(agent?.id, {
           source_type: source.type,
           source_url: source.type === 'url' ? source.name : null,
           file_name: source.type === 'pdf' ? source.name : null,
@@ -399,7 +379,7 @@ Help users draw meaningful conclusions and make data-driven decisions.`
       }
 
       toast.success('Agent created successfully!')
-      router.push(`/agents/${agent.id}`)
+      router.push(`/agents/${agent?.id}`)
     } catch (error) {
       console.error('Error creating agent:', error)
       toast.error('Failed to create agent')
@@ -407,24 +387,19 @@ Help users draw meaningful conclusions and make data-driven decisions.`
       setFetching(false)
     }
   }
-  if (loading || fetching) {
+  if (loading) {
     return (
-      <div className='flex min-h-screen items-center justify-center bg-neutral-900 font-mono'>
-        <div className='text-center'>
-          <Aperture className='mx-auto mb-4 h-12 w-12 animate-spin text-neutral-400' />
-          <p className='text-lg text-neutral-400'>Loading ...</p>
-          <p className='text-lg text-neutral-400'>
-            Refresh the window if it takes time...
-          </p>
-        </div>
-      </div>
+      <LoadingState
+        message='Loading... (Refresh the window if delayed)'
+        className='min-h-screen'
+      />
     )
   }
   //This will generate system prompt
   const generateSystemPrompt = () => {
     const purposeInstructions = {
       website:
-        'You are a website customer support agent. Answer questions and provide assistance to website visitors.'
+        'You are a website customer support agent?. Answer questions and provide assistance to website visitors.'
     }
 
     return `Your name is ${formData.name} You are an AI ${formData.domain} assistant with a ${formData.tone} tone. 
@@ -605,7 +580,7 @@ Always be helpful, accurate, and stay in character. Additional optional Informat
                     </h2>
                     <p className='text-white'>
                       Set up your agent's purpose, optional integrations and the
-                      tone of your agent.
+                      tone of your agent?.
                     </p>
                   </div>
 
@@ -784,7 +759,7 @@ Always be helpful, accurate, and stay in character. Additional optional Informat
                       className='w-full'
                       value={knowledgeText}
                       onChange={(e) => setKnowledgeText(e.target.value)}
-                      placeholder='Paste or type information for your agent...'
+                      placeholder='Paste or type information for your agent?...'
                       rows={4}
                       id='knowledgeText'
                     />
@@ -897,7 +872,7 @@ Always be helpful, accurate, and stay in character. Additional optional Informat
                     </h2>
                     <p className='text-neutral-400'>
                       Make sure everything looks correct before creating your
-                      agent.
+                      agent?.
                     </p>
                   </div>
 
@@ -1057,7 +1032,7 @@ Always be helpful, accurate, and stay in character. Additional optional Informat
                             'Creating...'
                           ) : (
                             <>
-                              <Bot className='mr-2 h-4 w-4' />
+                              <Aperture className='mr-2 h-4 w-4' />
                               Create Agent
                             </>
                           )}

@@ -1,21 +1,21 @@
 'use client'
 
-import NeonBackground from '../../components/background'
-import { useState, useEffect } from 'react'
-import { useAuth } from '../../components/providers/AuthProvider'
-import { dbClient } from '../../lib/supabase/dbClient'
 import {
+  Aperture,
   Bot,
-  MessageSquare,
   Calendar,
-  Instagram,
   Globe,
+  Instagram,
+  MessageSquare,
   Settings,
-  User,
-  Aperture
+  User
 } from 'lucide-react'
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
+import { useAuth } from '../../components/providers/AuthProvider'
 import SideBarLayout from '../../components/sideBarLayout'
+import NeonBackground from '../../components/ui/background'
+import { dbClient } from '../../lib/supabase/dbClient'
 
 export default function Dashboard() {
   const { user, profile, loading } = useAuth()
@@ -43,7 +43,7 @@ export default function Dashboard() {
       let totalInteractions = 0
 
       for (const agent of userAgents) {
-        const agentAnalytics = await dbClient.getAnalytics(agent.id)
+        const agentAnalytics = await dbClient.getAnalytics(agent?.id)
         agentAnalytics.forEach((record) => {
           if (record.event_type === 'conversation') {
             totalConversations++
@@ -129,11 +129,11 @@ export default function Dashboard() {
       {/* Remove 'h-screen' and 'overflow-hidden' from main div, let SideBarLayout handle it */}
       <SideBarLayout>
         {/* Everything inside SideBarLayout is rendered as {children} */}
-        <div className='relative w-full flex-1 font-mono text-neutral-100'>
+        <div className='relative w-full flex-1 font-mono  text-neutral-100'>
           {/* Header is here */}
-          <div className='sticky top-0 z-20 flex h-16 items-center justify-between border-b border-neutral-700 backdrop-blur-sm'>
+          <div className='sticky top-0 z-20 flex h-16 items-center justify-between  mt-2  backdrop-blur-sm px-4' >
             {/* Added a sticky header with dark transparent background to float over scrolling content */}
-            <span className='text-xl font-bold'>AgentBuilder</span>
+            <span className='text-xl font-bold'>Spot</span>
             <div className='flex items-center space-x-4'>
               <div className='text-lg'>
                 Credits:{' '}

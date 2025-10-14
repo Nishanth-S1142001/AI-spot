@@ -1,50 +1,26 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { useAuth } from '../../../../components/providers/AuthProvider'
-import { dbClient } from '../../../../lib/supabase/dbClient'
-import { addKnowledgeSource } from '../../../actions/agents'
+import { useEffect, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import toast from 'react-hot-toast'
-import { updateAgent } from '../../../actions/agents'
-import Card from '../../../../components/card'
-import Button from '../../../../components/button'
-import FormInput from '../../../../components/formInputField'
-import hyperLink from '../../../../components/hyperLinks'
+import { useAuth } from '../../../../components/providers/AuthProvider'
 import FormTextarea from '../../../../components/textBox'
-import { FilePond } from 'react-filepond'
-
+import Button from '../../../../components/ui/button'
+import Card from '../../../../components/ui/card'
+import FormInput from '../../../../components/ui/formInputField'
+import { dbClient } from '../../../../lib/supabase/dbClient'
+import { addKnowledgeSource, updateAgent } from '../../../actions/agents'
+import LoadingState from '../../../../components/common/loading-state'
 import {
-  Bot,
-  Paperclip,
-  Upload,
+  Aperture,
+  ArrowLeft,
   CircleArrowLeft,
   CircleArrowRightIcon,
-  Ban,
-  Link as LinkIcon,
-  FileText,
-  Instagram,
-  MessageSquare,
-  Calendar,
   Globe,
-  ArrowLeft,
-  Save,
-  Smartphone,
-  Eye,
-  Plus,
-  Settings,
-  BarChart3,
-  Zap,
-  User,
-  ChartNoAxesColumnIncreasing,
-  TrendingUp,
-  Activity,
-  Home,
-  Aperture
+  Save
 } from 'lucide-react'
-import NeonBackground from '../../../../components/background'
-import SideBarLayout from '../../../../components/sideBarLayout'
+import NeonBackground from '../../../../components/ui/background'
 
 export default function EditAgent() {
   const { id } = useParams()
@@ -71,7 +47,7 @@ export default function EditAgent() {
   const [knowledgeSources, setKnowledgeSources] = useState([])
   const [isEditing, setIsEditing] = useState(false)
   const purposes = [
-    { id: 'website', name: 'Website Bot', icon: Globe, color: 'gray' }
+    { id: 'website', name: 'Website', icon: Globe, color: 'gray' }
   ]
 
   const tones = [
@@ -101,7 +77,7 @@ export default function EditAgent() {
   //     icon: Calendar,
   //     color: 'gray',
   //     description:
-  //       'Add a calendar widget to your bot to book events, or meetings....'
+  //       'Add a calendar widget to your Aperture to book events, or meetings....'
   //   },
   //   {
   //     id: 'none',
@@ -215,7 +191,7 @@ Help users draw meaningful conclusions and make data-driven decisions.`
   const generateSystemPrompt = () => {
     const purposeInstructions = {
       website:
-        'You are a website customer support agent. Answer questions and provide assistance to website visitors.'
+        'You are a website customer support agent?. Answer questions and provide assistance to website visitors.'
     }
 
     // ✅ Find the domain object based on selected ID
@@ -437,7 +413,7 @@ ${selectedDomain ? selectedDomain.prompt : ''}
       await updateAgent(id, updates)
       toast.success('Agent updated successfully!')
       console.log('agentData', agent, 'userid', user.id)
-      router.push(`/agents/${agent.id}`)
+      router.push(`/agents/${agent?.id}`)
     } catch (error) {
       console.error('Error updating agent:', error)
       toast.error('Failed to update agent')
@@ -452,17 +428,13 @@ ${selectedDomain ? selectedDomain.prompt : ''}
       setDraft(generated)
     }
   }, [formData, step])
-  if (loading || fetching) {
+
+  if (loading) {
     return (
-      <div className='flex min-h-screen items-center justify-center bg-neutral-900 font-mono'>
-        <div className='text-center'>
-          <Aperture className='mx-auto mb-4 h-12 w-12 animate-spin text-neutral-400' />
-          <p className='text-lg text-neutral-400'>Loading ...</p>
-          <p className='text-lg text-neutral-400'>
-            Refresh the window if it takes time...
-          </p>
-        </div>
-      </div>
+      <LoadingState
+        message='Loading... (Refresh the window if delayed)'
+        className='min-h-screen'
+      />
     )
   }
   //This will generate system prompt
@@ -542,7 +514,8 @@ ${selectedDomain ? selectedDomain.prompt : ''}
                 <div className='space-y-6 p-6'>
                   <div>
                     <h2 className='text-xl font-semibold text-neutral-200'>
-                      Basic <span className='text-orange-500'> Information</span>
+                      Basic{' '}
+                      <span className='text-orange-500'> Information</span>
                     </h2>
                     <p className='text-white'>
                       Update your agent&apos;s core details and personality.
@@ -629,7 +602,7 @@ ${selectedDomain ? selectedDomain.prompt : ''}
                     </h2>
                     <p className='text-white'>
                       Set up your agent's purpose, optional integrations and the
-                      tone of your agent.
+                      tone of your agent?.
                     </p>
                   </div>
 
@@ -739,7 +712,7 @@ ${selectedDomain ? selectedDomain.prompt : ''}
                     </h2>
                     <p className='text-neutral-400'>
                       Make sure everything looks correct before creating your
-                      agent.
+                      agent?.
                     </p>
                   </div>
 
@@ -868,7 +841,7 @@ ${selectedDomain ? selectedDomain.prompt : ''}
                             'Updating...'
                           ) : (
                             <>
-                              <Bot className='mr-2 h-4 w-4' />
+                              <Aperture className='mr-2 h-4 w-4' />
                               Update Agent
                             </>
                           )}

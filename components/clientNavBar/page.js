@@ -2,8 +2,6 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import OtherBar from '../navigationBar/otherBar'
-import { useState } from 'react'
 import Sidebar from '../sideBar'
 import SubSidebar from '../subSideBar'
 

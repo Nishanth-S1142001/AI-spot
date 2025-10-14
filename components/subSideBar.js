@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useState } from 'react'
-import { ChevronDown, PanelLeftOpen, PanelLeftClose } from 'lucide-react'
+import { ChevronDown, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { usePathname } from 'next/navigation'
+import { useState } from 'react'
 
 export default function SubSidebar({ menuItems }) {
   // Modes: "hover" or "toggle"
