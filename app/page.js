@@ -26,7 +26,6 @@ import Button from '../components/ui/button'
 import FormInput from '../components/ui/formInputField'
 import HyperLinks from '../components/ui/hyperLinks'
 import Modal from '../components/ui/modal'
-
 import HomeSidebar from '../components/homeSidebar'
 import Card from '../components/ui/card'
 import { supabase } from '../lib/supabase/dbClient'

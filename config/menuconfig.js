@@ -87,7 +87,7 @@ export const menuItems = [
   {
     name: 'Submit feedback',
     icon: <MessagesSquare className='text-orange-500' size={20} />,
-    href: '/help'
+    href: '/feedback'
   }
 ]
 

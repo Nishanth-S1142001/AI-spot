@@ -87,3 +87,28 @@ export async function hasCredits(userId, required = 1) {
 export async function deleteConversation(conversationId) {
   return await dbServer.deleteConversation(conversationId)
 }
+// Feedback (updated to support attachments)
+export async function createFeedback(userId, feedbackData, attachments = []) {
+  return await dbServer.createFeedback(userId, feedbackData, attachments)
+}
+
+export async function getFeedbackByUser(userId) {
+  return await dbServer.getFeedbackByUser(userId)
+}
+
+export async function getFeedback(feedbackId) {
+  return await dbServer.getFeedback(feedbackId)
+}
+
+export async function updateFeedback(feedbackId, updates) {
+  return await dbServer.updateFeedback(feedbackId, updates)
+}
+
+export async function deleteFeedback(feedbackId) {
+  return await dbServer.deleteFeedback(feedbackId)
+}
+
+// Admin (server role only)
+export async function getAllFeedback(limit = 100) {
+  return await dbServer.getAllFeedback(limit)
+}

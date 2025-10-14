@@ -72,7 +72,7 @@ export default function AgentManagement() {
       })
       setAgent(updatedAgent)
       toast.success(
-        `Agent ${updatedagent?.is_active ? 'activated' : 'deactivated'} successfully`
+        `Agent ${updatedAgent?.is_active ? 'activated' : 'deactivated'} successfully`
       )
     } catch (error) {
       console.error('Error updating agent status:', error)

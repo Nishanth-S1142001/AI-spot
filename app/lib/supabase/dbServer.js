@@ -224,5 +224,117 @@ export const dbServer = {
       .then((res) => res.data)
 
     return profile?.api_credits >= required
+  },
+  // Feedback
+  async createFeedback(userId, feedbackData, attachments = []) {
+  try {
+    const uploadedUrls = []
+
+    for (const file of attachments) {
+      const url = await this.uploadFeedbackAttachment(userId, file)
+      uploadedUrls.push(url)
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('feedback')
+      .insert({
+        ...feedbackData,
+        user_id: userId,
+        attachments: uploadedUrls // JSON[] column in Supabase
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  } catch (err) {
+    console.error('createFeedback failed:', err.message)
+    throw err
+  }
+}
+,
+// File Upload (Supabase Storage)
+async uploadFeedbackAttachment(userId, file) {
+  try {
+    const fileExt = file.name.split('.').pop()
+    const filePath = `feedback/${userId}/${Date.now()}.${fileExt}`
+
+    const { data, error } = await supabaseAdmin.storage
+      .from('feedback_files') // Make sure your bucket is named this
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: file.type
+      })
+
+    if (error) throw error
+
+    // Get the public URL
+    const {
+      data: { publicUrl }
+    } = supabaseAdmin.storage.from('feedback_files').getPublicUrl(filePath)
+
+    return publicUrl
+  } catch (err) {
+    console.error('File upload failed:', err.message)
+    throw err
+  }
+}
+,
+
+  async getFeedbackByUser(userId) {
+    const { data, error } = await supabaseAdmin
+      .from('feedback')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    return data
+  },
+
+  async getFeedback(feedbackId) {
+    const { data, error } = await supabaseAdmin
+      .from('feedback')
+      .select('*')
+      .eq('id', feedbackId)
+      .maybeSingle()
+
+    if (error) throw error
+    return data
+  },
+
+  async updateFeedback(feedbackId, updates) {
+    const { data, error } = await supabaseAdmin
+      .from('feedback')
+      .update(updates)
+      .eq('id', feedbackId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  },
+
+  async deleteFeedback(feedbackId) {
+    const { error } = await supabaseAdmin
+      .from('feedback')
+      .delete()
+      .eq('id', feedbackId)
+
+    if (error) throw error
+    return true
+  },
+
+  // (Optional) Admin-only: Get all feedback (requires service_role)
+  async getAllFeedback(limit = 100) {
+    const { data, error } = await supabaseAdmin
+      .from('feedback')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit)
+
+    if (error) throw error
+    return data
   }
 }

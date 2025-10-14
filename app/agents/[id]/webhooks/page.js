@@ -1,8 +1,8 @@
 'use client'
 
-import Breadcrumb from '@/components/layout/breadcrumb'
-import Badge from '@/components/ui/badge'
-import Modal from '@/components/ui/modal'
+import Breadcrumbs from '../../../../components/ui/breadcrumbs'
+import Badge from '../../../../components/ui/badge'
+import Modal from '../../../../components/ui/modal'
 import { format } from 'date-fns'
 import {
   Activity,
@@ -24,7 +24,7 @@ import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../../../components/providers/AuthProvider'
 import Button from '../../../../components/ui/button'
-import LoadingState from '../../../components/common/loading-state'
+import LoadingState from '../../../../components/common/loading-state'
 export default function AgentWebhooks() {
   const { id } = useParams()
   const router = useRouter()
@@ -194,7 +194,7 @@ export default function AgentWebhooks() {
       </div>
 
       <div className='mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8'>
-        <Breadcrumb items={breadcrumbItems} />
+        <Breadcrumbs items={breadcrumbItems} />
 
         {/* Tabs */}
         <div className='mb-6 border-b border-gray-200'>
