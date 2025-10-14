@@ -113,7 +113,7 @@ export default function AgentManagement() {
     toast.success('Share link copied to clipboard!')
   }
   const generateShareLink = () => {
-    const shareLink = `${process.env.NEXT_PUBLIC_APP_URL}/agents/${id}/sandbox/`
+    const shareLink = `${process.env.NEXT_PUBLIC_APP_URL}/sandbox/${id}`
     setShareLink(shareLink)
   }
 
@@ -220,7 +220,7 @@ export default function AgentManagement() {
                       </div>
                     </Button>
                   </Link>
-                  <Link href={`/agents/${id}/sandbox`} passHref>
+                  <Link href={`/sandbox/${id}`} passHref>
                     <Button>
                       <div className='flex items-center'>
                         <Play className='mr-2 h-4 w-4' />

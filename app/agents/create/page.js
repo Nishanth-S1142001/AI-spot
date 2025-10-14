@@ -7,7 +7,7 @@ import toast from 'react-hot-toast'
 import { useAuth } from '../../../components/providers/AuthProvider'
 import { addKnowledgeSource, createAgent } from '../../actions/agents'
 
-import FormTextarea from '../../../components/textBox'
+import FormTextarea from '../../../components/ui/textBox'
 import Button from '../../../components/ui/button'
 import Card from '../../../components/ui/card'
 import FormInput from '../../../components/ui/formInputField'

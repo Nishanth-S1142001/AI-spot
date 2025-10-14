@@ -11,12 +11,12 @@ import {
 } from 'lucide-react'
 import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
-import LoadingState from '../../../../components/common/loading-state'
-import { useAuth } from '../../../../components/providers/AuthProvider'
-import NeonBackground from '../../../../components/ui/background'
-import Button from '../../../../components/ui/button'
-import Card from '../../../../components/ui/card'
-import { dbClient } from '../../../../lib/supabase/dbClient'
+import LoadingState from '../../../components/common/loading-state'
+import { useAuth } from '../../../components/providers/AuthProvider'
+import NeonBackground from '../../../components/ui/background'
+import Button from '../../../components/ui/button'
+import Card from '../../../components/ui/card'
+import { dbClient } from '../../../lib/supabase/dbClient'
 export default function ChatSandbox() {
   const colorOptions = [
     { name: 'Orange', value: '#EA580C', class: 'bg-orange-600' },
@@ -170,9 +170,6 @@ export default function ChatSandbox() {
         {/* Sticky Header */}
         <div className='sticky top-0 z-20 flex h-16 items-center justify-between border-b border-neutral-700 bg-neutral-900/80 px-6 backdrop-blur-sm'>
           <div className='flex items-center space-x-4'>
-            <Button variant='ghost' onClick={() => router.back()}>
-              <ArrowLeft className='h-4 w-4' />
-            </Button>
             <Aperture className='h-8 w-8 text-orange-400' />
             <div>
               <h1 className='text-xl font-bold text-neutral-100'>

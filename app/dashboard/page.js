@@ -16,9 +16,12 @@ import { useAuth } from '../../components/providers/AuthProvider'
 import SideBarLayout from '../../components/sideBarLayout'
 import NeonBackground from '../../components/ui/background'
 import { dbClient } from '../../lib/supabase/dbClient'
-
+import NavigationBar from '../../components/navigationBar/navigationBar'
+import { supabase } from '../../lib/supabase/dbClient'
+import { useLogout } from '../../lib/supabase/auth'
 export default function Dashboard() {
   const { user, profile, loading } = useAuth()
+  const [title, setTitle] = useState('AI Agency')
   const [agents, setAgents] = useState([])
   const [analytics, setAnalytics] = useState({
     totalConversations: 0,
@@ -29,6 +32,7 @@ export default function Dashboard() {
   // const [loading, setLoading] = useState(true)
   const [authloading, setAuthLoading] = useState(true)
   const [fetching, setFetching] = useState(true)
+  const { logout } = useLogout()
 
   const fetchDashboardData = async () => {
     try {
@@ -105,7 +109,13 @@ export default function Dashboard() {
         return 'bg-neutral-800 text-neutral-300'
     }
   }
-
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session)
+        router.push('/') // redirect if not logged in
+      else setFetching(false)
+    })
+  }, [])
   if (loading || fetching) {
     return (
       <div className='flex min-h-screen items-center justify-center bg-neutral-900 font-mono'>
@@ -129,11 +139,11 @@ export default function Dashboard() {
       {/* Remove 'h-screen' and 'overflow-hidden' from main div, let SideBarLayout handle it */}
       <SideBarLayout>
         {/* Everything inside SideBarLayout is rendered as {children} */}
-        <div className='relative w-full flex-1 font-mono  text-neutral-100'>
+        <div className='relative w-full flex-1 font-mono text-neutral-100'>
           {/* Header is here */}
-          <div className='sticky top-0 z-20 flex h-16 items-center justify-between  mt-2  backdrop-blur-sm px-4' >
-            {/* Added a sticky header with dark transparent background to float over scrolling content */}
-            <span className='text-xl font-bold'>Spot</span>
+          {/* <div className='sticky top-0 z-20 mt-2 flex h-16 items-center justify-between px-4 backdrop-blur-sm'> */}
+          {/* Added a sticky header with dark transparent background to float over scrolling content */}
+          {/* <span className='text-xl font-bold'>Spot</span>
             <div className='flex items-center space-x-4'>
               <div className='text-lg'>
                 Credits:{' '}
@@ -148,7 +158,13 @@ export default function Dashboard() {
                 <User className='h-6 w-6 text-neutral-400 hover:text-neutral-200' />
               </Link>
             </div>
-          </div>
+          </div> */}
+
+          <NavigationBar
+            profile={profile}
+            title={title}
+            onLogOutClick={logout}
+          />
           {/* Analytics */}
           <div className='w-full px-6 py-8'>
             {/* Welcome Section */}

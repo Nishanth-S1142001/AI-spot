@@ -21,7 +21,7 @@ import {
 } from 'lucide-react'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import NavigationBar from '../components/navigationBar/homeBar'
+import NavigationBar from '../components/navigationBar/navigationBar.js'
 import Button from '../components/ui/button'
 import FormInput from '../components/ui/formInputField'
 import HyperLinks from '../components/ui/hyperLinks'
@@ -304,7 +304,7 @@ export default function Home() {
       setREmail('')
     }
   }, [isOpen, isReset])
-
+const [title,setTitle] = useState('AI Agency')
   // Calculate the margin for the main content based on sidebar state
   const sidebarWidth = isSidebarOpen ? 'w-64' : 'w-16'
   const mainContentMargin = isSidebarOpen ? 'ml-64' : 'ml-16'
@@ -338,7 +338,7 @@ export default function Home() {
           className={`fixed top-0 z-30 w-full transition-all duration-300 sm:w-auto ${navbarLeftPosition} right-0`}
         >
           {/* The width of this wrapper is now dynamically calculated: 100% of the viewport MINUS the sidebar width. */}
-          <NavigationBar onLoginClick={handleLogin} />
+          <NavigationBar onLoginClick={handleLogin}  title={title} />
         </div>
 
         {/* IMPORTANT: Add padding to the top of the content 
@@ -359,37 +359,6 @@ export default function Home() {
             <div className='absolute inset-0 flex items-center justify-center'>
               <div className='h-[800px] w-[800px] rounded-full bg-orange-500/30 blur-[120px]' />
             </div>
-            {/* <div
-  id='home-content'
-  className='relative z-10 flex h-screen flex-col items-center justify-center text-center font-extrabold px-4'
->
-  <h1 className='text-4xl sm:text-6xl lg:text-8xl text-white leading-tight'>
-    Build{' '}
-    <span className='text-5xl sm:text-7xl lg:text-9xl font-bold text-orange-600'>
-      YOUR
-    </span>
-  </h1>
-  <h1 className='text-4xl sm:text-6xl lg:text-8xl tracking-wide text-white leading-tight'>
-    <span className='text-5xl sm:text-7xl lg:text-9xl font-bold text-orange-600'>
-      NO CODE
-    </span>{' '}
-    AI AGENTS
-  </h1>
-
-  <div className='mt-8'>
-    <button
-      className='border border-orange-600 px-6 py-3 text-2xl sm:text-3xl lg:text-4xl font-bold text-white uppercase hover:text-neutral-500 hover:shadow-lg hover:shadow-orange-600 transition-all duration-300'
-
-                  onClick={() => {
-                    setIsOpen(true)
-                    setIsLogin(true)
-                    setIsReset(false)
-                  }}
-                >
-                  build now
-                </button>
-              </div>
-            </div> */}
           </div>
 
           {/* All other sections */}
@@ -678,7 +647,7 @@ export default function Home() {
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder='Email'
-                          requiorange={true}
+                          required={true}
                         />
                         {emailError && (
                           <p className='mt-1 text-sm text-sky-500'>
@@ -697,7 +666,7 @@ export default function Home() {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder='Password'
-                            requiorange={true}
+                            required={true}
                           />
                           <div
                             type='button'
@@ -836,7 +805,7 @@ export default function Home() {
                           value={rEmail}
                           onChange={(e) => setREmail(e.target.value)}
                           placeholder='Email'
-                          requiorange={true}
+                          required={true}
                         />
                       </div>
 
@@ -896,7 +865,7 @@ export default function Home() {
                             value={formData.fullName}
                             onChange={handleInputChange}
                             placeholder='Full Name'
-                            requiorange={true}
+                            required={true}
                           />
                         </div>
 
@@ -910,7 +879,7 @@ export default function Home() {
                             name='email'
                             value={formData.email}
                             onChange={handleInputChange}
-                            requiorange={true}
+                            required={true}
                             placeholder='Email'
                           />
                         </div>
@@ -925,7 +894,7 @@ export default function Home() {
                             name='password'
                             value={formData.password}
                             onChange={handleInputChange}
-                            requiorange={true}
+                            required={true}
                             placeholder='Password'
                           />
                           <button
@@ -953,7 +922,7 @@ export default function Home() {
                             name='cpassword'
                             value={formData.cpassword}
                             onChange={handleInputChange}
-                            requiorange={true}
+                            required={true}
                             placeholder='Confirm Password'
                           />
                           <button
@@ -982,7 +951,7 @@ export default function Home() {
                                 setAgreeToTerms(e.target.checked)
                               }
                               className='mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500'
-                              requiorange
+                              required
                             />
                             <label
                               htmlFor='terms'

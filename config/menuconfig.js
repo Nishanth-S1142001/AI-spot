@@ -10,11 +10,14 @@ import {
   CloudCheck,
   CreditCard,
   Home,
+  Info,
   LayoutDashboard,
   MessageCircle,
   MessageSquareMore,
   MessagesSquare,
+  Newspaper,
   Podcast,
+  Clipboard,
   ReceiptIndianRupee,
   Settings,
   Sigma,
@@ -28,7 +31,7 @@ export const menuItems = [
   {
     name: 'Home',
     icon: <Home className='text-orange-500' size={20} />,
-    href: '/',
+
     key: 'home'
   },
   {
@@ -48,13 +51,13 @@ export const menuItems = [
   },
   {
     name: 'Agents',
-    href: '/',
+
     key: 'agents',
     icon: <Bot className='text-orange-500' size={20} />
   },
   {
     name: 'Integrations',
-    href: '/',
+
     key: 'integrations',
     icon: <Blocks className='text-orange-500' size={20} />
   },
@@ -142,7 +145,10 @@ export const subMenuItems = {
       ]
     },
 
-    { name: 'Workflow', icon: <Workflow className='text-orange-500' size={20} /> }
+    {
+      name: 'Workflow',
+      icon: <Workflow className='text-orange-500' size={20} />
+    }
   ],
   integrations: [
     {
@@ -150,12 +156,24 @@ export const subMenuItems = {
       href: '/integrations/slack',
       icon: <Slack className='text-orange-500' size={20} />
     },
-    { name: 'Discord', href: '/integrations/discord' },
-    { name: 'Zapier', href: '/integrations/zapier' }
+    {
+      name: 'Discord',
+      href: '/integrations/discord',
+      icon: <MessageCircle className='text-orange-500' size={20} />
+    },
+    {
+      name: 'Zapier',
+      href: '/integrations/zapier',
+      icon: <Blocks className='text-orange-500' size={20} />
+    }
   ],
 
   settings: [
-    { name: 'General', href: '/settings/general' },
+    {
+      name: 'General',
+      href: '/settings/general',
+      icon: <Info className='text-orange-500' size={20} />
+    },
     {
       name: 'Billing',
       href: '/settings/billing',
@@ -164,31 +182,31 @@ export const subMenuItems = {
     {
       name: 'Subsciption',
       href: '/settings/subscription',
-      icon: <Podcast className='text-orange-500' size={16} />
+      icon: <BadgeInfo className='text-orange-500' size={16} />
     }
   ]
 }
 
 export const homeMenuItems = [
   {
-    name: 'Home',
+    name: 'Spot Edu Community',
     icon: <Home className='text-orange-500' size={20} />,
     href: '/',
     key: 'home'
   },
   {
-    name: 'Messages',
+    name: 'Blog',
     href: '/',
-    icon: <MessageCircle className='text-orange-500' size={20} />
+    icon: <Newspaper className='text-orange-500' size={20} />
   },
   {
-    name: 'Discover',
+    name: 'Help',
     href: '/',
-    icon: <Telescope className='text-orange-500' size={20} />
+    icon: <Info className='text-orange-500' size={20} />
   },
   {
-    name: 'Notifications',
+    name: 'Spot Feedback',
     href: '/',
-    icon: <Bell className='text-orange-500' size={20} />
+    icon: <Clipboard className='text-orange-500' size={20} />
   }
 ]
