@@ -6,9 +6,8 @@ import {
   getAgent,
   hasCredits,
   logAnalytics,
-  saveConversation,
-} from '../../../../actions/agents'; // Server actions for DB operations
-import { triggerWebhooks } from '../../../../lib/webhook'
+  saveConversation
+} from '../../../../actions/agents' // Server actions for DB operations
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -53,6 +52,7 @@ export async function POST(request, context) {
 
   try {
     body = await request.json()
+
     const { message, sessionId, userId, metadata = {} } = body
 
     // 1. Initial Validation
@@ -78,8 +78,19 @@ export async function POST(request, context) {
 
     // 3. Fetch Agent & Check Status
     console.log('Fetching agent with ID:', id)
-    console.log('calling agent info') // Fixed typo
-    const agent = await getAgent(id,userId) // Now uses filter
+
+    const agent = await getAgent(id, userId)
+    const existingConversations = await dbClient.checkConversationExists(
+      id,
+      sessionId
+    )
+    const recentConversations = await dbClient.getConversations(
+      id,
+      sessionId,
+      10
+    )
+    const knowledgeSources = await dbClient.getKnowledgeSources(id)
+
     console.log('Fetched agent:', agent)
     if (!agent) {
       return NextResponse.json(
@@ -104,40 +115,33 @@ export async function POST(request, context) {
     }
 
     // 5. Webhook: message received
-    await triggerWebhooks(id, 'message_received', {
-      session_id: sessionId,
-      user_message: message,
-      user_id: userId,
-      timestamp: new Date().toISOString(),
-      metadata
-    })
+    // await triggerWebhooks(id, 'message_received', {
+    //   session_id: sessionId,
+    //   user_message: message,
+    //   user_id: userId,
+    //   timestamp: new Date().toISOString(),
+    //   metadata
+    // })
 
     // 6. New Conversation Check (Restored Logic)
-    const existingConversations = await dbClient.checkConversationExists(
-      id,
-      sessionId
-    )
-    const isNewConversation =
-      !existingConversations || existingConversations.length === 0
 
-    if (isNewConversation) {
-      await triggerWebhooks(id, 'conversation_started', {
-        session_id: sessionId,
-        user_id: userId,
-        first_message: message,
-        timestamp: new Date().toISOString()
-      })
-    }
+    // const isNewConversation =
+    //   !existingConversations || existingConversations.length === 0
+
+    // if (isNewConversation) {
+    //   await triggerWebhooks(id, 'conversation_started', {
+    //     session_id: sessionId,
+    //     user_id: userId,
+    //     first_message: message,
+    //     timestamp: new Date().toISOString()
+    //   })
+    // }
 
     // 7. Conversation History
     // Assuming dbClient.getConversations now includes session_id filtering for efficiency
     // If not, it should be updated to do so. Here we revert to the explicit in-memory filter
     // to maintain the logic of the first file if dbClient can't be updated.
-    const recentConversations = await dbClient.getConversations(
-      id,
-      sessionId,
-      10
-    )
+
     const conversationHistory = (recentConversations || [])
       .reverse()
       .map((conv) => [
@@ -147,7 +151,7 @@ export async function POST(request, context) {
       .flat()
 
     // 8. Knowledge Base & System Prompt (fetch separately for now)
-    const knowledgeSources = await dbClient.getKnowledgeSources(id)
+
     const knowledgeContext =
       knowledgeSources
         ?.filter((ks) => ks.status === 'completed')
@@ -226,25 +230,25 @@ export async function POST(request, context) {
 
     if (userId) await deductCredits(userId, 1)
 
-    // 11. Webhook: Agent Responded
-    await triggerWebhooks(id, 'agent_responded', {
-      session_id: sessionId,
-      user_message: message,
-      agent_response: agentResponse,
-      tokens_used: tokensUsed,
-      response_time_ms: responseTime,
-      user_id: userId,
-      timestamp: new Date().toISOString()
-    })
+    // // 11. Webhook: Agent Responded
+    // await triggerWebhooks(id, 'agent_responded', {
+    //   session_id: sessionId,
+    //   user_message: message,
+    //   agent_response: agentResponse,
+    //   tokens_used: tokensUsed,
+    //   response_time_ms: responseTime,
+    //   user_id: userId,
+    //   timestamp: new Date().toISOString()
+    // })
 
-    // 12. Check Workflows (Action Execution Restored)
-    await checkAndTriggerWorkflows(
-      dbClient,
-      agent,
-      message,
-      agentResponse,
-      sessionId
-    )
+    // // 12. Check Workflows (Action Execution Restored)
+    // await checkAndTriggerWorkflows(
+    //   dbClient,
+    //   agent,
+    //   message,
+    //   agentResponse,
+    //   sessionId
+    // )
 
     // 13. Final Response
     return NextResponse.json(
@@ -357,94 +361,94 @@ export async function GET(request, context) {
 // ------------------ Helpers (Updated for Parity) ------------------
 
 // Helper to check and execute workflow actions (Restored Logic)
-async function executeWorkflowActions(workflow, context) {
-  try {
-    const actions = workflow.workflow_data?.actions || []
-    for (const action of actions) {
-      switch (action.type) {
-        case 'webhook':
-          // Handled by the workflow_triggered webhook above
-          break
-        case 'email':
-          console.log(
-            'Executing Email action:',
-            action.config,
-            'Context:',
-            context.sessionId
-          )
-          // Integration with email service (e.g., SendGrid, Mailgun)
-          break
-        case 'update_crm':
-          console.log(
-            'Executing CRM update action:',
-            action.config,
-            'Context:',
-            context.sessionId
-          )
-          // Integration with CRM API (e.g., Salesforce, HubSpot)
-          break
-        default:
-          console.log('Unknown action type:', action.type)
-      }
-    }
-  } catch (error) {
-    console.error('Error executing workflow actions:', error)
-  }
-}
+// async function executeWorkflowActions(workflow, context) {
+//   try {
+//     const actions = workflow.workflow_data?.actions || []
+//     for (const action of actions) {
+//       switch (action.type) {
+//         case 'webhook':
+//           // Handled by the workflow_triggered webhook above
+//           break
+//         case 'email':
+//           console.log(
+//             'Executing Email action:',
+//             action.config,
+//             'Context:',
+//             context.sessionId
+//           )
+//           // Integration with email service (e.g., SendGrid, Mailgun)
+//           break
+//         case 'update_crm':
+//           console.log(
+//             'Executing CRM update action:',
+//             action.config,
+//             'Context:',
+//             context.sessionId
+//           )
+//           // Integration with CRM API (e.g., Salesforce, HubSpot)
+//           break
+//         default:
+//           console.log('Unknown action type:', action.type)
+//       }
+//     }
+//   } catch (error) {
+//     console.error('Error executing workflow actions:', error)
+//   }
+// }
 
 // Helper to check and trigger workflows (Action Execution Restored)
-async function checkAndTriggerWorkflows(
-  dbClient,
-  agent,
-  userMessage,
-  agentResponse,
-  sessionId
-) {
-  try {
-    // Assuming dbClient.getWorkflows fetches active workflows
-    const workflows = await dbClient.getWorkflows(agent?.id)
-    if (!workflows || workflows.length === 0) return
+// async function checkAndTriggerWorkflows(
+//   dbClient,
+//   agent,
+//   userMessage,
+//   agentResponse,
+//   sessionId
+// ) {
+//   try {
+//     // Assuming dbClient.getWorkflows fetches active workflows
+//     const workflows = await dbClient.getWorkflows(agent?.id)
+//     if (!workflows || workflows.length === 0) return
 
-    for (const workflow of workflows) {
-      let shouldTrigger = false
-      switch (workflow.trigger_type) {
-        case 'message_received':
-          shouldTrigger = true
-          break
-        case 'keyword_match':
-          const keywords = workflow.workflow_data?.keywords || []
-          shouldTrigger = keywords.some((k) =>
-            userMessage.toLowerCase().includes(k.toLowerCase())
-          )
-          break
-        // Intent detection trigger omitted as it requires a classification step not present here
-      }
+//     for (const workflow of workflows) {
+//       let shouldTrigger = false
+//       switch (workflow.trigger_type) {
+//         case 'message_received':
+//           shouldTrigger = true
+//           break
+//         case 'keyword_match':
+//           const keywords = workflow.workflow_data?.keywords || []
+//           shouldTrigger = keywords.some((k) =>
+//             userMessage.toLowerCase().includes(k.toLowerCase())
+//           )
+//           break
+//         // Intent detection trigger omitted as it requires a classification step not present here
+//       }
 
-      if (shouldTrigger) {
-        // Trigger webhook for the event
-        await triggerWebhooks(agent?.id, 'workflow_triggered', {
-          workflow_id: workflow.id,
-          workflow_name: workflow.name,
-          trigger_type: workflow.trigger_type,
-          session_id: sessionId,
-          user_message: userMessage,
-          agent_response: agentResponse,
-          timestamp: new Date().toISOString()
-        })
+//       if (shouldTrigger) {
+//         // Trigger webhook for the event
+//         await triggerWebhooks(agent?.id, 'workflow_triggered', {
+//           workflow_id: workflow.id,
+//           workflow_name: workflow.name,
+//           trigger_type: workflow.trigger_type,
+//           session_id: sessionId,
+//           user_message: userMessage,
+//           agent_response: agentResponse,
+//           timestamp: new Date().toISOString()
+//         })
 
-        // Execute the associated actions (Restored Logic)
-        await executeWorkflowActions(workflow, {
-          userMessage,
-          agentResponse,
-          sessionId,
-          agentId: agent?.id
-        })
-      }
-    }
-  } catch (err) {
-    console.error('Error triggering workflows:', err)
-  }
-}
+//         // Execute the associated actions (Restored Logic)
+//         await executeWorkflowActions(workflow, {
+//           userMessage,
+//           agentResponse,
+//           sessionId,
+//           agentId: agent?.id
+//         })
+//       }
+//     }
+//   } catch (err) {
+//     console.error('Error triggering workflows:', err)
+//   }
+// }
 
 function generateDefaultSystemPrompt(agent, knowledgeContext) {
   const purposeInstructions = {

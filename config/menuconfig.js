@@ -24,7 +24,8 @@ import {
   Slack,
   Telescope,
   User,
-  Workflow
+  Workflow,
+  Webhook
 } from 'lucide-react'
 
 export const menuItems = [
@@ -35,19 +36,9 @@ export const menuItems = [
     key: 'home'
   },
   {
-    name: 'Messages',
-    href: '/',
-    icon: <MessageCircle className='text-orange-500' size={20} />
-  },
-  {
     name: 'Discover',
     href: '/',
     icon: <Telescope className='text-orange-500' size={20} />
-  },
-  {
-    name: 'Notifications',
-    href: '/',
-    icon: <Bell className='text-orange-500' size={20} />
   },
   {
     name: 'Agents',
@@ -56,10 +47,15 @@ export const menuItems = [
     icon: <Bot className='text-orange-500' size={20} />
   },
   {
-    name: 'Integrations',
+    name: 'Messages',
+    href: '/',
+    icon: <MessageCircle className='text-orange-500' size={20} />
+  },
 
-    key: 'integrations',
-    icon: <Blocks className='text-orange-500' size={20} />
+  {
+    name: 'Notifications',
+    href: '/',
+    icon: <Bell className='text-orange-500' size={20} />
   },
 
   { divider: true },
@@ -115,39 +111,47 @@ export const subMenuItems = {
       href: '/agents/dashboard'
     },
     {
-      name: 'Agents',
-      icon: <Bot className='text-orange-500' size={20} />
+      name: 'Webhooks',
+      icon: <Webhook className='text-orange-500' size={20} />,
+      href: '/webhooks'
+    },
+    {
+      name: 'Integrations',
+
+      key: 'integrations',
+      icon: <Blocks className='text-orange-500' size={20} />
     },
     {
       name: 'Analytics',
-      icon: <BarChart3 className='text-orange-500' size={20} />,
-      submenu: [
-        {
-          name: 'Total Agents',
-          href: '/mini-analysis/total',
-          icon: <Sigma className='text-orange-500' size={16} />
-        },
-        {
-          name: 'Conversations',
-          href: '/mini-analysis/conversations',
-          icon: <MessageSquareMore className='text-orange-500' size={16} />
-        },
-        {
-          name: 'Success Rate',
-          href: '/mini-analysis/successRate',
-          icon: <CloudCheck className='text-orange-500' size={16} />
-        },
-        {
-          name: 'Credits Used',
-          href: '/mini-analysis/CreditsUsed',
-          icon: <CreditCard className='text-orange-500' size={16} />
-        }
-      ]
+      icon: <BarChart3 className='text-orange-500' size={20} />
+      // submenu: [
+      //   {
+      //     name: 'Total Agents',
+      //     href: '/mini-analysis/total',
+      //     icon: <Sigma className='text-orange-500' size={16} />
+      //   },
+      //   {
+      //     name: 'Conversations',
+      //     href: '/mini-analysis/conversations',
+      //     icon: <MessageSquareMore className='text-orange-500' size={16} />
+      //   },
+      //   {
+      //     name: 'Success Rate',
+      //     href: '/mini-analysis/successRate',
+      //     icon: <CloudCheck className='text-orange-500' size={16} />
+      //   },
+      //   {
+      //     name: 'Credits Used',
+      //     href: '/mini-analysis/CreditsUsed',
+      //     icon: <CreditCard className='text-orange-500' size={16} />
+      //   }
+      // ]
     },
 
     {
       name: 'Workflow',
-      icon: <Workflow className='text-orange-500' size={20} />
+      icon: <Workflow className='text-orange-500' size={20} />,
+      href:'/workflows'
     }
   ],
   integrations: [

@@ -8,7 +8,7 @@ import { ChevronDown, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 export default function Sidebar({ menuItems, activeMenu, onSelect }) {
   const pathname = usePathname()
   const router = useRouter()
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(true)
   const [openSubmenu, setOpenSubmenu] = useState(null)
   const [isHovering, setIsHovering] = useState(false)
 

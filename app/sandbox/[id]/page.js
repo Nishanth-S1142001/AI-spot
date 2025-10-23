@@ -17,6 +17,7 @@ import NeonBackground from '../../../components/ui/background'
 import Button from '../../../components/ui/button'
 import Card from '../../../components/ui/card'
 import { dbClient } from '../../../lib/supabase/dbClient'
+import { supabase } from '../../../lib/supabase/dbClient'
 export default function ChatSandbox() {
   const colorOptions = [
     { name: 'Orange', value: '#EA580C', class: 'bg-orange-600' },
@@ -129,7 +130,13 @@ export default function ChatSandbox() {
       setIsTyping(false) // ← show typing indicato
     }
   }
-
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session)
+        router.push('/') // redirect if not logged in
+      else setFetching(false)
+    })
+  }, [])
   if (loading) {
     return (
       <LoadingState

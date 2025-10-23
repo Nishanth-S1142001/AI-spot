@@ -1,32 +1,38 @@
-import { dbClient } from '../../../../lib/supabase/dbClient'
-// import { getServerSession } from 'next-auth' // if you use auth
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
+import { getAgent } from '../../../actions/agents'
+import { NextResponse } from 'next/server'
 
-export async function GET(req, context) {
-  const params = await context.params
-  const { id } = params
-  const { searchParams } = new URL(req.url)
-  const userId = searchParams.get('userId')
+export async function GET(req, {params}) {
+  // ✅ Await both params and cookies
+  const { id } = await params
+  const cookieStore = await cookies()
+
+  const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+
+  const {
+    data: { user },
+    error: authError
+  } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   try {
-    // optional: validate user session
-    // const session = await getServerSession()
-    // if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
+    const agentData = await getAgent(id, user.id)
+    console.log(agentData)
 
-    const agentData = await dbClient.getAgent(id, userId)
     if (!agentData) {
-      return new Response(JSON.stringify({ error: 'Agent not found' }), {
-        status: 404
-      })
+      return NextResponse.json({ error: 'Agent not found' }, { status: 404 })
     }
 
-    return new Response(JSON.stringify(agentData), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    return NextResponse.json(agentData, { status: 200 })
   } catch (err) {
     console.error(err)
-    return new Response(JSON.stringify({ error: 'Failed to fetch agent' }), {
-      status: 500
-    })
+    return NextResponse.json(
+      { error: 'Failed to fetch agent' },
+      { status: 500 }
+    )
   }
 }

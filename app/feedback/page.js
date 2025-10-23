@@ -21,6 +21,7 @@ import {
   File,
   Aperture
 } from 'lucide-react'
+import { useEffect } from 'react'
 import Button from '../../components/ui/button'
 import FormInput from '../../components/ui/formInputField'
 import Card from '../../components/ui/card'
@@ -29,7 +30,9 @@ import Link from 'next/link'
 import NeonBackground from '../../components/ui/background'
 import LoadingState from '../../components/common/loading-state'
 import SideBarLayout from '../../components/sideBarLayout'
-
+import { useLogout } from '../../lib/supabase/auth'
+import NavigationBar from '../../components/navigationBar/navigationBar'
+import { supabase } from '../../lib/supabase/dbClient'
 export default function FeedbackPage() {
   const { user, profile, loading } = useAuth()
   const [selectedType, setSelectedType] = useState('general')
@@ -37,7 +40,11 @@ export default function FeedbackPage() {
   const [submitted, setSubmitted] = useState(false)
   const [fetching, setFetching] = useState(false)
   const [attachments, setAttachments] = useState([])
+  const [message, setMessage] = useState('Dashboard')
+  const [title, setTitle] = useState('Ai Agency')
+
   const fileInputRef = useRef(null)
+  const { logout } = useLogout()
   const {
     register,
     handleSubmit,
@@ -72,7 +79,13 @@ export default function FeedbackPage() {
       description: 'Tell us what you love'
     }
   ]
-
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session)
+        router.push('/') // redirect if not logged in
+      else setFetching(false)
+    })
+  }, [])
   // ✅ Validate files before sending
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files)
@@ -177,28 +190,13 @@ export default function FeedbackPage() {
         <div className='custom-scrollbar relative w-full flex-1 font-mono text-neutral-100'>
           <div className='mx-auto space-y-10'>
             {/* Header */}
-            <div className='sticky top-0 z-20 mt-2 flex h-16 items-center justify-between px-4 backdrop-blur-sm'>
-              <div className='flex items-center space-x-2'>
-                <Button variant='ghost' onClick={() => router.back()}>
-                  <ArrowLeft className='h-4 w-4' />
-                </Button>
-                <Aperture className='ml-5 h-8 w-8 text-orange-400' />
-                <span className='text-xl font-bold'>Spot</span>
-              </div>
-              <div className='flex items-center space-x-4'>
-                <div className='text-lg'>
-                  Credits:{' '}
-                  <span className='font-semibold text-neutral-400'>
-                    {profile?.api_credits || 0}
-                  </span>
-                </div>
-                <Link href='/settings'>
-                  <Settings className='h-6 w-6 text-neutral-400 hover:text-neutral-200' />
-                </Link>
-                <Link href='/profile'>
-                  <User className='h-6 w-6 text-neutral-400 hover:text-neutral-200' />
-                </Link>
-              </div>
+            <div className='sticky top-0 z-10 mb-10 flex h-16 items-center'>
+              <NavigationBar
+                profile={profile}
+                message={message}
+                title={title}
+                onLogOutClick={logout}
+              />
             </div>
 
             {/* Feedback Section */}

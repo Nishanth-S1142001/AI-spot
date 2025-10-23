@@ -1,7 +1,7 @@
 // SideBarLayout.js (Corrected)
 
-import { usePathname } from 'next/navigation'; // 👈 Import usePathname
-import { useEffect, useState } from 'react'; // 👈 Import useEffect
+import { usePathname } from 'next/navigation' // 👈 Import usePathname
+import { useEffect, useState } from 'react' // 👈 Import useEffect
 import {
   menuItems as mainMenu,
   subMenuItems as subMenus
@@ -25,8 +25,10 @@ const getActiveMenuKey = (pathname) => {
   return 'home'
 }
 
+
 export default function SideBarLayout({ children }) {
   const pathname = usePathname()
+  
   const initialKey = getActiveMenuKey(pathname) // Calculate initial value
   const [activeMenu, setActiveMenu] = useState(initialKey)
   useEffect(() => {
@@ -37,9 +39,9 @@ export default function SideBarLayout({ children }) {
     }
   }, [pathname])
   return (
-    <div className='custom-scrollbar z-10 flex h-screen w-full '>
+    <div className='custom-scrollbar z-10 flex h-screen w-full'>
       {/* Sidebar container full height, no background needed since parent has it */}
-      <div className='flex h-full bg-neutral-900 ' >
+      <div className='flex h-full bg-neutral-900'>
         <Sidebar
           menuItems={mainMenu}
           activeMenu={activeMenu}

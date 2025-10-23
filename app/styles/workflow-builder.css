@@ -1,0 +1,52 @@
+/* workflow-builder.css */
+
+/* Orange connection dots (handles) */
+.react-flow__handle {
+  background-color: #f97316 !important; /* Tailwind's orange-500 */
+  /* Slightly lighter orange border */
+}
+
+/* Orange edges (connection lines) */
+.react-flow__edge-path {
+  stroke: #f97316 !important;
+  stroke-width: 2px !important;
+}
+
+/* When connecting or hovering */
+.react-flow__connection-path {
+  stroke: #fb923c !important;
+  stroke-width: 2.5px !important;
+}
+
+/* Orange mini-map nodes */
+.react-flow__minimap-node {
+  fill: #a74e0e !important;
+  stroke: #fb923c;
+  border: 1px solid #f97316 !important;
+}
+
+/* Orange control buttons */
+.react-flow__controls-button {
+  background: #fff8f0 !important;
+  border: 1px solid #f97316 !important;
+  color: #f97316 !important;
+}
+
+.react-flow__controls-button:hover {
+  background: #f97316 !important;
+  color: white !important;
+}
+
+/* Subtle orange background grid */
+.react-flow__background {
+  background-color: #00000000 !important;
+}
+.react-flow__node:hover {
+  box-shadow: 0 0 10px #fb923c55;
+  border-color: #f97316 !important;
+}
+
+.react-flow__node.selected {
+  box-shadow: 0 0 35px #f97316aa;
+   
+}

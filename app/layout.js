@@ -1,6 +1,6 @@
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Toaster } from 'react-hot-toast'
-import ClientNavbar from '../components/clientNavBar/page'
+
 import { AuthProvider } from '../components/providers/AuthProvider'
 import './globals.css'
 
@@ -21,12 +21,12 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang='en'>
+       <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} scroll-smooth font-mono antialiased`}
       >
         {/* 1. Header / Menu */}
-        <ClientNavbar />
+
         <AuthProvider>
           {children}
           <Toaster

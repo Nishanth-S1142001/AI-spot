@@ -1,26 +1,23 @@
 'use client'
 
 import {
-  Aperture,
   Bot,
   Calendar,
   Globe,
   Instagram,
-  MessageSquare,
-  Settings,
-  User
+  MessageSquare
 } from 'lucide-react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import LoadingState from '../../components/common/loading-state'
+import NavigationBar from '../../components/navigationBar/navigationBar'
 import { useAuth } from '../../components/providers/AuthProvider'
 import SideBarLayout from '../../components/sideBarLayout'
 import NeonBackground from '../../components/ui/background'
-import { dbClient } from '../../lib/supabase/dbClient'
-import NavigationBar from '../../components/navigationBar/navigationBar'
-import { supabase } from '../../lib/supabase/dbClient'
 import { useLogout } from '../../lib/supabase/auth'
+import { dbClient, supabase } from '../../lib/supabase/dbClient'
 export default function Dashboard() {
-  const { user, profile, loading } = useAuth()
+  const { user, profile, loading: authLoading } = useAuth()
   const [title, setTitle] = useState('AI Agency')
   const [agents, setAgents] = useState([])
   const [analytics, setAnalytics] = useState({
@@ -33,7 +30,7 @@ export default function Dashboard() {
   const [authloading, setAuthLoading] = useState(true)
   const [fetching, setFetching] = useState(true)
   const { logout } = useLogout()
-
+  const router = useRouter()
   const fetchDashboardData = async () => {
     try {
       setFetching(true)
@@ -74,6 +71,13 @@ export default function Dashboard() {
     }
   }
   useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session)
+        router.push('/') // redirect if not logged in
+      else setFetching(false)
+    })
+  }, [])
+  useEffect(() => {
     if (user) {
       console.log(user)
       fetchDashboardData()
@@ -110,23 +114,23 @@ export default function Dashboard() {
     }
   }
   useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/')
+    }
+  }, [authLoading, user, router])
+  useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (!data.session)
         router.push('/') // redirect if not logged in
       else setFetching(false)
     })
   }, [])
-  if (loading || fetching) {
+  if (authLoading) {
     return (
-      <div className='flex min-h-screen items-center justify-center bg-neutral-900 font-mono'>
-        <div className='text-center'>
-          <Aperture className='mx-auto mb-4 h-12 w-12 animate-spin text-neutral-400' />
-          <p className='text-lg text-neutral-400'>Loading ...</p>
-          <p className='text-lg text-neutral-400'>
-            Refresh the window if it takes time...
-          </p>
-        </div>
-      </div>
+      <LoadingState
+        message='Loading...(Refresh the window if delayed)'
+        className='min-h-screen'
+      />
     )
   }
 
@@ -134,37 +138,21 @@ export default function Dashboard() {
     <>
       {/* 1. NeonBackground is fixed and z-0 */}
       <NeonBackground />
-
+      {fetching && <LoadingState message='Loading data...' />}
       {/* 2. SideBarLayout is z-10 or higher and contains all layout + content */}
       {/* Remove 'h-screen' and 'overflow-hidden' from main div, let SideBarLayout handle it */}
       <SideBarLayout>
         {/* Everything inside SideBarLayout is rendered as {children} */}
         <div className='relative w-full flex-1 font-mono text-neutral-100'>
           {/* Header is here */}
-          {/* <div className='sticky top-0 z-20 mt-2 flex h-16 items-center justify-between px-4 backdrop-blur-sm'> */}
-          {/* Added a sticky header with dark transparent background to float over scrolling content */}
-          {/* <span className='text-xl font-bold'>Spot</span>
-            <div className='flex items-center space-x-4'>
-              <div className='text-lg'>
-                Credits:{' '}
-                <span className='font-semibold text-neutral-400'>
-                  {profile?.api_credits || 0}
-                </span>
-              </div>
-              <Link href='/settings'>
-                <Settings className='h-6 w-6 text-neutral-400 hover:text-neutral-200' />
-              </Link>
-              <Link href='/profile'>
-                <User className='h-6 w-6 text-neutral-400 hover:text-neutral-200' />
-              </Link>
-            </div>
-          </div> */}
 
-          <NavigationBar
-            profile={profile}
-            title={title}
-            onLogOutClick={logout}
-          />
+          <div className='sticky top-0 z-10 mb-10 flex h-16 items-center'>
+            <NavigationBar
+              profile={profile}
+              title={title}
+              onLogOutClick={logout}
+            />
+          </div>
           {/* Analytics */}
           <div className='w-full px-6 py-8'>
             {/* Welcome Section */}

@@ -1,26 +1,19 @@
 'use client'
 
 import { format } from 'date-fns'
-import {
-  Aperture,
-  Calendar,
-  Globe,
-  Instagram,
-  MessageSquare,
-  Plus,
-  Settings,
-  User
-} from 'lucide-react'
+import { Aperture, Bot, Plus } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
+import LoadingState from '../../../components/common/loading-state'
+import NavigationBar from '../../../components/navigationBar/navigationBar'
 import { useAuth } from '../../../components/providers/AuthProvider'
 import SideBarLayout from '../../../components/sideBarLayout'
 import NeonBackground from '../../../components/ui/background'
 import Button from '../../../components/ui/button'
 import Card from '../../../components/ui/card'
-import { dbClient } from '../../../lib/supabase/dbClient'
-import LoadingState from '../../../components/common/loading-state'
-
+import { useLogout } from '../../../lib/supabase/auth'
+import { dbClient, supabase } from '../../../lib/supabase/dbClient'
 const AgentCardWithInfo = ({ agent, getPurposeIcon }) => {
   const [isHovered, setIsHovered] = useState(false)
   const [isTooltipLeft, setIsTooltipLeft] = useState(false)
@@ -73,7 +66,7 @@ const AgentCardWithInfo = ({ agent, getPurposeIcon }) => {
             <div
               className={`relative flex h-28 w-28 items-center justify-center rounded-full border-4 ${activeBg}`}
             >
-              {getPurposeIcon(agent?.purpose, agent?.is_active)}
+              {getPurposeIcon()}
             </div>
           </div>
           <p className='mt-4 text-2xl font-extrabold text-orange-300/80'>
@@ -82,40 +75,51 @@ const AgentCardWithInfo = ({ agent, getPurposeIcon }) => {
         </div>
 
         <div className='p-6'>
-          <div className='grid grid-cols-2 gap-3'>
+          <div className='grid grid-cols-1 justify-between gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3'>
             <Link
               href={`/agents/${agent?.id}/manage`}
               className='flex'
               prefetch={true}
             >
-              <Button className='w-full'>Manage</Button>
+              <Button className='w-fit'>Manage</Button>
             </Link>
-
             <Link
               href={`/agents/${agent?.id}/edit`}
               className='flex'
               prefetch={true}
             >
-              <Button className='w-full'>Edit</Button>
+              <Button className='w-fit'>Edit</Button>
             </Link>
-
             <Link
               href={`/agents/${agent?.id}/playground`}
               className='flex'
               prefetch={true}
             >
-              <Button variant='outline' className='w-full'>
+              <Button variant='outline' className='w-fit'>
                 Playground
               </Button>
-            </Link>
-
+            </Link>{' '}
             <Link
-              href={`/agents/${agent?.id}/sandbox`}
+              href={`/agents/${agent?.id}/webhook`}
               className='flex'
               prefetch={true}
             >
-              <Button variant='outline' className='w-full'>
+              <Button variant='outline' className='w-fit'>
+                Webhook
+              </Button>
+            </Link>
+            <Link
+              href={`/sandbox/${agent?.id}`}
+              className='flex'
+              prefetch={true}
+            >
+              <Button variant='outline' className='w-fit'>
                 Test
+              </Button>
+            </Link>
+            <Link href={`workflows/page.js`} className='flex' prefetch={true}>
+              <Button variant='outline' className='w-fit'>
+                Workflow
               </Button>
             </Link>
           </div>
@@ -165,9 +169,11 @@ export default function Dashboard() {
     CreditsUsed: 0,
     successRate: 0
   })
-
+  const [message, setMessage] = useState('Dashboard')
+  const [title, setTitle] = useState('Ai Agency')
+  const { logout } = useLogout()
   const [fetching, setFetching] = useState(true)
-
+  const router = useRouter()
   // In Dashboard component
 
   const fetchDashboardData = async () => {
@@ -216,40 +222,21 @@ export default function Dashboard() {
     }
   }
   useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session)
+        router.push('/') // redirect if not logged in
+      else setFetching(false)
+    })
+  }, [])
+  useEffect(() => {
     if (user) {
       console.log(user)
       fetchDashboardData()
     }
     setFetching(false) // let the dashboard render even if profile is missing
   }, [user])
-  const getPurposeIcon = (purpose, is_active) => {
-    switch (purpose) {
-      case 'instagram':
-        return <Instagram className='h-5 w-5 text-pink-400' />
-      case 'messenger':
-        return <MessageSquare className='h-5 w-5 text-blue-400' />
-      case 'calendar':
-        return <Calendar className='h-5 w-5 text-green-400' />
-      case 'website':
-        return <Globe className='h-16 w-16 text-white' />
-      default:
-        return <Aperture className='h-5 w-5 text-neutral-400' />
-    }
-  }
-
-  const getPurposeBadgeColor = (purpose) => {
-    switch (purpose) {
-      case 'instagram':
-        return 'bg-pink-900 text-pink-200'
-      case 'messenger':
-        return 'bg-blue-900 text-blue-200'
-      case 'calendar':
-        return 'bg-green-900 text-green-200'
-      case 'website':
-        return 'bg-purple-900 text-purple-200'
-      default:
-        return 'bg-neutral-800 text-neutral-300'
-    }
+  const getPurposeIcon = () => {
+    return <Bot className='h-16 w-16 text-white' />
   }
 
   if (loading) {
@@ -305,25 +292,15 @@ export default function Dashboard() {
         ) : (
           <div className='relative w-full flex-1 font-mono text-neutral-100'>
             {/* Header is here */}
-            <div className='sticky top-0 z-20 mt-2 flex h-16 items-center justify-between px-4 backdrop-blur-sm'>
-              {/* Added a sticky header with dark transparent background to float over scrolling content */}
-              <span className='text-xl font-bold'>Spot</span>
-              <div className='flex items-center space-x-4'>
-                <div className='text-lg'>
-                  Credits:{' '}
-                  <span className='font-semibold text-neutral-400'>
-                    {profile?.api_credits || 0}
-                  </span>
-                </div>
-                <Link href='/settings'>
-                  <Settings className='h-6 w-6 text-neutral-400 hover:text-neutral-200' />
-                </Link>
-                <Link href='/profile'>
-                  <User className='h-6 w-6 text-neutral-400 hover:text-neutral-200' />
-                </Link>
-              </div>
-            </div>
 
+            <div className='sticky top-0 z-10 mb-10 flex h-16 items-center'>
+              <NavigationBar
+                profile={profile}
+                message={message}
+                title={title}
+                onLogOutClick={logout}
+              />
+            </div>
             <div className='w-full px-6 py-8'>
               {/* Hero Content - REPLACED WITH INTERACTIVE AGENT BUTTON */}
               <div

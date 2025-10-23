@@ -8,9 +8,10 @@ const openai = new OpenAI({
 
 // ------------------ POST: Sandbox Chat ------------------
 export async function POST(request, context) {
+  const startTime = Date.now()
   try {
-    const params = await context.params
-    const { id } = params
+    const { id } = await context.params
+
     if (!id) {
       return NextResponse.json(
         { error: 'Agent ID is required' },
@@ -21,14 +22,14 @@ export async function POST(request, context) {
     const body = await request.json()
     const { message, userId, metadata = {} } = body
 
-    if (!message) {
+    if (!message?.trim()) {
       return NextResponse.json(
         { error: 'Message is required' },
         { status: 400 }
       )
     }
 
-    // Fetch agent including knowledge_base and sys_prompt columns
+    // 1. Fetch agent
     const agent = await getAgent(id, userId)
     if (!agent) {
       return NextResponse.json(
@@ -36,61 +37,88 @@ export async function POST(request, context) {
         { status: 404 }
       )
     }
-
-    if (!agent?.is_active) {
+    if (!agent.is_active) {
       return NextResponse.json({ error: 'Agent is inactive' }, { status: 400 })
     }
 
-    const knowledgeContext = agent?.knowledge_base || ''
+    // 2. Build system prompt
+    const knowledgeContext = (agent.knowledge_base || '').slice(0, 2000) // safety limit
     const systemPrompt =
-      agent?.system_prompt ||
-      `
-You are ${agent?.name}, an AI assistant.
-
-${knowledgeContext ? `Use the following knowledge to answer questions accurately:\n${knowledgeContext}` : ''}
-
-Important guidelines:
-- Base your answers on the provided knowledge
-- If you don't know something, say so
-- Stay in character and maintain a helpful tone
-- Keep responses concise
-`
+      agent.system_prompt ||
+      `You are ${agent.name}, an AI assistant.${
+        knowledgeContext
+          ? ` Use the following knowledge to answer questions accurately:\n${knowledgeContext}`
+          : ''
+      }\n\nImportant guidelines:\n- Base answers on provided knowledge\n- If unsure, say so\n- Stay concise and helpful`
 
     const messages = [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: message }
     ]
 
-    // Call OpenAI API
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages,
-      max_tokens: 800,
-      temperature: 0.7
-    })
+    // 3. Retry logic for OpenAI API
+    let completion
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        completion = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages,
+          max_tokens: 800,
+          temperature: 0.7,
+          // timeout: 15000 // 15s timeout
+        })
+        break
+      } catch (err) {
+        if (attempt === 3) throw err
+        console.warn(`Retrying OpenAI request (attempt ${attempt})...`)
+        await new Promise((r) => setTimeout(r, 1000 * attempt))
+      }
+    }
 
     const agentResponse =
-      completion.choices[0]?.message?.content ||
+      completion?.choices?.[0]?.message?.content?.trim() ||
       'I could not generate a response.'
 
-    return NextResponse.json({ response: agentResponse, agentId: id })
+    const tokensUsed = completion?.usage?.total_tokens || 0
+    const duration = Date.now() - startTime
+
+    // 4. Return response with useful metadata
+    return NextResponse.json(
+      {
+        response: agentResponse,
+        agentId: id,
+        tokensUsed,
+        responseTimeMs: duration,
+        metadata
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, max-age=0',
+          'X-Response-Time': `${duration}ms`
+        }
+      }
+    )
   } catch (error) {
     console.error('Sandbox chat error:', error)
     return NextResponse.json(
-      { error: 'An unexpected error occurred', details: error.message },
+      {
+        error: 'An unexpected error occurred',
+        details:
+          process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       { status: 500 }
     )
   }
 }
 
-// ------------------ OPTIONS ------------------
+// ------------------ OPTIONS (CORS) ------------------
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Access-Control-Max-Age': '86400'
     }
   })

@@ -304,7 +304,7 @@ export default function Home() {
       setREmail('')
     }
   }, [isOpen, isReset])
-const [title,setTitle] = useState('AI Agency')
+  const [title, setTitle] = useState('AI Agency')
   // Calculate the margin for the main content based on sidebar state
   const sidebarWidth = isSidebarOpen ? 'w-64' : 'w-16'
   const mainContentMargin = isSidebarOpen ? 'ml-64' : 'ml-16'
@@ -318,15 +318,15 @@ const [title,setTitle] = useState('AI Agency')
         }`}
       />
       {/* 1. Sidebar */}
-      <HomeSidebar
+      {/* <HomeSidebar
         className='z-30 h-full'
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
-      />
+      /> */}
 
       {/* 2. Scrollable Main Content Area */}
       <div
-        className={`custom-scrollbar relative flex-1 overflow-y-auto transition-all duration-300`}
+        className={`custom-scrollbar relative flex-1 overflow-y-auto transition-all duration-600`}
         style={{ scrollBehavior: 'smooth' }}
       >
         {/* NEW: Wrapper for the Navigation Bar
@@ -334,11 +334,9 @@ const [title,setTitle] = useState('AI Agency')
         - dynamic left-XX to start exactly where the sidebar ends
         - top-0 to pin to the top of the scrollable container
       */}
-        <div
-          className={`fixed top-0 z-30 w-full transition-all duration-300 sm:w-auto ${navbarLeftPosition} right-0`}
-        >
+        <div className={`sticky top-0 z-10 mb-10 flex h-16 items-center`}>
           {/* The width of this wrapper is now dynamically calculated: 100% of the viewport MINUS the sidebar width. */}
-          <NavigationBar onLoginClick={handleLogin}  title={title} />
+          <NavigationBar onLoginClick={handleLogin} title={title} />
         </div>
 
         {/* IMPORTANT: Add padding to the top of the content 
