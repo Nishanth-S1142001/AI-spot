@@ -1,15 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { format, formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
-
 import { dbClient } from '../../../../lib/supabase/dbClient'
 import { deleteConversation } from '../../../actions/agents'
 import { useAuth } from '../../../../components/providers/AuthProvider'
 import { useLogout } from '../../../../lib/supabase/auth'
-
 import SideBarLayout from '../../../../components/sideBarLayout'
 import NeonBackground from '../../../../components/ui/background'
 import LoadingState from '../../../../components/common/loading-state'
@@ -18,56 +16,425 @@ import SearchBar from '../../../../components/common/search-bar'
 import Badge from '../../../../components/ui/badge'
 import Button from '../../../../components/ui/button'
 import Card from '../../../../components/ui/card'
-import Modal from '../../../../components/ui/modal'
 import NavigationBar from '../../../../components/navigationBar/navigationBar'
-
 import {
   Eye,
-  LoaderPinwheel,
   MessageSquare,
   Trash2,
   TrendingUp,
   User,
-  Clock
+  Clock,
+  Download,
+  Bot,
+  Filter,
+  XCircle,
+  Calendar,
+  Zap,
+  Activity,
+  BarChart3,
+  RefreshCw
 } from 'lucide-react'
-import { Suspense } from 'react'
 
+const ITEMS_PER_PAGE = 12
+
+/**
+ * Utility function to highlight matching characters in text
+ */
+const highlightText = (text, searchQuery) => {
+  if (!searchQuery || !text) return text
+
+  const searchLower = searchQuery.toLowerCase()
+  const textLower = text.toLowerCase()
+  
+  const matches = []
+  let searchIndex = 0
+  
+  for (let i = 0; i < textLower.length && searchIndex < searchLower.length; i++) {
+    if (textLower[i] === searchLower[searchIndex]) {
+      matches.push(i)
+      searchIndex++
+    }
+  }
+  
+  if (searchIndex < searchLower.length) {
+    return text
+  }
+  
+  const parts = []
+  let lastIndex = 0
+  
+  matches.forEach((matchIndex) => {
+    if (matchIndex > lastIndex) {
+      parts.push(
+        <span key={`text-${lastIndex}`}>
+          {text.slice(lastIndex, matchIndex)}
+        </span>
+      )
+    }
+    
+    parts.push(
+      <span 
+        key={`highlight-${matchIndex}`}
+        className="bg-orange-500/40 text-orange-200 font-bold rounded px-0.5"
+      >
+        {text[matchIndex]}
+      </span>
+    )
+    
+    lastIndex = matchIndex + 1
+  })
+  
+  if (lastIndex < text.length) {
+    parts.push(
+      <span key={`text-${lastIndex}`}>
+        {text.slice(lastIndex)}
+      </span>
+    )
+  }
+  
+  return <>{parts}</>
+}
+
+/**
+ * Memoized Statistics Card Component
+ */
+const StatCard = memo(({ icon: Icon, label, value, subValue, colorClass, bgClass, trend }) => (
+  <Card className={`border-opacity-20 ${bgClass} transition-all hover:scale-[1.02] hover:shadow-lg`}>
+    <div className="flex items-center justify-between p-4">
+      <div className="flex-1">
+        <p className="text-sm font-medium text-neutral-400">{label}</p>
+        <p className={`mt-2 text-3xl font-bold ${colorClass}`}>{value}</p>
+        {subValue && (
+          <div className="mt-2 flex items-center gap-1 text-xs text-neutral-500">
+            {trend && <TrendingUp className="h-3 w-3" />}
+            <span>{subValue}</span>
+          </div>
+        )}
+      </div>
+      <div className={`flex h-12 w-12 items-center justify-center rounded-full ${bgClass.replace('to-neutral-950/50', 'opacity-40')}`}>
+        <Icon className={`h-6 w-6 ${colorClass}`} />
+      </div>
+    </div>
+  </Card>
+))
+StatCard.displayName = 'StatCard'
+
+/**
+ * Memoized Conversation Card Component
+ */
+const ConversationCard = memo(({ conversation, searchTerm, onView, onDelete }) => {
+  const formattedTime = useMemo(
+    () => formatDistanceToNow(new Date(conversation.created_at), { addSuffix: true }),
+    [conversation.created_at]
+  )
+
+  const responseTime = conversation.metadata?.response_time_ms
+
+  return (
+    <Card className="group border-neutral-700/50 bg-gradient-to-br from-neutral-900/50 to-neutral-950/30 transition-all hover:scale-[1.01] hover:border-orange-600/30 hover:shadow-lg hover:shadow-orange-500/10">
+      <div className="flex items-start justify-between p-5">
+        <div className="flex-1 min-w-0 space-y-4">
+          {/* Header */}
+          <div className="flex items-center flex-wrap gap-3">
+            <div className="flex items-center gap-2 text-sm text-neutral-400">
+              <Clock className="h-4 w-4" />
+              <span>{formattedTime}</span>
+            </div>
+            <Badge variant="outline" className="text-xs font-mono">
+              {conversation.session_id.slice(0, 12)}...
+            </Badge>
+            {responseTime && (
+              <div className="flex items-center gap-1 rounded-full bg-purple-900/20 px-2 py-1 text-xs text-purple-300">
+                <Zap className="h-3 w-3" />
+                <span>{responseTime}ms</span>
+              </div>
+            )}
+          </div>
+
+          {/* Messages */}
+          <div className="space-y-4">
+            {/* User Message */}
+            <div className="flex items-start gap-3">
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-900/30 ring-1 ring-blue-500/30">
+                <User className="h-4 w-4 text-blue-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="mb-1.5 text-xs font-semibold text-blue-300">User</p>
+                <p className="line-clamp-2 text-sm text-neutral-300 break-words">
+                  {highlightText(conversation.user_message || '', searchTerm)}
+                </p>
+              </div>
+            </div>
+
+            {/* Agent Response */}
+            <div className="flex items-start gap-3">
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-orange-900/30 ring-1 ring-orange-500/30">
+                <Bot className="h-4 w-4 text-orange-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="mb-1.5 text-xs font-semibold text-orange-300">Agent</p>
+                <p className="line-clamp-2 text-sm text-neutral-300 break-words">
+                  {highlightText(conversation.agent_response || '', searchTerm)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Metadata Footer */}
+          {conversation.metadata?.tokens_used && (
+            <div className="flex items-center gap-3 border-t border-neutral-800/50 pt-3 text-xs text-neutral-500">
+              <div className="flex items-center gap-1">
+                <BarChart3 className="h-3 w-3" />
+                <span>{conversation.metadata.tokens_used} tokens</span>
+              </div>
+              {conversation.metadata?.model && (
+                <>
+                  <span className="text-neutral-700">•</span>
+                  <span className="font-mono">{conversation.metadata.model}</span>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="ml-4 flex flex-col gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onView}
+            className="h-8 w-8 p-0 text-blue-400 hover:bg-blue-600/20 hover:text-blue-300"
+            title="View Details"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onDelete}
+            className="h-8 w-8 p-0 text-red-400 hover:bg-red-600/20 hover:text-red-300"
+            title="Delete"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </Card>
+  )
+})
+ConversationCard.displayName = 'ConversationCard'
+
+/**
+ * Memoized Conversation Details Modal
+ */
+const ConversationDetailsModal = memo(({ conversation, onClose }) => {
+  if (!conversation) return null
+
+  return (
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div 
+        className="mx-4 w-full max-w-3xl max-h-[90vh] overflow-y-auto custom-scrollbar rounded-xl border border-orange-600/30 bg-gradient-to-br from-neutral-900 to-neutral-950 shadow-2xl shadow-orange-500/20 animate-in fade-in zoom-in duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-neutral-800/50 bg-neutral-900/90 backdrop-blur-sm p-6">
+          <div>
+            <h3 className="text-2xl font-bold text-orange-400 flex items-center gap-2">
+              <MessageSquare className="h-6 w-6" />
+              Conversation Details
+            </h3>
+            <p className="mt-1 text-sm text-neutral-400">
+              {format(new Date(conversation.created_at), 'PPpp')}
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            onClick={onClose}
+            className="text-neutral-400 hover:text-neutral-200"
+          >
+            ✕
+          </Button>
+        </div>
+
+        {/* Content */}
+        <div className="space-y-6 p-6">
+          {/* Metadata Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="rounded-lg border border-neutral-700/50 bg-neutral-800/30 p-4">
+              <label className="block text-xs font-semibold text-neutral-400 mb-2">Session ID</label>
+              <p className="font-mono text-sm text-neutral-200 break-all">{conversation.session_id}</p>
+            </div>
+            <div className="rounded-lg border border-neutral-700/50 bg-neutral-800/30 p-4">
+              <label className="block text-xs font-semibold text-neutral-400 mb-2">Conversation ID</label>
+              <p className="font-mono text-sm text-neutral-200 break-all">{conversation.id}</p>
+            </div>
+          </div>
+
+          {/* User Message */}
+          <div>
+            <label className="mb-3 flex items-center gap-2 text-sm font-semibold text-blue-300">
+              <User className="h-4 w-4" />
+              User Message
+            </label>
+            <div className="rounded-lg border border-blue-600/30 bg-gradient-to-br from-blue-900/20 to-neutral-950/50 p-4">
+              <p className="whitespace-pre-wrap text-sm text-neutral-200 leading-relaxed">
+                {conversation.user_message}
+              </p>
+            </div>
+          </div>
+
+          {/* Agent Response */}
+          <div>
+            <label className="mb-3 flex items-center gap-2 text-sm font-semibold text-orange-300">
+              <Bot className="h-4 w-4" />
+              Agent Response
+            </label>
+            <div className="rounded-lg border border-orange-600/30 bg-gradient-to-br from-orange-900/20 to-neutral-950/50 p-4">
+              <p className="whitespace-pre-wrap text-sm text-neutral-200 leading-relaxed">
+                {conversation.agent_response}
+              </p>
+            </div>
+          </div>
+
+          {/* Technical Details */}
+          {conversation.metadata && (
+            <div>
+              <label className="mb-3 flex items-center gap-2 text-sm font-semibold text-purple-300">
+                <Activity className="h-4 w-4" />
+                Performance Metrics
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {conversation.metadata.tokens_used && (
+                  <div className="rounded-lg border border-neutral-700/50 bg-neutral-800/30 p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-neutral-400">Tokens Used</span>
+                      <div className="flex items-center gap-1">
+                        <BarChart3 className="h-3 w-3 text-green-400" />
+                        <span className="font-bold text-green-400">{conversation.metadata.tokens_used}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {conversation.metadata.response_time_ms && (
+                  <div className="rounded-lg border border-neutral-700/50 bg-neutral-800/30 p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-neutral-400">Response Time</span>
+                      <div className="flex items-center gap-1">
+                        <Zap className="h-3 w-3 text-purple-400" />
+                        <span className="font-bold text-purple-400">{conversation.metadata.response_time_ms}ms</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {conversation.metadata.model && (
+                  <div className="rounded-lg border border-neutral-700/50 bg-neutral-800/30 p-4 sm:col-span-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-neutral-400">Model</span>
+                      <span className="font-mono text-sm font-bold text-blue-400">{conversation.metadata.model}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Raw Metadata */}
+          <details className="group rounded-lg border border-neutral-700/50 overflow-hidden">
+            <summary className="cursor-pointer bg-neutral-800/30 p-4 text-sm font-medium text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50 transition-colors flex items-center justify-between">
+              <span>View Raw Metadata</span>
+              <span className="text-neutral-600 group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            <div className="border-t border-neutral-700/50 bg-neutral-950/50 p-4">
+              <pre className="overflow-x-auto text-xs text-neutral-300 font-mono leading-relaxed">
+                {JSON.stringify(conversation.metadata, null, 2)}
+              </pre>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  )
+})
+ConversationDetailsModal.displayName = 'ConversationDetailsModal'
+
+/**
+ * Main Component
+ */
 export default function AgentConversations() {
   const { id } = useParams()
   const router = useRouter()
-  const { user, profile, loading } = useAuth()
+  const { user, profile, loading: authLoading } = useAuth()
   const { logout } = useLogout()
 
-  // --- State ---
+  // ✅ Ref to prevent redundant fetches
+  const hasFetchedData = useRef(false)
+  const [isInitialized, setIsInitialized] = useState(false)
+  
+  // State
   const [agent, setAgent] = useState(null)
-  const [agentCache, setAgentCache] = useState({})
   const [conversations, setConversations] = useState([])
-  const [filteredConversations, setFilteredConversations] = useState([])
   const [stats, setStats] = useState({
     totalConversations: 0,
     totalSessions: 0,
     avgMessagesPerSession: 0,
-    avgResponseTime: 0
+    avgResponseTime: 0,
+    totalTokens: 0
   })
   const [fetching, setFetching] = useState(true)
 
+  // Filter state
   const [searchTerm, setSearchTerm] = useState('')
   const [dateFilter, setDateFilter] = useState('all')
   const [sessionFilter, setSessionFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
+  
+  // Modal state
   const [selectedConversation, setSelectedConversation] = useState(null)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
-  const [title, setTitle] = useState('')
-  const itemsPerPage = 10
-  const message = 'Conversations'
 
-  // --- Stats calculation ---
+  // ✅ Reset state when agent ID changes
+  useEffect(() => {
+    hasFetchedData.current = false
+    setIsInitialized(false)
+    setFetching(true)
+    setAgent(null)
+    setConversations([])
+    setStats({
+      totalConversations: 0,
+      totalSessions: 0,
+      avgMessagesPerSession: 0,
+      avgResponseTime: 0,
+      totalTokens: 0
+    })
+    setSearchTerm('')
+    setDateFilter('all')
+    setSessionFilter('all')
+    setCurrentPage(1)
+    setSelectedConversation(null)
+    setShowDetailsModal(false)
+  }, [id])
+
+  // ✅ OPTIMIZATION: Calculate stats with memoization
   const calculateStats = useCallback((convos) => {
+    if (!convos.length) {
+      setStats({
+        totalConversations: 0,
+        totalSessions: 0,
+        avgMessagesPerSession: 0,
+        avgResponseTime: 0,
+        totalTokens: 0
+      })
+      return
+    }
+
     const uniqueSessions = new Set(convos.map((c) => c.session_id))
     const totalSessions = uniqueSessions.size
     const totalConversations = convos.length
-    const avgMessagesPerSession =
-      totalSessions > 0 ? totalConversations / totalSessions : 0
+    const avgMessagesPerSession = totalSessions > 0 ? totalConversations / totalSessions : 0
+
 
     const responseTimes = convos
       .map((c) => c.metadata?.response_time_ms)
@@ -77,650 +444,459 @@ export default function AgentConversations() {
         ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length
         : 0
 
+    const totalTokens = convos
+      .map((c) => c.metadata?.tokens_used || 0)
+      .reduce((a, b) => a + b, 0)
+
     setStats({
       totalConversations,
       totalSessions,
       avgMessagesPerSession: avgMessagesPerSession.toFixed(1),
-      avgResponseTime: Math.round(avgResponseTime)
+      avgResponseTime: Math.round(avgResponseTime),
+      totalTokens
     })
   }, [])
 
-  // --- Fetch agent & conversations (with caching) ---
-  const fetchAgentAndConversations = useCallback(async () => {
-    if (!id) return
+  // ✅ OPTIMIZATION: Fetch data only once per ID
+  const fetchData = useCallback(async () => {
+    if (!user || !id || hasFetchedData.current) return
 
-    // use cached agent if available
-    if (agentCache[id]) {
-      setAgent(agentCache[id])
-    } else {
-      try {
-        setFetching(true)
-        const [agentData, conversationData] = await Promise.all([
-          dbClient.getAgent(id),
-          dbClient.getConversations(id, 20)
-        ])
-        if (!agentData) {
-          toast.error('Agent not found')
-          router.push('/agents')
-          return
-        }
-        setAgent(agentData)
-        setAgentCache((prev) => ({ ...prev, [id]: agentData }))
-        setTitle(agentData.name || 'Agent')
-        setConversations(conversationData || [])
-        calculateStats(conversationData || [])
+    hasFetchedData.current = true
 
-        // defer analytics fetch
-        dbClient.getAnalytics(id).then(() => {})
-      } catch (err) {
-        console.error('Error fetching agent data:', err)
-        toast.error('Failed to load agent data')
-      } finally {
-        setFetching(false)
+    try {
+      setFetching(true)
+      const [agentData, conversationData] = await Promise.all([
+        dbClient.getAgent(id),
+        dbClient.getConversations(id, 200) // Fetch more conversations at once
+      ])
+
+      if (!agentData) {
+        toast.error('Agent not found')
+        router.push('/agents')
+        return
       }
+
+      setAgent(agentData)
+      setConversations(conversationData || [])
+      calculateStats(conversationData || [])
+    } catch (err) {
+      console.error('Error fetching data:', err)
+      toast.error('Failed to load conversations')
+    } finally {
+      setFetching(false)
+      setIsInitialized(true)
     }
-  }, [id, agentCache, calculateStats, router])
+  }, [user, id, router, calculateStats])
 
   useEffect(() => {
-    if (!user) return
-    fetchAgentAndConversations()
-  }, [fetchAgentAndConversations, user])
-
-  // --- Filtering & Search ---
-  useEffect(() => {
-    if (!conversations || conversations.length === 0) {
-      setFilteredConversations([])
-      setCurrentPage(1)
-      return
+    if (user && !authLoading) {
+      fetchData()
     }
+  }, [fetchData, user, authLoading])
+
+  // ✅ OPTIMIZATION: Memoized unique sessions
+  const uniqueSessions = useMemo(
+    () => [...new Set(conversations.map((c) => c.session_id))].slice(0, 20),
+    [conversations]
+  )
+
+  // ✅ OPTIMIZATION: Memoized filtered conversations
+  const filteredConversations = useMemo(() => {
+    if (!conversations.length) return []
 
     const now = new Date()
-    const filtered = conversations.filter((conv) => {
-      // search
+    return conversations.filter((conv) => {
+      // Search filter
       if (searchTerm) {
         const term = searchTerm.toLowerCase()
-        const matches =
-          conv.user_message?.toLowerCase().includes(term) ||
-          conv.agent_response?.toLowerCase().includes(term) ||
-          conv.session_id?.toLowerCase().includes(term)
-        if (!matches) return false
+        
+        const userMsgLower = (conv.user_message || '').toLowerCase()
+        const agentRespLower = (conv.agent_response || '').toLowerCase()
+        const sessionLower = (conv.session_id || '').toLowerCase()
+        
+        // Fuzzy character matching
+        let searchIndex = 0
+        const combined = userMsgLower + ' ' + agentRespLower + ' ' + sessionLower
+        
+        for (let i = 0; i < combined.length && searchIndex < term.length; i++) {
+          if (combined[i] === term[searchIndex]) {
+            searchIndex++
+          }
+        }
+        
+        if (searchIndex < term.length) return false
       }
 
-      // date filter
+      // Date filter
       if (dateFilter !== 'all') {
         const convDate = new Date(conv.created_at)
-        const days =
-          dateFilter === 'today'
-            ? 1
-            : dateFilter === 'week'
-              ? 7
-              : dateFilter === 'month'
-                ? 30
-                : 0
+        const daysMap = { today: 1, week: 7, month: 30 }
+        const days = daysMap[dateFilter] || 0
+        
         if (days > 0) {
           const ago = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
           if (convDate < ago) return false
         }
       }
 
-      // session filter
-      if (sessionFilter !== 'all' && !conv.session_id.includes(sessionFilter))
+      // Session filter
+      if (sessionFilter !== 'all' && conv.session_id !== sessionFilter) {
         return false
+      }
 
       return true
     })
-
-    setFilteredConversations(filtered)
-    setCurrentPage(1)
   }, [conversations, searchTerm, dateFilter, sessionFilter])
 
-  const uniqueSessions = useMemo(
-    () => [...new Set(conversations.map((c) => c.session_id))],
-    [conversations]
-  )
-  const currentConversations = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage
-    const end = start + itemsPerPage
+  // ✅ OPTIMIZATION: Memoized paginated conversations
+  const paginatedConversations = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE
+    const end = start + ITEMS_PER_PAGE
     return filteredConversations.slice(start, end)
   }, [filteredConversations, currentPage])
-  const totalPages = Math.ceil(filteredConversations.length / itemsPerPage)
 
-  // --- Export CSV ---
+  const totalPages = Math.ceil(filteredConversations.length / ITEMS_PER_PAGE)
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, dateFilter, sessionFilter])
+
+  // ✅ OPTIMIZATION: Export CSV
   const exportConversations = useCallback(() => {
+    if (!filteredConversations.length) {
+      return toast.error('No conversations to export')
+    }
+
     const csvContent = [
-      [
-        'Date',
-        'Session ID',
-        'User Message',
-        'Agent Response',
-        'Tokens Used',
-        'Response Time (ms)'
-      ],
+      ['Date', 'Session ID', 'User Message', 'Agent Response', 'Tokens Used', 'Response Time (ms)', 'Model'],
       ...filteredConversations.map((conv) => [
         format(new Date(conv.created_at), 'yyyy-MM-dd HH:mm:ss'),
         conv.session_id,
-        conv.user_message,
-        conv.agent_response,
+        (conv.user_message || '').replace(/"/g, '""'),
+        (conv.agent_response || '').replace(/"/g, '""'),
         conv.metadata?.tokens_used || 0,
-        conv.metadata?.response_time_ms || 0
+        conv.metadata?.response_time_ms || 0,
+        conv.metadata?.model || ''
       ])
     ]
       .map((row) => row.map((cell) => `"${cell}"`).join(','))
       .join('\n')
 
-    const blob = new Blob([csvContent], { type: 'text/csv' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `conversations-${agent?.name || 'agent'}-${format(new Date(), 'yyyy-MM-dd')}.csv`
-    a.click()
-    window.URL.revokeObjectURL(url)
-    toast.success('Conversations exported successfully!')
-  }, [filteredConversations, agent?.name])
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${agent?.name || 'agent'}-conversations-${format(new Date(), 'yyyy-MM-dd')}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    
+    toast.success(`Exported ${filteredConversations.length} conversations!`)
+  }, [filteredConversations, agent])
 
-  // --- Delete conversation (optimistic) ---
+  // ✅ OPTIMIZATION: Delete with optimistic update
   const handleDeleteConversation = useCallback(
     async (conversationId) => {
-      if (!confirm('Are you sure you want to delete this conversation?')) return
-      const prev = conversations
+      if (!confirm('Delete this conversation? This action cannot be undone.')) return
+
+      // Optimistic update
+      const previousConversations = conversations
+      const newConversations = conversations.filter((c) => c.id !== conversationId)
+      setConversations(newConversations)
+      calculateStats(newConversations)
+      
       try {
-        setConversations((prevList) =>
-          prevList.filter((c) => c.id !== conversationId)
-        )
         await deleteConversation(conversationId)
         toast.success('Conversation deleted')
       } catch (err) {
-        console.error(err)
+        console.error('Error deleting conversation:', err)
         toast.error('Failed to delete conversation')
-        setConversations(prev)
+        setConversations(previousConversations) // Rollback
+        calculateStats(previousConversations)
       }
     },
-    [conversations]
+    [conversations, calculateStats]
   )
 
-  const viewDetails = useCallback((conv) => {
-    setSelectedConversation(conv)
+  // View conversation details
+  const handleViewConversation = useCallback((conversation) => {
+    setSelectedConversation(conversation)
     setShowDetailsModal(true)
   }, [])
 
-  if (loading) return <LoadingState message='Loading...' />
+  // Clear filters
+  const handleClearFilters = useCallback(() => {
+    setSearchTerm('')
+    setDateFilter('all')
+    setSessionFilter('all')
+  }, [])
+
+  // Handle search
+  const handleSearch = useCallback((query) => {
+    setSearchTerm(query)
+  }, [])
+
+  // Handle page change
+  const handlePageChange = useCallback((page) => {
+    setCurrentPage(page)
+    document.getElementById('conversations-section')?.scrollIntoView({ behavior: 'smooth' })
+  }, [])
+
+  // Handle manual refresh
+  const handleRefresh = useCallback(() => {
+    hasFetchedData.current = false
+    fetchData()
+  }, [fetchData])
+
+  // Loading state
+  if (authLoading || (fetching && !isInitialized)) {
+    return (
+      <LoadingState
+        message={authLoading ? 'Authenticating...' : 'Loading conversations...'}
+        className="min-h-screen"
+      />
+    )
+  }
+
+  if (!agent) {
+    return <LoadingState message="Agent not found..." className="min-h-screen" />
+  }
+
+  const hasFilters = searchTerm || dateFilter !== 'all' || sessionFilter !== 'all'
 
   return (
     <>
-      
-        <NeonBackground />
-        <SideBarLayout>
-          <Suspense fallback={<LoadingState message='Loading UI...' />}> 
-          <div className='relative w-full flex-1 font-mono text-neutral-100'>
-            <div className='sticky top-0 z-10 mb-10 flex h-16 items-center'>
-              <NavigationBar
-                profile={profile}
-                message={message}
-                title={title}
-                agent={agent}
-                fetchData={fetchAgentAndConversations}
-                exportConversations={exportConversations}
-                onLogOutClick={logout}
-              />
-            </div>
+      <NeonBackground />
+      <SideBarLayout>
+        <div className="flex h-screen w-full flex-col font-mono text-neutral-100">
+          {/* Header */}
+          <div className="sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl">
+            <NavigationBar
+              profile={profile}
+              title={`${agent.name} - Conversations`}
+              onLogOutClick={logout}
+            />
+          </div>
 
-            <div className='mx-auto max-w-7xl px-4 py-8 pt-5 sm:px-6 lg:px-8'>
-              <StatsGrid stats={stats} />
+          {/* Main Content */}
+          <div className="custom-scrollbar flex-1 overflow-y-auto">
+            <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+              {/* Stats Cards */}
+              <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <StatCard
+                  icon={MessageSquare}
+                  label="Total Conversations"
+                  value={stats.totalConversations}
+                  subValue={`${stats.totalSessions} sessions`}
+                  colorClass="text-orange-400"
+                  bgClass="border-orange-600/20 bg-gradient-to-br from-orange-900/20 to-neutral-950/50"
+                  trend
+                />
 
-              <Filters
-                dateFilter={dateFilter}
-                setDateFilter={setDateFilter}
-                sessionFilter={sessionFilter}
-                setSessionFilter={setSessionFilter}
-                uniqueSessions={uniqueSessions}
-                onSearch={setSearchTerm}
-              />
+                <StatCard
+                  icon={User}
+                  label="Avg Messages/Session"
+                  value={stats.avgMessagesPerSession}
+                  subValue="per conversation"
+                  colorClass="text-blue-400"
+                  bgClass="border-blue-600/20 bg-gradient-to-br from-blue-900/20 to-neutral-950/50"
+                />
 
-              <Card>
-                <div className='card-header'>
-                  <h3 className='text-lg font-semibold text-neutral-200'>
-                    Conversations
-                  </h3>
-                </div>
-                <div className='card-content'>
-                  {filteredConversations.length === 0 ? (
-                    <EmptyState />
-                  ) : (
-                    <>
-                      <div className='divide-y divide-neutral-700'>
-                        {currentConversations.map((conv) => (
-                          <ConversationItem
-                            key={conv.id}
-                            conversation={conv}
-                            onView={() => viewDetails(conv)}
-                            onDelete={() => handleDeleteConversation(conv.id)}
-                            searchTerm={searchTerm}
-                          />
-                        ))}
-                      </div>
-                      {totalPages > 1 && (
-                        <div className='border-t border-neutral-700 p-6'>
-                          <Pagination
-                            currentPage={currentPage}
-                            totalPages={totalPages}
-                            onPageChange={setCurrentPage}
-                            totalItems={filteredConversations.length}
-                            itemsPerPage={itemsPerPage}
-                          />
+                <StatCard
+                  icon={Clock}
+                  label="Avg Response Time"
+                  value={`${stats.avgResponseTime}ms`}
+                  subValue="processing time"
+                  colorClass="text-purple-400"
+                  bgClass="border-purple-600/20 bg-gradient-to-br from-purple-900/20 to-neutral-950/50"
+                />
+                
+                <StatCard
+                  icon={BarChart3}
+                  label="Total Tokens"
+                  value={stats.totalTokens.toLocaleString()}
+                  subValue="tokens used"
+                  colorClass="text-green-400"
+                  bgClass="border-green-600/20 bg-gradient-to-br from-green-900/20 to-neutral-950/50"
+                />
+              </div>
+
+              {/* Filters */}
+              <Card className="mb-6 border-neutral-700/50">
+                <div className="space-y-4 p-5">
+                  {/* Top Row: Search and Export */}
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex-1 max-w-2xl">
+                      <SearchBar
+                        value={searchTerm}
+                        onChange={handleSearch}
+                        placeholder="Search messages, sessions..."
+                        variant="orange"
+                        debounceMs={300}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={handleRefresh} 
+                        variant="outline" 
+                        size="sm"
+                        className="flex items-center gap-2"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        Refresh
+                      </Button>
+                      <Button 
+                        onClick={exportConversations} 
+                        variant="secondary" 
+                        size="sm"
+                        className="flex items-center gap-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        Export CSV
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Filter Buttons */}
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Filter className="h-4 w-4 text-neutral-400" />
+                    
+                    {/* Date Filters */}
+                    <div className="flex flex-wrap gap-2">
+                      <span className="text-xs text-neutral-500">Date:</span>
+                      {[
+                        { value: 'all', label: 'All Time' },
+                        { value: 'today', label: 'Today' },
+                        { value: 'week', label: 'Last 7 Days' },
+                        { value: 'month', label: 'Last 30 Days' }
+                      ].map(({ value, label }) => (
+                        <button
+                          key={value}
+                          onClick={() => setDateFilter(value)}
+                          className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                            dateFilter === value
+                              ? 'bg-orange-600/30 text-orange-300 ring-1 ring-orange-500/50'
+                              : 'bg-neutral-800/30 text-neutral-400 hover:bg-neutral-800/50'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {uniqueSessions.length > 1 && (
+                      <>
+                        <span className="text-neutral-700">|</span>
+                        
+                        {/* Session Filter */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-neutral-500">Session:</span>
+                          <select
+                            value={sessionFilter}
+                            onChange={(e) => setSessionFilter(e.target.value)}
+                            className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-xs text-neutral-200 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                          >
+                            <option value="all">All Sessions ({uniqueSessions.length})</option>
+                            {uniqueSessions.map((session) => (
+                              <option key={session} value={session}>
+                                {session.slice(0, 20)}...
+                              </option>
+                            ))}
+                          </select>
                         </div>
-                      )}
-                    </>
-                  )}
+                      </>
+                    )}
+
+                    {hasFilters && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleClearFilters}
+                        className="ml-auto text-xs flex items-center gap-1"
+                      >
+                        <XCircle className="h-3 w-3" />
+                        Clear Filters
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Results Count */}
+                  <p className="text-sm text-neutral-400">
+                    Showing {paginatedConversations.length} of {filteredConversations.length} conversations
+                    {hasFilters && ' matching your filters'}
+                  </p>
                 </div>
               </Card>
 
-              {showDetailsModal && selectedConversation && (
-                <ConversationDetailsModal
-                  conversation={selectedConversation}
-                  onClose={() => {
-                    setShowDetailsModal(false)
-                    setSelectedConversation(null)
-                  }}
-                />
-              )}
-            </div>
-          </div></Suspense>
-        </SideBarLayout>
-      
-    </>
-  )
-}
+              {/* Conversations List */}
+              <div id="conversations-section">
+                {filteredConversations.length === 0 ? (
+                  <Card className="border-neutral-700/50">
+                    <div className="flex flex-col items-center py-16 text-center">
+                      <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-orange-900/40 to-orange-950/20 ring-1 ring-orange-500/50">
+                        <MessageSquare className="h-10 w-10 text-orange-400" />
+                      </div>
+                      <h3 className="mb-3 text-xl font-bold text-neutral-200">
+                        {conversations.length === 0 ? 'No conversations yet' : 'No matching conversations'}
+                      </h3>
+                      <p className="mb-6 max-w-md text-sm text-neutral-400">
+                        {conversations.length === 0
+                          ? 'Start conversations with your agent to see them here'
+                          : 'Try adjusting your filters or search terms'}
+                      </p>
+                      {hasFilters && (
+                        <Button onClick={handleClearFilters} variant="outline">
+                          Clear Filters
+                        </Button>
+                      )}
+                    </div>
+                  </Card>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {paginatedConversations.map((conversation) => (
+                        <ConversationCard
+                          key={conversation.id}
+                          conversation={conversation}
+                          searchTerm={searchTerm}
+                          onView={() => handleViewConversation(conversation)}
+                          onDelete={() => handleDeleteConversation(conversation.id)}
+                        />
+                      ))}
+                    </div>
 
-/* ------------------- Helper / Subcomponents ------------------- */
-
-const StatsGrid = ({ stats }) => (
-  <div className='mb-8 grid grid-cols-1 gap-6 md:grid-cols-4'>
-    <Card>
-      <div className='p-6'>
-        <div className='flex items-center justify-between'>
-          <div>
-            <p className='text-sm font-medium text-neutral-400'>
-              Total Conversations
-            </p>
-            <p className='text-2xl font-bold text-neutral-200'>
-              {stats.totalConversations}
-            </p>
-          </div>
-          <MessageSquare className='h-8 w-8 text-orange-400' />
-        </div>
-      </div>
-    </Card>
-
-    <Card>
-      <div className='p-6'>
-        <div className='flex items-center justify-between'>
-          <div>
-            <p className='text-sm font-medium text-neutral-400'>
-              Unique Sessions
-            </p>
-            <p className='text-2xl font-bold text-neutral-200'>
-              {stats.totalSessions}
-            </p>
-          </div>
-          <User className='h-8 w-8 text-green-400' />
-        </div>
-      </div>
-    </Card>
-
-    <Card>
-      <div className='p-6'>
-        <div className='flex items-center justify-between'>
-          <div>
-            <p className='text-sm font-medium text-neutral-400'>
-              Avg Messages/Session
-            </p>
-            <p className='text-2xl font-bold text-neutral-200'>
-              {stats.avgMessagesPerSession}
-            </p>
-          </div>
-          <TrendingUp className='h-8 w-8 text-purple-400' />
-        </div>
-      </div>
-    </Card>
-
-    <Card>
-      <div className='p-6'>
-        <div className='flex items-center justify-between'>
-          <div>
-            <p className='text-sm font-medium text-neutral-400'>
-              Avg Response Time
-            </p>
-            <p className='text-2xl font-bold text-neutral-200'>
-              {stats.avgResponseTime}ms
-            </p>
-          </div>
-          <Clock className='h-8 w-8 text-orange-400' />
-        </div>
-      </div>
-    </Card>
-  </div>
-)
-
-const Filters = ({
-  dateFilter,
-  setDateFilter,
-  sessionFilter,
-  setSessionFilter,
-  uniqueSessions,
-  onSearch
-}) => (
-  <Card className='mb-6'>
-    <div className='p-6'>
-      <div className='grid gap-4 md:grid-cols-3'>
-        <div>
-          <label className='mb-2 block text-sm font-medium text-neutral-400'>
-            Search
-          </label>
-          <SearchBar
-            onSearch={onSearch}
-            placeholder='Search conversations...'
-            className='w-full'
-          />
-        </div>
-
-        <div>
-          <label className='mb-2 block text-sm font-medium text-neutral-400'>
-            Date Range
-          </label>
-          <select
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className='input h-10 w-full rounded-full bg-neutral-900 px-4'
-          >
-            <option value='all'>All Time</option>
-            <option value='today'>Today</option>
-            <option value='week'>Last 7 Days</option>
-            <option value='month'>Last 30 Days</option>
-          </select>
-        </div>
-
-        <div>
-          <label className='mb-2 block text-sm font-medium text-neutral-400'>
-            Session
-          </label>
-          <select
-            value={sessionFilter}
-            onChange={(e) => setSessionFilter(e.target.value)}
-            className='input h-10 w-full rounded-full bg-neutral-900 px-4'
-          >
-            <option value='all'>All Sessions</option>
-            {uniqueSessions.map((session) => (
-              <option key={session} value={session}>
-                {session}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-    </div>
-  </Card>
-)
-
-const EmptyState = () => (
-  <div className='py-12 text-center'>
-    <MessageSquare className='mx-auto mb-3 h-12 w-12 text-neutral-600' />
-    <p className='text-neutral-400'>No conversations found</p>
-    <p className='text-sm text-neutral-500'>
-      Try adjusting filters or check back later.
-    </p>
-  </div>
-)
-
-// Conversation list item (kept identical UI)
-function ConversationItem({ conversation, onView, onDelete, searchTerm }) {
-  return (
-    <div className='rounded-lg border border-neutral-700 p-6 transition-colors hover:bg-neutral-800'>
-      <div className='flex items-start justify-between'>
-        <div className='min-w-0 flex-1'>
-          <div className='mb-3 flex items-center space-x-3'>
-            <Badge
-              variant='outline'
-              className='border-neutral-600 text-xs text-neutral-400'
-            >
-              Session:{' '}
-              <HighlightText
-                text={conversation.session_id.slice(-8)}
-                highlight={searchTerm}
-              />
-            </Badge>
-            <span className='text-xs text-neutral-400'>
-              {formatDistanceToNow(new Date(conversation.created_at), {
-                addSuffix: true
-              })}
-            </span>
-            {conversation.metadata?.tokens_used && (
-              <Badge
-                variant='secondary'
-                className='bg-neutral-700 text-xs text-neutral-400'
-              >
-                {conversation.metadata.tokens_used} tokens
-              </Badge>
-            )}
-          </div>
-
-          <div className='space-y-3'>
-            <div className='flex items-start space-x-3'>
-              <div className='flex-shrink-0'>
-                <div className='flex h-8 w-8 items-center justify-center rounded-full bg-neutral-700'>
-                  <User className='h-4 w-4 text-neutral-400' />
-                </div>
-              </div>
-              <div className='flex-1'>
-                <p className='mb-1 text-sm font-medium text-neutral-200'>
-                  User
-                </p>
-                <p className='line-clamp-2 text-sm text-neutral-300'>
-                  <HighlightText
-                    text={conversation.user_message || ''}
-                    highlight={searchTerm}
-                  />
-                </p>
-              </div>
-            </div>
-
-            <div className='flex items-start space-x-3'>
-              <div className='flex-shrink-0'>
-                <div className='flex h-8 w-8 items-center justify-center rounded-full bg-orange-900/20'>
-                  <LoaderPinwheel className='h-4 w-4 text-orange-600' />
-                </div>
-              </div>
-              <div className='flex-1'>
-                <p className='mb-1 text-sm font-medium text-neutral-200'>
-                  Agent
-                </p>
-                <p className='line-clamp-2 text-sm text-neutral-300'>
-                  <HighlightText
-                    text={conversation.agent_response || ''}
-                    highlight={searchTerm}
-                  />
-                </p>
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                      <div className="mt-8">
+                        <Pagination
+                          currentPage={currentPage}
+                          totalPages={totalPages}
+                          onPageChange={handlePageChange}
+                          maxVisible={5}
+                          variant="orange"
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           </div>
-
-          {conversation.metadata?.response_time_ms && (
-            <div className='mt-3 text-xs text-neutral-400'>
-              Response time: {conversation.metadata.response_time_ms}ms
-            </div>
-          )}
         </div>
+      </SideBarLayout>
 
-        <div className='ml-4 flex items-center space-x-2'>
-          <Button
-            variant='ghost'
-            size='sm'
-            onClick={onView}
-            className='text-neutral-400 hover:bg-neutral-700'
-          >
-            <Eye className='h-4 w-4' />
-          </Button>
-          <Button
-            variant='ghost'
-            size='sm'
-            onClick={onDelete}
-            className='text-red-400 hover:bg-neutral-700 hover:text-red-300'
-          >
-            <Trash2 className='h-4 w-4' />
-          </Button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// Conversation details modal (kept identical UI)
-function ConversationDetailsModal({ conversation, onClose }) {
-  return (
-    <Modal isOpen onClose={onClose} title='Conversation Details' size='lg'>
-      <div className='space-y-6'>
-        <div className='grid grid-cols-2 gap-4'>
-          <div>
-            <label className='block text-sm font-medium text-neutral-400'>
-              Session ID
-            </label>
-            <p className='mt-1 font-mono text-sm text-neutral-200'>
-              {conversation.session_id}
-            </p>
-          </div>
-          <div>
-            <label className='block text-sm font-medium text-neutral-400'>
-              Timestamp
-            </label>
-            <p className='mt-1 text-sm text-neutral-200'>
-              {format(new Date(conversation.created_at), 'PPpp')}
-            </p>
-          </div>
-        </div>
-
-        <div>
-          <label className='mb-2 block text-sm font-medium text-neutral-400'>
-            User Message
-          </label>
-          <div className='rounded-lg bg-neutral-800 p-4'>
-            <p className='text-sm whitespace-pre-wrap text-neutral-200'>
-              {conversation.user_message}
-            </p>
-          </div>
-        </div>
-
-        <div>
-          <label className='mb-2 block text-sm font-medium text-neutral-400'>
-            Agent Response
-          </label>
-          <div className='rounded-lg border border-orange-900/20 bg-orange-400/20 p-4'>
-            <p className='text-sm whitespace-pre-wrap text-neutral-200'>
-              {conversation.agent_response}
-            </p>
-          </div>
-        </div>
-
-        {conversation.metadata && (
-          <div>
-            <label className='mb-2 block text-sm font-medium text-neutral-400'>
-              Technical Details
-            </label>
-            <div className='space-y-2 rounded-lg border border-neutral-700 bg-neutral-800 p-4'>
-              {conversation.metadata.tokens_usage_metadata && (
-                <div className='mt-2 rounded-lg border border-neutral-700 bg-neutral-900 p-2'>
-                  <p className='mb-1 text-xs text-neutral-300'>
-                    Token Breakdown:
-                  </p>
-                  <div className='flex justify-between text-xs'>
-                    <span className='text-neutral-400'>Prompt Tokens:</span>
-                    <span className='text-neutral-300'>
-                      {
-                        conversation.metadata.tokens_usage_metadata
-                          .prompt_tokens
-                      }
-                    </span>
-                  </div>
-                  <div className='flex justify-between text-xs'>
-                    <span className='text-neutral-400'>Completion Tokens:</span>
-                    <span className='text-neutral-300'>
-                      {
-                        conversation.metadata.tokens_usage_metadata
-                          .completion_tokens
-                      }
-                    </span>
-                  </div>
-                  <div className='flex justify-between text-xs'>
-                    <span className='text-neutral-400'>Total Tokens:</span>
-                    <span className='text-neutral-300'>
-                      {conversation.metadata.tokens_usage_metadata.total_tokens}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {conversation.metadata.tokens_used && (
-                <div className='flex justify-between text-sm'>
-                  <span className='text-neutral-400'>Tokens Used:</span>
-                  <span className='font-medium text-neutral-200'>
-                    {conversation.metadata.tokens_used}
-                  </span>
-                </div>
-              )}
-              {conversation.metadata.response_time_ms && (
-                <div className='flex justify-between text-sm'>
-                  <span className='text-neutral-400'>Response Time:</span>
-                  <span className='font-medium text-neutral-200'>
-                    {conversation.metadata.response_time_ms}ms
-                  </span>
-                </div>
-              )}
-              {conversation.metadata.model && (
-                <div className='flex justify-between text-sm'>
-                  <span className='text-neutral-400'>Model:</span>
-                  <span className='font-medium text-neutral-200'>
-                    {conversation.metadata.model}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        <details className='rounded-lg border border-neutral-700'>
-          <summary className='cursor-pointer p-4 text-sm font-medium text-neutral-400'>
-            View Raw Metadata
-          </summary>
-          <div className='border-t border-neutral-700 bg-neutral-800 p-4'>
-            <pre className='overflow-x-auto text-xs text-neutral-100'>
-              {JSON.stringify(conversation.metadata, null, 2)}
-            </pre>
-          </div>
-        </details>
-      </div>
-    </Modal>
-  )
-}
-
-// Simple highlight helper for search matches
-function HighlightText({ text = '', highlight = '' }) {
-  if (!highlight) return <>{text}</>
-
-  const regex = new RegExp(`(${escapeRegExp(highlight)})`, 'gi')
-  const parts = String(text).split(regex)
-  return (
-    <>
-      {parts.map((part, i) =>
-        regex.test(part) ? (
-          <span key={i} className='bg-orange-400 text-black'>
-            {part}
-          </span>
-        ) : (
-          <span key={i}>{part}</span>
-        )
+      {/* Conversation Details Modal */}
+      {showDetailsModal && selectedConversation && (
+        <ConversationDetailsModal
+          conversation={selectedConversation}
+          onClose={() => {
+            setShowDetailsModal(false)
+            setSelectedConversation(null)
+          }}
+        />
       )}
     </>
   )
-}
-
-function escapeRegExp(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }

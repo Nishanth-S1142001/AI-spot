@@ -6,9 +6,5 @@ export const navMenus = {
     { name: 'Services', href: '/#services' },
     { name: 'Pricing', href: '/#pricing' },
     { name: 'Contact', href: '/#contact' }
-  ],
-
- 
-   
-  
+  ]
 }

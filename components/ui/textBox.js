@@ -1,70 +1,126 @@
 'use client'
 
+import { memo, forwardRef } from 'react'
+
 /**
- * A reusable text area component with a themed style and scrollbar.
- * It matches the visual theme of the FormInput component.
- *
- * @param {object} props - The component props.
- * @param {string} props.id - The HTML id for the textarea.
- * @param {string} props.placeholder - The placeholder text for the textarea.
- * @param {string} props.name - The name attribute for the textarea.
- * @param {string} props.value - The current value of the textarea.
- * @param {string} [props.className] - Additional classes to apply to the textarea.
- * @param {function} props.onChange - The change event handler for the textarea.
- * @param {boolean} [props.disabled=false] - Whether the textarea is disabled.
- * @param {boolean} [props.required=false] - Whether the textarea is a required field.
- * @param {number} [props.rows=5] - The number of rows to display in the textarea.
- * @param {React.ReactNode} [props.children] - Child elements to render inside the textarea.
+ * Optimized FormTextarea Component
+ * Features:
+ * - ForwardRef for react-hook-form
+ * - Memoized for performance
+ * - No inline styles (moved to global CSS)
+ * - Error state
+ * - Helper text
+ * - Character count
+ * - Auto-resize option
+ * - Dark theme optimized
  */
-export default function FormTextarea({
-  id,
-  placeholder,
-  name,
-  value,
-  className,
-  onChange,
-  disabled = false,
-  required = false,
-  rows = 5,
-  children
-}) {
-  return (
-    <>
-      {/* Scrollbar CSS */}
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 8px;
-        }
 
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
+const FormTextarea = memo(
+  forwardRef(
+    (
+      {
+        id,
+        label,
+        placeholder,
+        name,
+        value,
+        className = '',
+        onChange,
+        disabled = false,
+        required = false,
+        error,
+        helperText,
+        rows = 5,
+        maxLength,
+        showCount = false,
+        autoResize = false,
+        ...props
+      },
+      ref
+    ) => {
+      const hasError = !!error
+      const characterCount = value?.length || 0
 
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background-color: rgba(255, 255, 255, 0.2);
-          border-radius: 4px;
-          border: 2px solid transparent;
+      // Auto-resize handler
+      const handleAutoResize = (e) => {
+        if (autoResize) {
+          e.target.style.height = 'auto'
+          e.target.style.height = `${e.target.scrollHeight}px`
         }
+        onChange?.(e)
+      }
 
-        /* Firefox support */
-        .custom-scrollbar {
-          scrollbar-width: thin;
-          scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-        }
-      `}</style>
-      <textarea
-        disabled={disabled}
-        name={name}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        required={required}
-        id={id}
-        rows={rows}
-        className={`${className} font-mono place-content-center custom-scrollbar resize-y overflow-y-auto border-2 border-transparent border-b-neutral-700 px-4 py-3 pl-10 text-white placeholder-neutral-400 transition-all duration-300 focus:border-b-white focus:ring-2 focus:ring-transparent focus:outline-none`}
-      >
-        {children}
-      </textarea>
-    </>
+      return (
+        <div className='w-full space-y-1'>
+          {/* Label */}
+          {label && (
+            <div className='flex items-center justify-between'>
+              <label
+                htmlFor={id}
+                className='block text-sm font-medium text-neutral-300'
+              >
+                {label}
+                {required && <span className='ml-1 text-orange-400'>*</span>}
+              </label>
+              
+              {showCount && maxLength && (
+                <span
+                  className={`text-xs ${
+                    characterCount > maxLength
+                      ? 'text-red-400'
+                      : 'text-neutral-500'
+                  }`}
+                >
+                  {characterCount}/{maxLength}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Textarea */}
+          <textarea
+            ref={ref}
+            disabled={disabled}
+            name={name}
+            value={value}
+            onChange={handleAutoResize}
+            placeholder={placeholder}
+            required={required}
+            id={id}
+            rows={rows}
+            maxLength={maxLength}
+            className={`
+              custom-scrollbar w-full rounded-lg border bg-neutral-900/50 px-4 py-2.5 font-mono text-white
+              placeholder-neutral-500 transition-all duration-200
+              ${autoResize ? 'resize-none' : 'resize-y'}
+              ${
+                hasError
+                  ? 'border-red-600/50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
+                  : 'border-neutral-700/50 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20'
+              }
+              ${disabled ? 'cursor-not-allowed opacity-50' : ''}
+              focus:outline-none
+              ${className}
+            `}
+            {...props}
+          />
+
+          {/* Helper Text / Error */}
+          {(error || helperText) && (
+            <p
+              className={`text-xs ${
+                hasError ? 'text-red-400' : 'text-neutral-500'
+              }`}
+            >
+              {error || helperText}
+            </p>
+          )}
+        </div>
+      )
+    }
   )
-}
+)
+
+FormTextarea.displayName = 'FormTextarea'
+
+export default FormTextarea

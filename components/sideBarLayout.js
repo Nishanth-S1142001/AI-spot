@@ -1,7 +1,7 @@
-// SideBarLayout.js (Corrected)
+'use client'
 
-import { usePathname } from 'next/navigation' // 👈 Import usePathname
-import { useEffect, useState } from 'react' // 👈 Import useEffect
+import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import {
   menuItems as mainMenu,
   subMenuItems as subMenus
@@ -9,50 +9,83 @@ import {
 import Sidebar from './sideBar.js'
 import SubSidebar from './subSideBar.js'
 
-const getActiveMenuKey = (pathname) => {
-  if (pathname.startsWith('/agents')) return 'agents'
-  if (pathname.startsWith('/settings')) return 'settings'
-  // Add other key mappings here (e.g., if (pathname.startsWith('/profile')) return 'profile')
-  // Fallback for home, dashboard, and activity
-  if (
-    pathname === '/' ||
-    pathname.startsWith('/dashboard') ||
-    pathname.startsWith('/activity')
-  )
-    return 'home'
+/**
+ * Improved SideBarLayout Component
+ * Features:
+ * - Clean layout structure
+ * - Automatic menu detection based on route
+ * - Smooth transitions
+ * - Better state management
+ */
 
-  // You may need to refine this based on your full menu logic
+/**
+ * Determine which menu should be active based on current pathname
+ */
+const getActiveMenuKey = (pathname) => {
+  // Agent routes
+  if (pathname.startsWith('/agents')) return 'agents'
+  
+  // Workflow routes
+  if (pathname.startsWith('/workflows')) return 'workflows'
+  
+  // Settings routes
+  if (pathname.startsWith('/settings')) return 'settings'
+  
+  // Webhook routes
+  if (pathname.startsWith('/webhooks')) return 'webhooks'
+  
+  // Profile routes
+  if (pathname.startsWith('/profile')) return 'profile'
+  
+  // Analytics routes
+  if (pathname.startsWith('/analytics')) return 'analytics'
+  
+  // Activity routes
+  if (pathname.startsWith('/activity')) return 'activity'
+  
+  // Home/Dashboard routes
+  if (pathname === '/' || pathname.startsWith('/dashboard')) return 'home'
+  
+  // Default fallback
   return 'home'
 }
 
-
 export default function SideBarLayout({ children }) {
   const pathname = usePathname()
-  
-  const initialKey = getActiveMenuKey(pathname) // Calculate initial value
-  const [activeMenu, setActiveMenu] = useState(initialKey)
+  const [activeMenu, setActiveMenu] = useState(() => getActiveMenuKey(pathname))
+
+  // Update active menu when pathname changes
   useEffect(() => {
-    // Only update if the determined key is different from the current state
     const newKey = getActiveMenuKey(pathname)
     if (newKey !== activeMenu) {
       setActiveMenu(newKey)
     }
-  }, [pathname])
+  }, [pathname, activeMenu])
+
+  // Get current submenu items
+  const currentSubMenu = subMenus[activeMenu] || []
+
   return (
-    <div className='custom-scrollbar z-10 flex h-screen w-full'>
-      {/* Sidebar container full height, no background needed since parent has it */}
-      <div className='flex h-full bg-neutral-900'>
+    <div className='flex h-screen w-full overflow-hidden'>
+      {/* Sidebar Container */}
+      <aside className='flex h-full bg-neutral-950'>
+        {/* Main Sidebar */}
         <Sidebar
           menuItems={mainMenu}
           activeMenu={activeMenu}
-          onSelect={(key) => setActiveMenu(key)}
+          onSelect={setActiveMenu}
         />
-        <SubSidebar menuItems={subMenus[activeMenu] || []} />
-      </div>
-      {/* Main content: full height flex column, header at top (no gap to sidebar), scrollable body */}
-      <div className='flex flex-1 flex-col overflow-hidden'>
-        <main className='flex-1 overflow-y-auto'>{children}</main>
-      </div>
+        
+        {/* Sub Sidebar (only show if there are submenu items) */}
+        {currentSubMenu.length > 0 && (
+          <SubSidebar menuItems={currentSubMenu} />
+        )}
+      </aside>
+
+      {/* Main Content Area */}
+      <main className='custom-scrollbar flex-1 overflow-y-auto bg-neutral-950'>
+        {children}
+      </main>
     </div>
   )
 }

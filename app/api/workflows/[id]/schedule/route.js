@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
-
 import { parseExpression } from 'cron-parser'
 import {
   getWorkflow,
   getWorkflowSchedule,
-  createWorkflowSchedule
+  createWorkflowSchedule,
+  updateWorkflow
 } from '../../../../actions/agents'
+
+// GET /api/workflows/[id]/schedule - Get workflow schedule
 export async function GET(request, { params }) {
   try {
     const cookieStore = await cookies()
@@ -22,17 +24,31 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = await  params
+    const { id } = await params
 
-    const workflow = await getWorkflow(id)
+    // Verify ownership
+    const workflow = await getWorkflow(id, user.id)
 
-    if (!workflow || workflow.user_id !== user.id) {
-      return NextResponse.json({ error: 'Workflow not found' }, { status: 404 })
+    if (!workflow) {
+      return NextResponse.json(
+        { error: 'Workflow not found' },
+        { status: 404 }
+      )
     }
 
     const schedule = await getWorkflowSchedule(id)
 
-    return NextResponse.json({ schedule: schedule || null })
+    const response = NextResponse.json({
+      schedule: schedule || null
+    })
+
+    // Cache schedule for 60 seconds
+    response.headers.set(
+      'Cache-Control',
+      'private, s-maxage=60, stale-while-revalidate=30'
+    )
+
+    return response
   } catch (error) {
     console.error('Error fetching schedule:', error)
     return NextResponse.json(
@@ -42,9 +58,12 @@ export async function GET(request, { params }) {
   }
 }
 
+// POST /api/workflows/[id]/schedule - Create or update workflow schedule
 export async function POST(request, { params }) {
   try {
-    const supabase = createClient()
+    const cookieStore = await cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+
     const {
       data: { user },
       error: authError
@@ -57,25 +76,39 @@ export async function POST(request, { params }) {
     const { id } = await params
     const body = await request.json()
 
-    const workflow = await getWorkflow(id)
+    // Verify ownership
+    const workflow = await getWorkflow(id, user.id)
 
-    if (!workflow || workflow.user_id !== user.id) {
-      return NextResponse.json({ error: 'Workflow not found' }, { status: 404 })
+    if (!workflow) {
+      return NextResponse.json(
+        { error: 'Workflow not found' },
+        { status: 404 }
+      )
+    }
+
+    // Validate required fields
+    if (!body.cron_expression) {
+      return NextResponse.json(
+        { error: 'Cron expression is required' },
+        { status: 400 }
+      )
     }
 
     // Validate cron expression
     try {
+      const timezone = body.timezone || 'UTC'
       const interval = parseExpression(body.cron_expression, {
-        tz: body.timezone || 'UTC'
+        tz: timezone
       })
       const nextRun = interval.next().toDate()
 
+      // Create or update schedule
       const schedule = await createWorkflowSchedule({
         workflow_id: id,
         cron_expression: body.cron_expression,
-        timezone: body.timezone || 'UTC',
+        timezone,
         next_run_at: nextRun.toISOString(),
-        is_active: true
+        is_active: body.is_active !== false // Default to true
       })
 
       // Update workflow trigger type
@@ -84,11 +117,21 @@ export async function POST(request, { params }) {
         trigger_config: { schedule_id: schedule.id }
       })
 
-      return NextResponse.json({ schedule })
+      const response = NextResponse.json({
+        schedule,
+        nextRun: nextRun.toISOString()
+      })
+
+      // Invalidate cache
+      response.headers.set('Cache-Control', 'no-cache')
+
+      return response
     } catch (error) {
+      console.error('Cron validation error:', error)
       return NextResponse.json(
         {
-          error: 'Invalid cron expression'
+          error: 'Invalid cron expression',
+          message: 'Please provide a valid cron expression. Example: "0 9 * * *" for daily at 9 AM'
         },
         { status: 400 }
       )

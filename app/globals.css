@@ -1,17 +1,29 @@
 @import 'tailwindcss';
 
+/* ============================================
+   GLOBAL COMPONENT STYLES
+   Add this to your globals.css or app.css
+   ============================================ */
+
+/* Custom Scrollbar - Used across multiple components */
 .custom-scrollbar::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
+  border-radius: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.2);
   border-radius: 4px;
-  border: 2px solid transparent;
+  transition: background 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* Firefox support */
@@ -19,19 +31,215 @@
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 }
-@keyframes agentPulse {
-  0% {
-    transform: scale(1);
-    opacity: 0.9;
+
+/* Smooth scrolling for all elements */
+.custom-scrollbar {
+  scroll-behavior: smooth;
+}
+
+/* ============================================
+   PERFORMANCE OPTIMIZATIONS
+   ============================================ */
+
+/* GPU Acceleration for common animations */
+.will-change-transform {
+  will-change: transform;
+}
+
+.will-change-opacity {
+  will-change: opacity;
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================
+   FOCUS STYLES
+   ============================================ */
+
+/* Remove default focus outline and add custom one */
+*:focus-visible {
+  outline: 2px solid rgba(251, 146, 60, 0.5);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ============================================
+   BACKDROP BLUR SUPPORT
+   ============================================ */
+
+/* Fallback for browsers without backdrop-filter support */
+@supports not (backdrop-filter: blur(10px)) {
+  .backdrop-blur-sm,
+  .backdrop-blur-md,
+  .backdrop-blur-lg,
+  .backdrop-blur-xl {
+    background-color: rgba(0, 0, 0, 0.8);
+  }
+}
+
+/* ============================================
+   GLASS-MORPHISM EFFECTS
+   ============================================ */
+
+.glass-effect {
+  background: rgba(23, 23, 23, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ============================================
+   GRADIENT ANIMATIONS
+   ============================================ */
+
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
   }
   50% {
-    transform: scale(1.2);
-    opacity: 0.4;
+    background-position: 100% 50%;
+  }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+/* ============================================
+   LOADING SKELETONS
+   ============================================ */
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: -200% 0;
   }
   100% {
-    transform: scale(1);
-    opacity: 0.9;
+    background-position: 200% 0;
   }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 25%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.05) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+/* ============================================
+   BUTTON RIPPLE EFFECT (Optional)
+   ============================================ */
+
+@keyframes ripple {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+.ripple-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple-effect::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  animation: ripple 0.6s ease-out;
+}
+
+/* ============================================
+   FORM INPUT AUTOFILL STYLES
+   ============================================ */
+
+/* Override browser autofill styles */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-text-fill-color: white;
+  -webkit-box-shadow: 0 0 0px 1000px rgba(23, 23, 23, 0.9) inset;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* ============================================
+   SELECTION STYLES
+   ============================================ */
+
+::selection {
+  background-color: rgba(251, 146, 60, 0.3);
+  color: white;
+}
+
+::-moz-selection {
+  background-color: rgba(251, 146, 60, 0.3);
+  color: white;
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+/* Smooth transitions */
+.smooth-transition {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Text gradient */
+.text-gradient {
+  background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Hover glow effect */
+.hover-glow {
+  transition: box-shadow 0.3s ease-in-out;
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 20px rgba(251, 146, 60, 0.3);
+}
+
+/* Prevent text selection (useful for buttons/UI elements) */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Safe area padding for mobile devices */
+.safe-area-padding {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .agent-pulse {

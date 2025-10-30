@@ -10,7 +10,7 @@ export default function APICallConfig({ config, onSave, onClose }) {
   const [method, setMethod] = useState(config?.method || 'GET')
   const [url, setUrl] = useState(config?.url || '')
   const [headers, setHeaders] = useState(
-    config?.headers || [{ key: '', value: '' }]
+    config?.headers || [{ key: '', value: '' }] 
   )
   const [body, setBody] = useState(config?.body || '')
   const [responseType, setResponseType] = useState(

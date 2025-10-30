@@ -1,7 +1,7 @@
 'use server'
 
 import { dbServer } from '../lib/supabase/dbServer.js'
-
+import { subAccountsDb } from '../lib/supabase/dbServer.js'
 // ─────────────────────────────
 // PROFILES
 // ─────────────────────────────
@@ -348,4 +348,278 @@ export async function markTaskCompleted(taskId) {
 
 export async function markTaskFailed(taskId, errorMessage) {
   return await dbServer.markTaskFailed(taskId, errorMessage)
+}
+
+// ─────────────────────────────
+// NLP AGENT CREATION
+// ─────────────────────────────
+export async function createNlpRequest(userId, rawInput) {
+  return await dbServer.createNlpRequest(userId, {
+    raw_input: rawInput,
+    status: 'pending'
+  })
+}
+
+export async function getNlpRequest(requestId, userId) {
+  return await dbServer.getNlpRequest(requestId, userId)
+}
+
+export async function getUserNlpRequests(userId, limit = 50) {
+  return await dbServer.getUserNlpRequests(userId, limit)
+}
+
+export async function updateNlpRequest(requestId, updates) {
+  return await dbServer.updateNlpRequest(requestId, updates)
+}
+
+export async function createParsingHistory(historyData) {
+  return await dbServer.createParsingHistory(historyData)
+}
+
+export async function getParsingHistory(requestId) {
+  return await dbServer.getParsingHistory(requestId)
+}
+
+export async function getAgentTemplates(category = null) {
+  return await dbServer.getAgentTemplates(category)
+}
+
+export async function getAgentTemplate(templateId) {
+  return await dbServer.getAgentTemplate(templateId)
+}
+
+export async function findTemplateByKeywords(keywords) {
+  return await dbServer.findTemplateByKeywords(keywords)
+}
+
+export async function createNlpFeedback(userId, feedbackData) {
+  return await dbServer.createNlpFeedback(userId, feedbackData)
+}
+
+export async function getNlpFeedback(requestId) {
+  return await dbServer.getNlpFeedback(requestId)
+}
+
+// ─────────────────────────────
+// CALENDAR
+// ─────────────────────────────
+export async function getAgentCalendar(agentId) {
+  return await dbServer.getAgentCalendar(agentId)
+}
+
+export async function createOrUpdateCalendar(agentId, calendarData) {
+  return await dbServer.createOrUpdateCalendar(agentId, calendarData)
+}
+
+// ─────────────────────────────
+// BOOKINGS
+// ─────────────────────────────
+export async function getBookings(agentId, filters = {}) {
+  return await dbServer.getBookings(agentId, filters)
+}
+
+export async function getBookingById(bookingId) {
+  return await dbServer.getBookingById(bookingId)
+}
+
+export async function createBooking(bookingData) {
+  return await dbServer.createBooking(bookingData)
+}
+
+export async function updateBooking(bookingId, updates) {
+  return await dbServer.updateBooking(bookingId, updates)
+}
+
+export async function cancelBooking(bookingId, reason, cancelledBy) {
+  return await dbServer.cancelBooking(bookingId, reason, cancelledBy)
+}
+
+export async function getBookingsByTimeSlot(agentId, date, time) {
+  return await dbServer.getBookingsByTimeSlot(agentId, date, time)
+}
+
+// ─────────────────────────────
+// BOOKING SLOTS
+// ─────────────────────────────
+export async function getAvailableSlots(agentCalendarId, dateFrom, dateTo) {
+  return await dbServer.getAvailableSlots(agentCalendarId, dateFrom, dateTo)
+}
+
+export async function createBookingSlot(slotData) {
+  return await dbServer.createBookingSlot(slotData)
+}
+
+export async function updateSlotAvailability(slotId, isAvailable) {
+  return await dbServer.updateSlotAvailability(slotId, isAvailable)
+}
+
+// ─────────────────────────────
+// BOOKING CONVERSATIONS
+// ─────────────────────────────
+export async function linkBookingToConversation(
+  bookingId,
+  conversationId,
+  extractedData,
+  confidenceScore
+) {
+  return await dbServer.linkBookingToConversation(
+    bookingId,
+    conversationId,
+    extractedData,
+    confidenceScore
+  )
+}
+
+export async function getBookingConversations(bookingId) {
+  return await dbServer.getBookingConversations(bookingId)
+}
+
+// ─────────────────────────────
+// BOOKING ANALYTICS & NOTIFICATIONS
+// ─────────────────────────────
+export async function getBookingAnalytics(agentId, dateFrom, dateTo) {
+  return await dbServer.getBookingAnalytics(agentId, dateFrom, dateTo)
+}
+
+export async function getUpcomingBookings(hours = 24) {
+  return await dbServer.getUpcomingBookings(hours)
+}
+
+// ─────────────────────────────
+// BOOKING STATS
+// ─────────────────────────────
+export async function getBookingStats(agentId, dateFrom, dateTo) {
+  return await dbServer.getBookingStats(agentId, dateFrom, dateTo)
+}
+
+export async function checkConversationExists(agentId, sessionId) {
+  return await dbServer.checkConversationExists(agentId, sessionId)
+}
+ 
+
+// ============================================================================
+// SUB-ACCOUNTS SERVER ACTIONS
+// Add these to your existing actions/agents.js file
+// ============================================================================
+
+ 
+
+// ─────────────────────────────
+// TEST ACCOUNTS
+// ─────────────────────────────
+
+export async function getTestAccountsByAgent(agentId, userId) {
+  return await subAccountsDb.getTestAccountsByAgent(agentId, userId)
+}
+
+export async function getTestAccountsByUser(userId) {
+  return await subAccountsDb.getTestAccountsByUser(userId)
+}
+
+export async function getTestAccount(accountId) {
+  return await subAccountsDb.getTestAccount(accountId)
+}
+
+export async function getTestAccountByToken(accessToken) {
+  return await subAccountsDb.getTestAccountByToken(accessToken)
+}
+
+export async function createTestAccount(accountData) {
+  return await subAccountsDb.createTestAccount(accountData)
+}
+
+export async function updateTestAccount(accountId, updates) {
+  return await subAccountsDb.updateTestAccount(accountId, updates)
+}
+
+export async function deleteTestAccount(accountId) {
+  return await subAccountsDb.deleteTestAccount(accountId)
+}
+
+export async function checkTestAccountLimits(accountId) {
+  return await subAccountsDb.checkTestAccountLimits(accountId)
+}
+
+// ─────────────────────────────
+// TEST SESSIONS
+// ─────────────────────────────
+
+export async function getTestSessions(testAccountId, limit = 50) {
+  return await subAccountsDb.getTestSessions(testAccountId, limit)
+}
+
+export async function getTestSessionsByAgent(agentId, limit = 50) {
+  return await subAccountsDb.getTestSessionsByAgent(agentId, limit)
+}
+
+export async function getTestSession(sessionId) {
+  return await subAccountsDb.getTestSession(sessionId)
+}
+
+export async function createTestSession(sessionData) {
+  return await subAccountsDb.createTestSession(sessionData)
+}
+
+export async function updateTestSession(sessionId, updates) {
+  return await subAccountsDb.updateTestSession(sessionId, updates)
+}
+
+export async function completeTestSession(sessionId, sessionData = {}) {
+  return await subAccountsDb.completeTestSession(sessionId, sessionData)
+}
+
+// ─────────────────────────────
+// TEST INVITATIONS
+// ─────────────────────────────
+
+export async function getTestInvitations(testAccountId) {
+  return await subAccountsDb.getTestInvitations(testAccountId)
+}
+
+export async function getTestInvitationsByAgent(agentId) {
+  return await subAccountsDb.getTestInvitationsByAgent(agentId)
+}
+
+export async function getTestInvitationByToken(invitationToken) {
+  return await subAccountsDb.getTestInvitationByToken(invitationToken)
+}
+
+export async function createTestInvitation(invitationData) {
+  return await subAccountsDb.createTestInvitation(invitationData)
+}
+
+export async function updateTestInvitation(invitationId, updates) {
+  return await subAccountsDb.updateTestInvitation(invitationId, updates)
+}
+
+export async function markInvitationSent(invitationId) {
+  return await subAccountsDb.markInvitationSent(invitationId)
+}
+
+export async function acceptInvitation(invitationToken) {
+  return await subAccountsDb.acceptInvitation(invitationToken)
+}
+
+// ─────────────────────────────
+// TEST ANALYTICS
+// ─────────────────────────────
+
+export async function logTestAnalytics(analyticsData) {
+  return await subAccountsDb.logTestAnalytics(analyticsData)
+}
+
+export async function getTestAccountAnalytics(testAccountId, dateFrom, dateTo) {
+  return await subAccountsDb.getTestAccountAnalytics(testAccountId, dateFrom, dateTo)
+}
+
+export async function getTestAgentAnalytics(agentId, dateFrom, dateTo) {
+  return await subAccountsDb.getTestAgentAnalytics(agentId, dateFrom, dateTo)
+}
+
+export async function getTestAccountStats(testAccountId) {
+  return await subAccountsDb.getTestAccountStats(testAccountId)
+}
+
+export async function getAgentTestStats(agentId, userId) {
+  return await subAccountsDb.getAgentTestStats(agentId, userId)
 }

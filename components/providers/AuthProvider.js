@@ -1,8 +1,8 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { createContext, useContext, useEffect, useState } from 'react'
-import { dbClient } from '../../lib/supabase/dbClient'; // client-safe helpers
+import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { dbClient } from '../../lib/supabase/dbClient'
 import { createSupabaseClient } from '../../lib/supabase/supabaseClient'
 
 const AuthContext = createContext({})
@@ -22,52 +22,8 @@ export function AuthProvider({ children }) {
   const supabase = createSupabaseClient()
   const router = useRouter()
 
-  useEffect(() => {
-    const getInitialSession = async () => {
-      try {
-        // Try getUser() first
-        const { data: userData, error: userError } =
-          await supabase.auth.getUser()
-
-        if (userData?.user) {
-          setUser(userData.user)
-           fetchProfile(userData.user.id)
-        } else {
-          // fallback to getSession() if no user found
-          const {
-            data: { session }
-          } = await supabase.auth.getSession()
-          if (session?.user) {
-            setUser(session.user)
-            await fetchProfile(session.user.id)
-          }
-        }
-      } catch (err) {
-        console.error('Error getting initial session:', err)
-      } finally {
-        setLoading(false) // important: always flip loading
-      }
-    }
-    getInitialSession()
-
-    const {
-      data: { subscription }
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        setUser(session.user)
-        fetchProfile(session.user.id)
-      if(router.pathname === '/') router.push('/dashboard')
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null)
-        setProfile(null)
-        router.push('/')
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
-
-  const fetchProfile = async (userId) => {
+  // ✅ FIXED: Add all dependencies to useCallback
+  const fetchProfile = useCallback(async (userId) => {
     try {
       let data = await dbClient.getProfile(userId)
       if (!data) {
@@ -88,7 +44,48 @@ export function AuthProvider({ children }) {
     } catch (error) {
       console.error('Error fetching profile:', error)
     }
-  }
+  }, [supabase, user?.email, user?.user_metadata?.full_name])
+
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        setLoading(true)
+
+        const {
+          data: { session }
+        } = await supabase.auth.getSession()
+
+        if (session?.user) {
+          setUser(session.user)
+          await fetchProfile(session.user.id)
+        } else {
+          setUser(null)
+          setProfile(null)
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    initializeAuth()
+
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        setUser(session.user)
+        await fetchProfile(session.user.id)
+      } else {
+        setUser(null)
+        setProfile(null)
+        router.push('/')
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [fetchProfile, router, supabase.auth])
 
   const signUp = async (email, password, fullName, lastName) => {
     const { data, error } = await supabase.auth.signUp({
@@ -126,7 +123,6 @@ export function AuthProvider({ children }) {
 
   const updateProfile = async (updates) => {
     try {
-      // Use dbClient for safe reads; for updates, still can use supabase directly in client
       const { data, error } = await supabase
         .from('profiles')
         .update(updates)

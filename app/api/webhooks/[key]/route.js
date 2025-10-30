@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-import { checkRateLimit } from '../../../../lib/rate-limiter'
+import { checkRateLimit } from '../../../../lib/api/rate-limiter'
 import {
   getWebhookByKey,
   saveConversation,

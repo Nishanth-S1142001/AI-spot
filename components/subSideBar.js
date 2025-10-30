@@ -3,103 +3,157 @@
 import { ChevronDown, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
+import Link from 'next/link'
+
+/**
+ * Improved SubSidebar Component
+ * Features:
+ * - Clean, modern design matching main sidebar
+ * - Smooth expand/collapse
+ * - Better visual feedback
+ * - Submenu support with icons
+ * - Orange accent theme
+ * - Professional styling
+ */
 
 export default function SubSidebar({ menuItems }) {
-  // Modes: "hover" or "toggle"
-  const [mode, setMode] = useState('toggle')
+  const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(true)
   const [openSubmenu, setOpenSubmenu] = useState(null)
 
   const toggleSubmenu = (index) => {
     setOpenSubmenu(openSubmenu === index ? null : index)
   }
-  const pathname = usePathname()
 
-  // Sidebar open logic
-  // const sidebarOpen = mode === 'hover' ? isOpen : isOpen
+  // Don't render if no menu items
+  if (!menuItems || menuItems.length === 0) {
+    return null
+  }
 
   return (
     <div
-      className={`flex h-screen flex-col bg-neutral-900 font-mono text-white transition-all duration-300 ${
+      className={`flex h-screen flex-col border-r border-neutral-800/50 bg-neutral-900/30 font-mono text-white backdrop-blur-sm transition-all duration-300 ${
         isOpen ? 'w-64' : 'w-16'
       }`}
-      // onMouseEnter={() => mode === 'hover' && setIsOpen(true)}
-      // onMouseLeave={() => mode === 'hover' && setIsOpen(false)}
     >
-      {/* Menu Items */}
-
-      {/* Toggle Button */}
-      <div className='mt-4 flex justify-end border-r border-b border-neutral-700 p-2'>
+      {/* Header with Toggle Button */}
+      <div className='flex h-16 items-center justify-between border-b border-neutral-800/50 px-4'>
+        <div className={`flex items-center gap-2 ${!isOpen && 'hidden'}`}>
+          <div className='h-2 w-2 rounded-full bg-orange-500/50' />
+          <span className='text-sm font-semibold text-neutral-300'>Submenu</span>
+        </div>
+        
         <button
-          onClick={() => setIsOpen((prev) => !prev)}
-          className='rounded-md p-2 hover:bg-neutral-800'
-          title='Toggle Sidebar'
+          onClick={() => {
+            setIsOpen((prev) => !prev)
+            if (!isOpen) setOpenSubmenu(null)
+          }}
+          className='group flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-neutral-800'
+          title={isOpen ? 'Collapse' : 'Expand'}
         >
-          {isOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+          {isOpen ? (
+            <PanelLeftClose className='h-4 w-4 text-neutral-400 transition-colors group-hover:text-orange-400' />
+          ) : (
+            <PanelLeftOpen className='h-4 w-4 text-neutral-400 transition-colors group-hover:text-orange-400' />
+          )}
         </button>
       </div>
 
-      <nav className='mt-4 mb-2 flex-1 border-r border-l border-r-neutral-700 border-l-neutral-700'>
+      {/* Menu Items */}
+      <nav className='custom-scrollbar flex-1 overflow-y-auto py-4'>
         {menuItems.map((item, idx) => {
           const isActive = item.href && pathname === item.href
+          const hasSubmenu = item.submenu && item.submenu.length > 0
+
           return (
-            <div key={idx}>
-              {/* Main Menu */}
-              <a
-                href={item.href}
-                className={`mx-2 my-1 flex cursor-pointer items-center justify-between rounded-md p-3 transition-colors hover:bg-neutral-700 ${isActive ? 'bg-neutral-700 font-semibold' : ''}`}
+            <div key={idx} className='px-2'>
+              {/* Main Menu Item */}
+              <div
+                className={`group relative mb-1 flex cursor-pointer items-center justify-between rounded-lg transition-all ${
+                  isActive
+                    ? 'bg-gradient-to-r from-orange-900/40 to-transparent text-orange-300 shadow-lg shadow-orange-500/10'
+                    : 'text-neutral-400 hover:bg-neutral-800/50 hover:text-neutral-200'
+                }`}
                 onClick={(e) => {
-                  if (item.submenu) {
+                  if (hasSubmenu) {
                     e.preventDefault()
                     toggleSubmenu(idx)
                   }
                 }}
               >
-                <div className='flex items-center'>
-                  {/* Fixed icon column */}
-                  <div className='flex w-8 justify-center'>{item.icon}</div>
-
-                  {/* Label */}
-                  <span
-                    className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${
-                      isOpen ? 'ml-2 w-auto opacity-100' : 'w-0 opacity-0'
-                    }`}
-                  >
-                    {item.name}
-                  </span>
-                </div>
-                {item.submenu && isOpen && (
-                  <ChevronDown
-                    size={18}
-                    className={`transition-transform ${
-                      openSubmenu === idx ? 'rotate-180' : ''
-                    }`}
-                  />
+                {/* Active Indicator */}
+                {isActive && (
+                  <div className='absolute left-0 top-1/2 h-8 w-1 -translate-y-1/2 rounded-r-full bg-orange-500' />
                 )}
-              </a>
+
+                {hasSubmenu ? (
+                  // Button for submenu items
+                  <button className='flex w-full items-center justify-between p-3'>
+                    <div className='flex items-center gap-3'>
+                      <div className={`flex h-5 w-5 items-center justify-center ${
+                        isActive ? 'text-orange-400' : 'text-neutral-500 group-hover:text-orange-400'
+                      }`}>
+                        {item.icon}
+                      </div>
+                      <span
+                        className={`text-sm font-medium transition-all ${
+                          !isOpen && 'w-0 opacity-0'
+                        }`}
+                      >
+                        {item.name}
+                      </span>
+                    </div>
+                    {isOpen && (
+                      <ChevronDown
+                        className={`h-4 w-4 transition-transform ${
+                          openSubmenu === idx ? 'rotate-180' : ''
+                        } ${isActive ? 'text-orange-400' : 'text-neutral-500'}`}
+                      />
+                    )}
+                  </button>
+                ) : (
+                  // Link for regular items
+                  <Link href={item.href || '#'} className='flex w-full items-center gap-3 p-3'>
+                    <div className={`flex h-5 w-5 items-center justify-center ${
+                      isActive ? 'text-orange-400' : 'text-neutral-500 group-hover:text-orange-400'
+                    }`}>
+                      {item.icon}
+                    </div>
+                    <span
+                      className={`text-sm font-medium transition-all ${
+                        !isOpen && 'w-0 opacity-0'
+                      }`}
+                    >
+                      {item.name}
+                    </span>
+                  </Link>
+                )}
+              </div>
 
               {/* Submenu */}
-              {item.submenu && openSubmenu === idx && isOpen && (
-                <div className='ml-12 flex flex-col'>
+              {hasSubmenu && openSubmenu === idx && isOpen && (
+                <div className='ml-8 mt-1 space-y-1 border-l-2 border-neutral-800/50 pl-4'>
                   {item.submenu.map((sub, subIdx) => {
-                    // Check for active sub-link
                     const isSubActive = sub.href && pathname === sub.href
                     return (
-                      <a
+                      <Link
                         key={subIdx}
-                        href={sub.href}
-                        className={`my-1 flex items-center rounded-md p-2 hover:bg-neutral-700 ${
-                          // Added flex items-center
-                          isSubActive ? 'bg-neutral-700 font-semibold' : '' // 👈 HIGHLIGHT ADDED HERE
+                        href={sub.href || '#'}
+                        className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all ${
+                          isSubActive
+                            ? 'bg-orange-900/40 text-orange-300 font-medium'
+                            : 'text-neutral-400 hover:bg-neutral-800/50 hover:text-neutral-200'
                         }`}
                       >
                         {sub.icon && (
-                          <div className='mr-2 flex w-4 justify-center'>
+                          <div className={`flex h-4 w-4 items-center justify-center ${
+                            isSubActive ? 'text-orange-400' : 'text-neutral-500'
+                          }`}>
                             {sub.icon}
                           </div>
                         )}
-                        {sub.name}
-                      </a>
+                        <span>{sub.name}</span>
+                      </Link>
                     )
                   })}
                 </div>
@@ -108,7 +162,15 @@ export default function SubSidebar({ menuItems }) {
           )
         })}
       </nav>
-      {/* Mode Switcher */}
+
+      {/* Footer (Optional) */}
+      {isOpen && menuItems.length > 0 && (
+        <div className='border-t border-neutral-800/50 p-4'>
+          <div className='text-xs text-neutral-500'>
+            {menuItems.length} {menuItems.length === 1 ? 'item' : 'items'}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

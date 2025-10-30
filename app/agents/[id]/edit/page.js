@@ -1,54 +1,32 @@
 'use client'
 
-import dynamic from 'next/dynamic'
 import { useParams, useRouter } from 'next/navigation'
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { useDropzone } from 'react-dropzone'
 import toast from 'react-hot-toast'
-// No longer needed: import { supabase } from '../../../../lib/supabase/dbClient'
-
-// Providers & Helpers
-import { useRef } from 'react'
 import { useAuth } from '../../../../components/providers/AuthProvider'
 import { useLogout } from '../../../../lib/supabase/auth'
 import { dbClient } from '../../../../lib/supabase/dbClient'
 import { addKnowledgeSource, updateAgent } from '../../../actions/agents'
-// Icons
 import {
   Aperture,
   CircleArrowLeft,
-  CircleArrowRightIcon,
+  CircleArrowRight,
   FileText,
-  Globe,
   Link as LinkIcon,
   Save,
-  X,
-  Paperclip
+  Upload,
+  X
 } from 'lucide-react'
-
-// Dynamic imports (kept, good for performance)
-const FormTextarea = dynamic(() => import('../../../../components/ui/textBox'))
-const FormInput = dynamic(
-  () => import('../../../../components/ui/formInputField')
-)
-const Button = dynamic(() => import('../../../../components/ui/button'))
-const Card = dynamic(() => import('../../../../components/ui/card'))
-const LoadingState = dynamic(
-  () => import('../../../../components/common/loading-state')
-)
-const NeonBackground = dynamic(
-  () => import('../../../../components/ui/background')
-)
-const NavigationBar = dynamic(
-  () => import('../../../../components/navigationBar/navigationBar')
-)
-
-// --- Static Constants (Moved logic out of the component) ---
-
-const PURPOSES = [
-  { id: 'website', name: 'Website', icon: Globe, color: 'gray' }
-]
-
+import FormTextarea from '../../../../components/ui/textBox'
+import FormInput from '../../../../components/ui/formInputField'
+import Button from '../../../../components/ui/button'
+import Card from '../../../../components/ui/card'
+import LoadingState from '../../../../components/common/loading-state'
+import NeonBackground from '../../../../components/ui/background'
+import NavigationBar from '../../../../components/navigationBar/navigationBar'
+import React from 'react'
+// ==================== CONSTANTS ====================
 const TONES = [
   { id: 'friendly', name: 'Friendly', description: 'Warm and approachable' },
   {
@@ -69,827 +47,847 @@ const TONES = [
   }
 ]
 
-// Note: Replaced the placeholder prompts with the correct format for full domain descriptions
 const DOMAINS = [
   {
     id: 'business',
     name: 'Business',
+    icon: '💼',
+    color: 'blue',
     prompt:
-      'You are a strategic business consultant AI with deep knowledge in entrepreneurship, management, and corporate strategy. Your goal is to help users plan, launch, and grow businesses effectively. Use a professional and confident tone.'
+      'You are a strategic business consultant AI with deep knowledge in entrepreneurship, management, and corporate strategy.'
   },
   {
     id: 'sales',
     name: 'Sales',
+    icon: '📈',
+    color: 'green',
     prompt:
-      'You are an AI sales strategist and performance coach. Your primary goal is to help users increase sales conversions and revenue. Use a motivating and confident tone to inspire action.'
+      'You are an AI sales strategist and performance coach. Help users increase sales conversions and revenue.'
   },
   {
     id: 'creator',
     name: 'Creator',
+    icon: '🎨',
+    color: 'purple',
     prompt:
-      'You are an AI content creator and digital strategist. Your purpose is to help users generate viral content, engaging scripts, and creative ideas. Maintain a creative, energetic, and inspiring tone.'
+      'You are an AI content creator and digital strategist. Generate viral content and creative ideas.'
   },
   {
     id: 'developer',
     name: 'Developer',
+    icon: '💻',
+    color: 'orange',
     prompt:
-      'You are an expert AI developer specializing in full-stack solutions. Help users write, debug, and optimize code efficiently and securely. Keep a mentor-like tone: informative, patient, and precise.'
+      'You are an expert AI developer. Help users write, debug, and optimize code efficiently.'
   },
   {
     id: 'supportservice',
     name: 'Support & Service',
+    icon: '🤝',
+    color: 'pink',
     prompt:
-      'You are a friendly, empathetic, and professional customer support AI. Your goal is to understand user issues clearly and resolve them efficiently. Maintain a patient and approachable tone.'
-  },
-  {
-    id: 'financial',
-    name: 'Financial',
-    prompt:
-      'You are an AI financial advisor with expertise in personal and corporate finance. Help users understand complex financial concepts in simple terms. Maintain a trustworthy, analytical, and professional tone.'
-  },
-  {
-    id: 'research',
-    name: 'Research',
-    prompt:
-      'You are an AI research analyst with expertise in data collection, analysis, and synthesis. Help users gather credible information from multiple sources. Maintain a professional, factual, and analytical tone.'
+      'You are a friendly customer support AI. Understand issues clearly and resolve them efficiently.'
   }
 ]
-
-// --- System Prompt Generator Function ---
-// Moved the logic outside the component, relying on memoization in the component for efficiency.
+const DOMAIN_COLOR_MAP = {
+  blue: {
+    gradient: 'from-blue-900/50 to-blue-950/30',
+    border: 'border-blue-600/40',
+    ring: 'ring-2 ring-blue-500/30',
+    text: 'text-blue-300',
+    iconGlow: 'shadow-lg shadow-blue-500/20',
+    hoverBorder: 'hover:border-blue-500/60'
+  },
+  green: {
+    gradient: 'from-green-900/50 to-green-950/30',
+    border: 'border-green-600/40',
+    ring: 'ring-2 ring-green-500/30',
+    text: 'text-green-300',
+    iconGlow: 'shadow-lg shadow-green-500/20',
+    hoverBorder: 'hover:border-green-500/60'
+  },
+  purple: {
+    gradient: 'from-purple-900/50 to-purple-950/30',
+    border: 'border-purple-600/40',
+    ring: 'ring-2 ring-purple-500/30',
+    text: 'text-purple-300',
+    iconGlow: 'shadow-lg shadow-purple-500/20',
+    hoverBorder: 'hover:border-purple-500/60'
+  },
+  orange: {
+    gradient: 'from-orange-900/50 to-orange-950/30',
+    border: 'border-orange-600/40',
+    ring: 'ring-2 ring-orange-500/30',
+    text: 'text-orange-300',
+    iconGlow: 'shadow-lg shadow-orange-500/20',
+    hoverBorder: 'hover:border-orange-500/60'
+  },
+  pink: {
+    gradient: 'from-pink-900/50 to-pink-950/30',
+    border: 'border-pink-600/40',
+    ring: 'ring-2 ring-pink-500/30',
+    text: 'text-pink-300',
+    iconGlow: 'shadow-lg shadow-pink-500/20',
+    hoverBorder: 'hover:border-pink-500/60'
+  }
+}
+// Generate system prompt
 const generateSystemPrompt = (formData, domains) => {
   const selectedDomain = domains.find((d) => d.id === formData.domain)
   const domainPrompt = selectedDomain?.prompt || ''
+  const knowledgeBase = formData.knowledgeSources
+    .map((s) => s.summary || s.content)
+    .join('\n')
 
   return `Your name is ${formData.name}.
 You are an AI ${selectedDomain?.name || formData.domain} assistant with a ${formData.tone} tone.
- 
- 
 
-Always be helpful, accurate, and stay in character.
-Additional Instructions from Domain:
 ${domainPrompt}
 
-Knowledge Base Summary:
-${formData.knowledgeSources.map((s) => s.summary).join('\n')}
-`
+Knowledge Base:
+${knowledgeBase || 'No knowledge sources added yet.'}
+
+Always be helpful, accurate, and stay in character.`
 }
 
+// ==================== MAIN COMPONENT ====================
 export default function EditAgent() {
+  const [isInitialized, setIsInitialized] = useState(false)
   const { id } = useParams()
   const router = useRouter()
   const { user, profile, loading: authLoading } = useAuth()
-  const { logout } = useLogout() // UI States
+  const { logout } = useLogout()
 
+  // ✅ FIX: Refs to prevent redundant fetches
+  const hasFetchedAgent = useRef(false)
+  const processingRef = useRef(false)
+
+  // State
   const [step, setStep] = useState(1)
   const [saving, setSaving] = useState(false)
-  const [fetching, setFetching] = useState(true) // Set true initially for agent data fetch
-  const [isProcessingContent, setIsProcessingContent] = useState(false) // For heavy API calls (scrape/pdf)
-  // Agent & Form Data
-
+  const [fetching, setFetching] = useState(true)
+  const [isProcessingContent, setIsProcessingContent] = useState(false)
   const [agent, setAgent] = useState(null)
   const [formData, setFormData] = useState({
     name: '',
-
     domain: '',
-
     tone: 'friendly',
     knowledgeSources: []
-  }) // Prompt Management
+  })
 
+  // Prompt state
   const [websiteUrl, setWebsiteUrl] = useState('')
   const [prompt, setPrompt] = useState('')
   const [draft, setDraft] = useState('')
   const [isEditing, setIsEditing] = useState(false)
   const [promptError, setPromptError] = useState('')
-  const message = 'Update the Agent' // Constant, no need for useState
-  // Refs
-  const fetchedAgentRef = useRef(false) // --- Memoized Data & Handlers ---
-  // 1. System Prompt Generation (Memoized)
 
+  // ✅ Reset state when agent ID changes
+  useEffect(() => {
+    hasFetchedAgent.current = false
+    processingRef.current = false
+    setIsInitialized(false)
+    setFetching(true)
+    setStep(1)
+    setSaving(false)
+    setIsProcessingContent(false)
+    setAgent(null)
+    setFormData({
+      name: '',
+      domain: '',
+      tone: 'friendly',
+      knowledgeSources: []
+    })
+    setWebsiteUrl('')
+    setPrompt('')
+    setDraft('')
+    setIsEditing(false)
+    setPromptError('')
+  }, [id])
+
+  // ✅ OPTIMIZATION: Memoized system prompt
   const finalSystemPrompt = useMemo(
     () => generateSystemPrompt(formData, DOMAINS),
     [formData]
   )
 
+  // Sync prompt
   useEffect(() => {
-    // Initialize prompt states only when the final system prompt changes (i.e., form data changes)
-    setPrompt(finalSystemPrompt)
-    setDraft(finalSystemPrompt)
-  }, [finalSystemPrompt]) // 2. Form Updater
+    if (!isEditing) {
+      setPrompt(finalSystemPrompt)
+      setDraft(finalSystemPrompt)
+    }
+  }, [finalSystemPrompt, isEditing])
 
+  // ✅ OPTIMIZATION: Fetch agent data only once per ID
+  useEffect(() => {
+    if (!user || !id || hasFetchedAgent.current) return
+
+    const fetchAgent = async () => {
+      hasFetchedAgent.current = true
+      
+      try {
+        setFetching(true)
+        const [agentData, knowledgeSources] = await Promise.all([
+          dbClient.getAgent(id),
+          dbClient.getKnowledgeSources(id)
+        ])
+
+        if (!agentData) {
+          toast.error('Agent not found')
+          router.push('/agents')
+          return
+        }
+
+        setAgent(agentData)
+        setFormData({
+          name: agentData.name || '',
+          domain: agentData.domain || '',
+          tone: agentData.tone || 'friendly',
+          knowledgeSources: knowledgeSources.map((ks) => ({
+            id: ks.id,
+            type: ks.source_type,
+            name: ks.file_name || ks.source_url || 'Unknown',
+            summary: ks.content || '',
+            source_url: ks.source_url,
+            file_name: ks.file_name
+          }))
+        })
+
+        if (agentData.system_prompt) {
+          setPrompt(agentData.system_prompt)
+          setDraft(agentData.system_prompt)
+        }
+      } catch (err) {
+        console.error('Error fetching agent:', err)
+        toast.error('Failed to load agent')
+      } finally {
+        setFetching(false)
+        setIsInitialized(true)
+      }
+    }
+
+    fetchAgent()
+  }, [user, id, router])
+
+  // ✅ OPTIMIZATION: Memoized callbacks
   const updateForm = useCallback((key, value) => {
     setFormData((prev) => ({ ...prev, [key]: value }))
-  }, []) // 3. Remove Knowledge Source
+  }, [])
 
   const removeKnowledgeSource = useCallback((idToRemove) => {
     setFormData((prev) => ({
       ...prev,
       knowledgeSources: prev.knowledgeSources.filter((s) => s.id !== idToRemove)
     }))
-    toast.success('Source removed.')
-  }, []) // --- Data Fetching: Agent (Runs on load) ---
+    toast.success('Knowledge source removed')
+  }, [])
 
-  const fetchAgent = useCallback(async () => {
-    if (!id || fetchedAgentRef.current) return
-    fetchedAgentRef.current = true
-
-    try {
-      setFetching(true)
-
-      const [agentData, knowledgeSources] = await Promise.all([
-        dbClient.getAgent(id),
-        dbClient.getKnowledgeSources(id) // Assuming a function to fetch existing knowledge sources
-      ])
-
-      if (!agentData) {
-        toast.error('Agent not found')
-        router.push('/agents')
-        return
-      }
-
-      setAgent(agentData)
-
-      setFormData((prev) => ({
-        ...prev,
-        name: agentData.name || '',
-        domain: agentData.domain || '',
-
-        tone: agentData.tone || 'friendly',
-        // Note: system_prompt is dynamically generated/edited, but loaded data initializes it
-        // The separate prompt state handles the final value.
-        knowledgeSources: knowledgeSources || []
-      }))
-
-      console.log(knowledgeSources)
-      // Initial prompt setup based on fetched data
-      setPrompt(
-        agentData.system_prompt || generateSystemPrompt(agentData, DOMAINS)
-      )
-    } catch (err) {
-      console.error(err)
-      toast.error('Failed to load agent')
-      router.push('/agents')
-    } finally {
-      setFetching(false)
-    }
-  }, [id, router])
-
-  useEffect(() => {
-    if (!authLoading && user) {
-      fetchAgent()
-    } else if (!authLoading && !user) {
-      router.push('/')
-    }
-  }, [authLoading, user, fetchAgent, router]) // --- Core Callbacks for Data Manipulation (Optimistic UI) ---
-  // PDF Drop Handler
-
+  // PDF upload
   const onDrop = useCallback(
     async (acceptedFiles) => {
-      const file = acceptedFiles[0] // ... [Validation checks] ...
-      if (!acceptedFiles?.length) return
-      if (file.type !== 'application/pdf')
-        return toast.error('Please upload PDF files only')
+      if (processingRef.current) return
+
+      const file = acceptedFiles[0]
+      if (!file) return toast.error('No file selected')
+      if (file.type !== 'application/pdf') return toast.error('PDF only!')
       if (file.size > 10 * 1024 * 1024)
-        return toast.error('File size must be <10MB')
+        return toast.error('File size must be < 10MB')
 
-      const tempId = Date.now()
-      const tempSource = {
-        id: tempId,
-        type: 'pdf',
-        name: file.name,
-        content: '',
-        summary: '',
-        status: 'processing'
-      }
-
-      setFormData((prev) => ({
-        ...prev,
-        knowledgeSources: [...prev.knowledgeSources, tempSource]
-      }))
+      processingRef.current = true
+      setIsProcessingContent(true)
 
       try {
-        const formDataToUpload = new FormData() // Renamed to avoid collision with state
-        formDataToUpload.append('pdf', file)
+        const formDataObj = new FormData()
+        formDataObj.append('file', file)
 
-        const res = await fetch('/api/pdf-summarize', {
+        const response = await fetch('/api/extract-pdf', {
           method: 'POST',
-          body: formDataToUpload
+          body: formDataObj
         })
-        if (!res.ok) throw new Error('PDF processing failed')
-        const data = await res.json() // Update UI
 
-        setFormData((prev) => ({
-          ...prev,
-          knowledgeSources: prev.knowledgeSources.map((src) =>
-            src.id === tempId
-              ? {
-                  ...src,
-                  content: data.content,
-                  summary: data.summary,
-                  status: 'completed'
-                }
-              : src
-          )
-        })) // Persist to DB in background
+        if (!response.ok) throw new Error('Failed to extract PDF')
 
-        await addKnowledgeSource(id, {
+        const data = await response.json()
+
+        // Add to agent's knowledge sources
+        const newSource = await addKnowledgeSource({
+          agent_id: id,
           source_type: 'pdf',
           file_name: file.name,
-          content: data.content,
-          summary: data.summary,
-          status: 'completed'
+          content: data.text || '',
+          metadata: {}
         })
 
-        toast.success('PDF uploaded and processed!')
-      } catch (err) {
-        console.error(err)
-        toast.error('Failed to process PDF') // Mark as failed
         setFormData((prev) => ({
           ...prev,
-          knowledgeSources: prev.knowledgeSources.map((src) =>
-            src.id === tempId ? { ...src, status: 'failed' } : src
-          )
+          knowledgeSources: [
+            ...prev.knowledgeSources,
+            {
+              id: newSource.id,
+              type: 'pdf',
+              name: file.name,
+              summary: data.text || '',
+              file_name: file.name
+            }
+          ]
         }))
+
+        toast.success('PDF processed and added!')
+      } catch (err) {
+        console.error('PDF processing error:', err)
+        toast.error('Failed to process PDF')
+      } finally {
+        processingRef.current = false
+        setIsProcessingContent(false)
       }
     },
     [id]
   )
 
-  const { getRootProps, getInputProps } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { 'application/pdf': ['.pdf'] },
-    multiple: false
-  }) // Website Scrape Handler
+    maxFiles: 1,
+    disabled: isProcessingContent
+  })
 
-  const handleAddWebsite = async () => {
+  // Website scraper
+  const handleAddWebsite = useCallback(async () => {
     if (!websiteUrl.trim()) return toast.error('Please enter a website URL')
+    if (processingRef.current) return
 
-    const tempId = Date.now()
-    const tempSource = {
-      id: tempId,
-      type: 'url',
-      source_url: websiteUrl,
-      content: '',
-      summary: '',
-      status: 'processing'
-    }
-
-    setFormData((prev) => ({
-      ...prev,
-      knowledgeSources: [...prev.knowledgeSources, tempSource]
-    }))
+    processingRef.current = true
+    setIsProcessingContent(true)
 
     try {
-      const res = await fetch('/api/url-scrape_summarize', {
+      const response = await fetch('/api/scrape-website', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: websiteUrl })
       })
-      if (!res.ok) throw new Error('Failed to scrape website')
-      const data = await res.json() // Update UI
 
-      setFormData((prev) => ({
-        ...prev,
-        knowledgeSources: prev.knowledgeSources.map((src) =>
-          src.id === tempId
-            ? {
-                ...src,
-                content: data.content,
-                summary: data.summary,
-                status: 'completed'
-              }
-            : src
-        )
-      })) // Save to DB in background
+      if (!response.ok) throw new Error('Failed to scrape website')
 
-      await addKnowledgeSource(id, {
+      const data = await response.json()
+
+      // Add to agent's knowledge sources
+      const newSource = await addKnowledgeSource({
+        agent_id: id,
         source_type: 'url',
         source_url: websiteUrl,
-        content: data.content,
-        summary: data.summary,
-        status: 'completed'
+        content: data.content || '',
+        metadata: {}
       })
 
-      toast.success('Website content added successfully!')
-      setWebsiteUrl('')
-    } catch (err) {
-      console.error(err)
-      toast.error('Failed to scrape website')
       setFormData((prev) => ({
         ...prev,
-        knowledgeSources: prev.knowledgeSources.map((src) =>
-          src.id === tempId ? { ...src, status: 'failed' } : src
-        )
+        knowledgeSources: [
+          ...prev.knowledgeSources,
+          {
+            id: newSource.id,
+            type: 'url',
+            name: websiteUrl,
+            summary: data.content || '',
+            source_url: websiteUrl
+          }
+        ]
       }))
-    }
-  } // Final Save Handler
 
+      setWebsiteUrl('')
+      toast.success('Website scraped and added!')
+    } catch (err) {
+      console.error('Website scraping error:', err)
+      toast.error('Failed to scrape website')
+    } finally {
+      processingRef.current = false
+      setIsProcessingContent(false)
+    }
+  }, [websiteUrl, id])
+
+  // Prompt handlers
+  const handlePromptSave = useCallback(() => {
+    if (!draft.trim()) {
+      setPromptError('Prompt cannot be empty')
+      return
+    }
+    setPrompt(draft)
+    setIsEditing(false)
+    setPromptError('')
+    toast.success('Prompt updated')
+  }, [draft])
+
+  const handlePromptCancel = useCallback(() => {
+    setDraft(prompt)
+    setIsEditing(false)
+    setPromptError('')
+  }, [prompt])
+
+  // ✅ OPTIMIZATION: Update agent
   const handleUpdate = useCallback(async () => {
     if (!formData.name.trim()) return toast.error('Please enter an agent name')
+    if (!formData.domain) return toast.error('Please select a domain')
+
+    setSaving(true)
     try {
-      setSaving(true)
-      const updatedAgent = await updateAgent(id, {
+      await updateAgent(id, {
         name: formData.name,
-
         domain: formData.domain,
-
         tone: formData.tone,
-        // Use the currently approved 'prompt' state
-        system_prompt: prompt,
-        updated_at: new Date().toISOString()
+        system_prompt: prompt
       })
-      toast.success('Agent updated successfully! Redirecting...')
+
+      toast.success('Agent updated successfully!')
       router.push(`/agents/${id}/manage`)
     } catch (err) {
-      console.error(err)
+      console.error('Error updating agent:', err)
       toast.error('Failed to update agent')
     } finally {
       setSaving(false)
     }
-  }, [formData, prompt, id, router]) // Prompt Editor Handlers
+  }, [id, formData, prompt, router])
 
-  const handlePromptSave = useCallback(() => {
-    if (!draft.trim()) return setPromptError('Prompt cannot be empty.')
-    setPrompt(draft)
-    setIsEditing(false)
-    setPromptError('')
-    toast.success('Prompt updated.')
-  }, [draft])
+  // Get domain colors
+  // ✅ FIXED: Get domain colors with enhanced styling
+  const getDomainColorClasses = useCallback((domainId, isSelected) => {
+    const domain = DOMAINS.find((d) => d.id === domainId)
+    const colors = DOMAIN_COLOR_MAP[domain?.color] || DOMAIN_COLOR_MAP.blue
 
-  const handlePromptCancel = useCallback(() => {
-    setDraft(prompt) // restore original
-    setIsEditing(false)
-    setPromptError('')
-  }, [prompt]) // --- Loading Screen ---
+    if (isSelected) {
+      return `bg-gradient-to-br ${colors.gradient} ${colors.border} ${colors.ring} ${colors.text}`
+    }
 
-  if (authLoading || fetching || !agent) {
+    return `border-neutral-700/50 bg-neutral-900/30 hover:bg-neutral-900/50 ${colors.hoverBorder} text-neutral-400 hover:text-neutral-200`
+  }, [])
+
+  // Loading states
+  if (authLoading || (fetching && !isInitialized)) {
     return (
       <LoadingState
-        message={authLoading ? 'Authenticating...' : 'Loading Agent Data...'}
+        message={authLoading ? 'Authenticating...' : 'Loading agent...'}
         className='min-h-screen'
       />
     )
   }
+
+  if (!agent) {
+    return (
+      <LoadingState message='Agent not found...' className='min-h-screen' />
+    )
+  }
+
   return (
     <>
       <NeonBackground />
-      <Suspense
-        fallback={
-          <LoadingState message='Loading ...' className='min-h-screen' />
-        }
-      >
-        {isProcessingContent && (
-          <LoadingState message='Processing knowledge base...' />
-        )}
-        {saving && <LoadingState message='Saving agent updates...' />}
-        <div className='relative w-full flex-1 font-mono text-neutral-100'>
-          {/* Header */}
-          <div className='sticky top-0 z-10 flex h-16 items-center'>
-            <NavigationBar
-              profile={profile}
-              message={message}
-              agent={agent}
-              onLogOutClick={logout}
-            />
-          </div>
-          <div className='flex h-[calc(100vh-64px)] flex-col overflow-hidden'>
-            <div className='mx-auto max-w-4xl flex-none px-4 py-8 pt-6 sm:px-6 lg:px-8'>
-              <div className='flex items-center justify-center space-x-8'>
-                {[1, 2, 3].map((stepNum) => (
-                  <div key={stepNum} className='flex items-center'>
-                    <div
-                      className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
-                        step >= stepNum
-                          ? 'bg-orange-400 text-white'
-                          : 'bg-neutral-700 text-orange-400'
-                      }`}
-                    >
-                      {stepNum}
-                    </div>
-                    {stepNum < 3 && (
+      <div className='flex h-screen w-full flex-col font-mono text-neutral-100'>
+        {/* Header */}
+        <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>
+          <NavigationBar
+            profile={profile}
+            title={`Edit: ${agent.name}`}
+            onLogOutClick={logout}
+          />
+        </div>
+
+        {/* Content */}
+        <div className='custom-scrollbar flex-1 overflow-y-auto'>
+          <div className='mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8'>
+            {/* Progress indicator */}
+            <div className='mb-8'>
+              <div className='flex items-center justify-between'>
+                {[1, 2, 3].map((i) => (
+                  <React.Fragment key={i}>
+                    <div className='flex items-center'>
                       <div
-                        className={`mx-4 h-1 w-16 ${
-                          step > stepNum ? 'bg-neutral-400' : 'bg-neutral-700'
+                        className={`flex h-10 w-10 items-center justify-center rounded-full ${
+                          step >= i
+                            ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white'
+                            : 'bg-neutral-800 text-neutral-400'
                         }`}
+                      >
+                        {i}
+                      </div>
+                      <span
+                        className={`ml-2 text-sm ${step >= i ? 'text-neutral-100' : 'text-neutral-400'}`}
+                      >
+                        {i === 1
+                          ? 'Basic Info'
+                          : i === 2
+                            ? 'Knowledge'
+                            : 'Review'}
+                      </span>
+                    </div>
+                    {i < 3 && (
+                      <div
+                        className={`mx-4 h-1 flex-1 ${step > i ? 'bg-orange-500' : 'bg-neutral-800'}`}
                       />
                     )}
-                  </div>
+                  </React.Fragment>
                 ))}
               </div>
             </div>
+
             {/* Step 1: Basic Information */}
             {step === 1 && (
-              <div className='mx-auto max-w-4xl flex-1  custom-scrollbar overflow-y-auto px-4 py-8 sm:px-6 lg:px-8'>
-                <Card>
-                  <div className='space-y-6 p-6'>
-                    <div>
-                      <h2 className='text-xl font-semibold text-neutral-200'>
-                        Basic
-                        <span className='text-orange-500'> Information</span>
-                      </h2>
-                      <p className='text-white'>
-                        Update your agent&apos;s core details and personality.
-                      </p>
-                    </div>
-                    <p className='text-white'>Name:</p>
+              <Card className='border-orange-600/20'>
+                <div className='space-y-6 p-6'>
+                  <div>
+                    <h3 className='mb-3 text-sm font-medium text-neutral-200'>
+                      Basic Information
+                    </h3>
+                  <p className='mt-1 text-sm text-neutral-400'>
+  Update your agent&apos;s identity and purpose
+</p>
+                  </div>
+
+                  {/* Agent Name */}
+                  <div>
+                    <label className='mb-2 block text-sm font-medium text-neutral-200'>
+                      Agent Name *
+                    </label>
                     <FormInput
-                      label='Agent Name *'
-                      className='mb-20 w-full'
                       value={formData.name}
                       onChange={(e) => updateForm('name', e.target.value)}
-                      placeholder='Agent Name'
+                      placeholder='e.g., Sales Assistant, Support Bot...'
                     />
-                    <p className='text-white'>Choose domain.</p>
-                    <div className='mb-20 grid grid-cols-2 gap-4 md:grid-cols-4'>
-                      {DOMAINS.map((domain) => (
-                        <button
-                          key={domain.id}
-                          onClick={() => updateForm('domain', domain.id)}
-                          className={`rounded-lg border-2 p-4 transition-all ${
-                            formData.domain === domain.id
-                              ? 'border-blue-500 bg-blue-500/10'
-                              : 'border-neutral-700 hover:border-neutral-600'
-                          }`}
-                        >
-                          {/* <purpose.icon
-                            className={`mx-auto mb-2 h-8 w-8 text-${purpose.color}-400`}
-                          /> */}
-                          <div className='text-sm font-medium text-neutral-200'>
-                            {domain.name}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                    {/* Purpose Selection */}
+                  </div>
 
-                    <p className='text-white'>Tone.</p>
-                    <div className='mb-20 grid grid-cols-2 gap-4 md:grid-cols-4'>
+                  {/* Domain Selection */}
+                  <div>
+                    <label className='mb-3 block text-sm font-medium text-neutral-200'>
+                      Select Domain *
+                    </label>
+                    <div className='grid gap-4 sm:grid-cols-2'>
+                      {DOMAINS.map((domain) => {
+                        const isSelected = formData.domain === domain.id
+                        const colors = DOMAIN_COLOR_MAP[domain.color]
+
+                        return (
+                          <Card
+                            key={domain.id}
+                            className={`group cursor-pointer border transition-all duration-300 hover:scale-105 ${getDomainColorClasses(
+                              domain.id,
+                              isSelected
+                            )}`}
+                            onClick={() => updateForm('domain', domain.id)}
+                          >
+                            <div className='flex items-center gap-3 p-4'>
+                              <div className='text-3xl'>{domain.icon}</div>
+                              <div className='flex-1'>
+                                <h4 className='font-semibold text-neutral-100'>
+                                  {domain.name}
+                                </h4>
+                                <p className='line-clamp-1 text-xs text-neutral-400'>
+                                  {domain.prompt.slice(0, 50)}...
+                                </p>
+                              </div>
+                            </div>
+                          </Card>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Tone Selection */}
+                  <div>
+                    <label className='mb-3 block text-sm font-medium text-neutral-200'>
+                      Select Tone
+                    </label>
+                    <div className='grid gap-3 sm:grid-cols-2'>
                       {TONES.map((tone) => (
                         <button
                           key={tone.id}
                           onClick={() => updateForm('tone', tone.id)}
-                          className={`rounded-lg border-2 p-4 transition-all ${
+                          className={`rounded-lg border p-4 text-left transition-all hover:border-neutral-600/50 ${
                             formData.tone === tone.id
-                              ? 'border-blue-500 bg-blue-500/10'
-                              : 'border-neutral-700 hover:border-neutral-600'
+                              ? 'border-orange-600/50 bg-orange-900/20'
+                              : 'border-neutral-700/50 bg-neutral-900/50'
                           }`}
                         >
-                          <div className='text-sm font-medium text-neutral-200'>
+                          <p className='font-medium text-neutral-100'>
                             {tone.name}
-                          </div>
+                          </p>
+                          <p className='text-xs text-neutral-400'>
+                            {tone.description}
+                          </p>
                         </button>
                       ))}
                     </div>
-                    <div className='flex justify-end'>
+                  </div>
+
+                  <div className='flex justify-end pt-4'>
+                    <Button
+                      onClick={() => setStep(2)}
+                      disabled={!formData.name.trim() || !formData.domain}
+                    >
+                      Next
+                      <CircleArrowRight className='ml-2 h-4 w-4' />
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Step 2: Knowledge Sources */}
+            {step === 2 && (
+              <Card className='border-blue-600/20'>
+                <div className='space-y-6 p-6'>
+                  <div>
+                    <h2 className='text-2xl font-bold text-neutral-100'>
+                      Knowledge Sources
+                    </h2>
+                    <p className='mt-1 text-sm text-neutral-400'>
+                      Manage documents and websites for context
+                    </p>
+                  </div>
+
+                  {/* PDF Upload */}
+                  <div>
+                    <label className='mb-2 block text-sm font-medium text-neutral-200'>
+                      Upload PDF
+                    </label>
+                    <div
+                      {...getRootProps()}
+                      className={`cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-all ${
+                        isDragActive
+                          ? 'border-orange-500 bg-orange-900/10'
+                          : 'border-neutral-700 bg-neutral-900/50 hover:border-neutral-600'
+                      } ${isProcessingContent ? 'cursor-not-allowed opacity-50' : ''}`}
+                    >
+                      <input {...getInputProps()} />
+                      <Upload className='mx-auto h-12 w-12 text-neutral-400' />
+                      <p className='mt-2 text-sm text-neutral-300'>
+                        {isProcessingContent
+                          ? 'Processing PDF...'
+                          : 'Drop PDF here or click to upload'}
+                      </p>
+                      <p className='text-xs text-neutral-500'>Max 10MB</p>
+                    </div>
+                  </div>
+
+                  {/* Website URL */}
+                  <div>
+                    <label className='mb-2 block text-sm font-medium text-neutral-200'>
+                      Add Website
+                    </label>
+                    <div className='flex gap-2'>
+                      <FormInput
+                        value={websiteUrl}
+                        onChange={(e) => setWebsiteUrl(e.target.value)}
+                        placeholder='https://example.com'
+                        disabled={isProcessingContent}
+                      />
                       <Button
-                        onClick={() => setStep(2)}
-                        disabled={!formData.name.trim() || !formData.domain}
+                        onClick={handleAddWebsite}
+                        disabled={!websiteUrl.trim() || isProcessingContent}
+                        variant='secondary'
                       >
-                        <div className='flex flex-row'>
-                          Next
-                          <CircleArrowRightIcon
-                            className={`mx-auto ml-2 h-8 w-8 text-white`}
-                          />
-                        </div>
+                        {isProcessingContent ? 'Adding...' : 'Add'}
                       </Button>
                     </div>
                   </div>
-                </Card>
-              </div>
-            )}
-            {/* Step 2: Agent Type, Tone & Knowledge Base */}
-            {step === 2 && (
-              <div className='mx-auto max-w-4xl flex-1  custom-scrollbar  overflow-y-auto px-4 py-8 sm:px-6 lg:px-8'>
-                <Card>
-                  <div className='space-y-6 p-6'>
-                    <div>
-                      <h2 className='text-xl font-semibold text-neutral-200'>
-                        Knowledge
-                        <span className='text-orange-500'> Base</span>
-                      </h2>
-                    </div>
-                    <h3 className='mt-10 flex items-center gap-2 font-medium text-neutral-200'>
-                      <LinkIcon className='h-4 w-4' />
-                      Add Knowledge Base
-                    </h3>
-                    <p className='mb-4 text-sm text-neutral-400'>
-                      Train your agent with relevant information by uploading a
-                      PDF or scraping a website URL.
-                    </p>
-                    <div className='flex flex-col justify-center space-y-4'>
-                      {/* Website Input */}
-                      <div className='relative flex w-full cursor-pointer items-center rounded-lg'>
-                        <FormInput
-                          type='url'
-                          className='w-full pr-12'
-                          value={websiteUrl}
-                          onChange={(e) => setWebsiteUrl(e.target.value)}
-                          placeholder='https://your-data-source.com'
-                          id='websiteUrl'
-                          disabled={isProcessingContent}
-                        />
-                        <button
-                          onClick={handleAddWebsite}
-                          disabled={isProcessingContent || !websiteUrl.trim()}
-                          className='absolute top-0 right-0 h-full cursor-pointer rounded-l-none'
-                          variant='default'
-                        >
-                          <Globe className='h-4 w-4' />
-                        </button>
-                      </div>
 
-                      {/* PDF Dropzone */}
-                      <div
-                        {...getRootProps()}
-                        className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 transition-colors ${
-                          isProcessingContent
-                            ? 'border-neutral-600 bg-neutral-800/50'
-                            : 'border-orange-500/50 bg-neutral-900 hover:border-orange-400'
-                        }`}
-                        aria-disabled={isProcessingContent}
-                      >
-                        <input
-                          {...getInputProps()}
-                          disabled={isProcessingContent}
-                        />
-                        <Paperclip className='mb-2 h-5 w-5 text-neutral-400' />
-                        <p className='text-xs text-neutral-400'>
-                          {isProcessingContent
-                            ? 'Processing file...'
-                            : 'Drop a PDF here, or click to select file (<10MB)'}
-                        </p>
+                  {/* Knowledge Sources List */}
+                  {formData.knowledgeSources.length > 0 && (
+                    <div>
+                      <label className='mb-3 block text-sm font-medium text-neutral-200'>
+                        Added Sources ({formData.knowledgeSources.length})
+                      </label>
+                      <div className='space-y-2'>
+                        {formData.knowledgeSources.map((source) => (
+                          <div
+                            key={source.id}
+                            className='flex items-center justify-between rounded-lg border border-neutral-700 bg-neutral-900/50 p-3'
+                          >
+                            <div className='flex items-center gap-3'>
+                              {source.type === 'pdf' ? (
+                                <FileText className='h-5 w-5 text-orange-400' />
+                              ) : (
+                                <LinkIcon className='h-5 w-5 text-blue-400' />
+                              )}
+                              <span className='truncate text-sm text-neutral-200'>
+                                {source.name}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => removeKnowledgeSource(source.id)}
+                              className='text-neutral-400 transition-colors hover:text-red-400'
+                            >
+                              <X className='h-4 w-4' />
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    {/* Knowledge Sources List */}
-                    <div className='mt-6 space-y-3 rounded-lg bg-neutral-800 p-6'>
-                      <h4 className='text-sm font-semibold text-neutral-200'>
-                        Attached Sources ({formData.knowledgeSources.length})
-                      </h4>
-                      {formData.knowledgeSources.length === 0 ? (
-                        <p className='text-xs text-neutral-400 italic'>
-                          No sources attached yet.
-                        </p>
-                      ) : (
-                        <div className='space-y-2'>
-                          {formData.knowledgeSources.map((source) => (
+                  )}
+
+                  <div className='flex justify-between pt-4'>
+                    <Button onClick={() => setStep(1)} variant='outline'>
+                      <CircleArrowLeft className='mr-2 h-4 w-4' />
+                      Previous
+                    </Button>
+                    <Button onClick={() => setStep(3)}>
+                      Next
+                      <CircleArrowRight className='ml-2 h-4 w-4' />
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Step 3: Review */}
+            {step === 3 && (
+              <Card className='border-green-600/20'>
+                <div className='space-y-6 p-6'>
+                  <div>
+                    <h2 className='text-2xl font-bold text-neutral-100'>
+                      Review & Update
+                    </h2>
+                    <p className='mt-1 text-sm text-neutral-400'>
+                      Review your changes and system prompt
+                    </p>
+                  </div>
+
+                  {/* Summary Grid */}
+                  <div className='grid gap-6 md:grid-cols-2'>
+                    <div>
+                      <h3 className='mb-3 text-sm font-medium text-neutral-200'>
+                        Basic Information
+                      </h3>
+                      <div className='space-y-2 text-sm'>
+                        <div>
+                          <span className='text-neutral-400'>Name: </span>
+                          <span className='font-medium text-neutral-100'>
+                            {formData.name}
+                          </span>
+                        </div>
+                        <div>
+                          <span className='text-neutral-400'>Domain: </span>
+                          <span className='font-medium text-neutral-100'>
+                            {DOMAINS.find((d) => d.id === formData.domain)
+                              ?.name || 'N/A'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className='text-neutral-400'>Tone: </span>
+                          <span className='font-medium text-neutral-100 capitalize'>
+                            {formData.tone}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className='mb-3 text-sm font-medium text-neutral-200'>
+                        Knowledge Sources
+                      </h3>
+                      <div className='space-y-2 text-sm'>
+                        {formData.knowledgeSources.length > 0 ? (
+                          formData.knowledgeSources.map((source) => (
                             <div
                               key={source.id}
-                              className={`flex items-center justify-between rounded-md p-2 ${
-                                source.status === 'processing'
-                                  ? 'animate-pulse bg-blue-900/30'
-                                  : 'bg-neutral-700'
-                              }`}
+                              className='flex items-center gap-2'
                             >
-                              <div className='flex items-center space-x-2 truncate'>
-                                {source.type === 'url' ? (
-                                  <LinkIcon className='h-4 w-4 text-blue-400' />
-                                ) : (
-                                  <FileText className='h-4 w-4 text-orange-400' />
-                                )}
-                                <span className='truncate text-sm'>
-                                  <span className='truncate text-sm'>
-                                    {source.name ||
-                                      source.file_name ||
-                                      source.source_url ||
-                                      'Unnamed Source'}
-                                  </span>
-                                </span>
-                                {source.status === 'processing' && (
-                                  <span className='text-xs text-blue-300'>
-                                    (Processing...)
-                                  </span>
-                                )}
-                                {source.status === 'failed' && (
-                                  <span className='text-xs text-red-400'>
-                                    (Failed)
-                                  </span>
-                                )}
-                              </div>
-                              <button
-                                onClick={() => removeKnowledgeSource(source.id)}
-                                className='p-1 text-red-400 hover:text-red-300'
-                                title='Remove source'
-                                disabled={source.status === 'processing'}
-                              >
-                                <X className='h-4 w-4' />
-                              </button>
+                              {source.type === 'pdf' ? (
+                                <FileText className='h-4 w-4 text-orange-400' />
+                              ) : (
+                                <LinkIcon className='h-4 w-4 text-blue-400' />
+                              )}
+                              <span className='truncate text-neutral-300'>
+                                {source.name}
+                              </span>
                             </div>
-                          ))}
-                        </div>
+                          ))
+                        ) : (
+                          <p className='text-neutral-500 italic'>
+                            No knowledge sources
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* System Prompt */}
+                  <div>
+                    <h3 className='mb-2 text-sm font-medium text-neutral-200'>
+                      System Prompt
+                    </h3>
+                    <div className='rounded-lg border border-neutral-700 bg-neutral-900 p-4'>
+                      {isEditing ? (
+                        <textarea
+                          className='w-full rounded-md bg-neutral-800 p-3 font-mono text-sm text-neutral-200 focus:ring-2 focus:ring-orange-500 focus:outline-none'
+                          rows={10}
+                          value={draft}
+                          onChange={(e) => setDraft(e.target.value)}
+                        />
+                      ) : (
+                        <pre className='max-h-64 overflow-y-auto font-mono text-sm whitespace-pre-wrap text-neutral-300'>
+                          {prompt}
+                        </pre>
                       )}
-                    </div>
-                    <div className='mt-4 flex justify-between'>
-                      <Button onClick={() => setStep(1)} variant='outline'>
-                        <div className='flex flex-row place-content-center justify-center'>
-                          <CircleArrowLeft
-                            className={`mx-auto mr-2 h-8 w-8 text-white`}
-                          />
-                          Previous
-                        </div>
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          setStep(3)
-                        }}
-                        disabled={isProcessingContent}
-                      >
-                        <div className='flex flex-row place-content-center justify-center'>
-                          Review
-                          <CircleArrowRightIcon
-                            className={`mx-auto ml-2 h-8 w-8 text-white`}
-                          />
-                        </div>
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              </div>
-            )}
-            {/* Step 3: Review & Final Save */}
-            {step === 3 && (
-              <div className='mx-auto max-w-4xl flex-1 custom-scrollbar overflow-y-auto px-4 py-8 sm:px-6 lg:px-8'>
-                <Card>
-                  <div className='space-y-6 p-6'>
-                    <div>
-                      <h2 className='text-xl font-semibold text-neutral-200'>
-                        Review & Save
-                      </h2>
-                      <p className='text-neutral-400'>
-                        Review the generated prompt and finalize your agent
-                        update.
-                      </p>
-                    </div>
-                    <div className='card-content space-y-6'>
-                      <div className='grid gap-6 md:grid-cols-2'>
-                        <div>
-                          <h3 className='mb-3 font-medium text-neutral-200'>
-                            Basic Information
-                          </h3>
-                          <div className='space-y-2 text-sm'>
-                            <div>
-                              <span className='text-neutral-400'>Name:</span>
-                              <span className='font-medium'>
-                                {formData.name}
-                              </span>
-                            </div>
-                            <div>
-                              <span className='text-neutral-400'>Domain:</span>
-                              <span className='font-medium capitalize'>
-                                {DOMAINS.find((d) => d.id === formData.domain)
-                                  ?.name || 'N/A'}
-                              </span>
-                            </div>
-                            <div>
-                              <span className='text-neutral-400'>Tone:</span>
-                              <span className='font-medium capitalize'>
-                                {formData.tone}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div>
-                          <h3 className='mb-3 font-medium text-neutral-200'>
-                            Knowledge Bases
-                          </h3>
-                          <div className='space-y-2 text-sm'>
-                            {formData.knowledgeSources.length > 0 ? (
-                              formData.knowledgeSources.map((source) => (
-                                <div
-                                  key={source.id}
-                                  className='flex items-center gap-2'
-                                >
-                                  {source.type === 'pdf' && (
-                                    <FileText className='h-4 w-4 text-orange-500' />
-                                  )}
-                                  {source.type === 'url' && (
-                                    <LinkIcon className='h-4 w-4 text-blue-500' />
-                                  )}
-                                  {/* Display processing status if needed */}
-                                  {source.status === 'processing' && (
-                                    <span className='text-xs text-blue-300'>
-                                      (Processing...)
-                                    </span>
-                                  )}
-                                  <span>
-                                    <span className='truncate text-sm'>
-                                      {source.name ||
-                                        source.file_name ||
-                                        source.source_url ||
-                                        'Unnamed Source'}
-                                    </span>
-                                  </span>
-                                </div>
-                              ))
-                            ) : (
-                              <p className='text-neutral-500 italic'>
-                                No external data sources added.
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div>
-                        <h3 className='mb-2 font-medium text-neutral-200'>
-                          Generated System Prompt (Final AI Instructions)
-                        </h3>
-                        <div className='rounded-lg bg-neutral-800 p-4'>
-                          {isEditing ? (
-                            <textarea
-                              className='w-full rounded-md bg-neutral-900 p-2 font-mono text-sm text-neutral-300 focus:ring-2 focus:ring-blue-500 focus:outline-none'
-                              rows={6}
-                              value={draft}
-                              onChange={(e) => setDraft(e.target.value)}
-                            />
-                          ) : (
-                            <div className='relative w-full'>
-                              <div className='h-[300px] custom-scrollbar overflow-y-auto rounded-lg border border-neutral-800 bg-neutral-900 p-4 text-sm whitespace-pre-wrap text-neutral-100'>
-                                {prompt}
-                              </div>
-                            </div>
-                          )}
-                          {promptError && (
-                            <p className='mt-2 text-sm text-orange-400'>
-                              {promptError}
-                            </p>
-                          )}
-                          <div className='mt-2 flex justify-end gap-2'>
-                            {isEditing ? (
-                              <>
-                                <Button
-                                  onClick={handlePromptSave}
-                                  disabled={isProcessingContent}
-                                >
-                                  Save
-                                </Button>
-                                <Button
-                                  variant='secondary'
-                                  onClick={handlePromptCancel}
-                                  disabled={isProcessingContent}
-                                >
-                                  Cancel
-                                </Button>
-                              </>
-                            ) : (
-                              <Button
-                                onClick={() => setIsEditing(true)}
-                                disabled={isProcessingContent}
-                              >
-                                Edit
-                              </Button>
-                            )}
-                          </div>
-                        </div>
+
+                      {promptError && (
+                        <p className='mt-2 text-sm text-red-400'>
+                          {promptError}
+                        </p>
+                      )}
+
+                      <div className='mt-4 flex justify-end gap-2'>
+                        {isEditing ? (
+                          <>
+                            <Button onClick={handlePromptSave} size='sm'>
+                              Save
+                            </Button>
+                            <Button
+                              onClick={handlePromptCancel}
+                              variant='secondary'
+                              size='sm'
+                            >
+                              Cancel
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            onClick={() => setIsEditing(true)}
+                            variant='outline'
+                            size='sm'
+                          >
+                            Edit Prompt
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
-                  <div className='flex justify-between'>
+
+                  <div className='flex justify-between pt-4'>
                     <Button
                       onClick={() => setStep(2)}
                       variant='outline'
                       disabled={saving}
                     >
-                      <div className='flex flex-row items-center justify-center'>
-                        <CircleArrowLeft
-                          className={`mr-2 h-5 w-5 text-white`}
-                        />
-                        Previous
-                      </div>
+                      <CircleArrowLeft className='mr-2 h-4 w-4' />
+                      Previous
                     </Button>
-                    <div className='flex space-x-3'>
-                      <Button
-                        onClick={() => toast.success('Agent saved as draft!')} // Placeholder for draft saving
-                        variant='outline'
-                        disabled={saving}
-                      >
-                        <div className='flex flex-row items-center justify-center'>
-                          <Save className='mr-2 h-4 w-4' />
-                          Save Draft
-                        </div>
-                      </Button>
-                      <Button
-                        onClick={handleUpdate}
-                        disabled={saving || isProcessingContent}
-                      >
-                        <div className='flex flex-row items-center justify-center'>
-                          {saving ? (
-                            'Updating...'
-                          ) : (
-                            <>
-                              <Aperture className='mr-2 h-4 w-4' />
-                              Update Agent
-                            </>
-                          )}
-                        </div>
-                      </Button>
-                    </div>
+                    <Button
+                      onClick={handleUpdate}
+                      disabled={saving || isProcessingContent}
+                    >
+                      {saving ? (
+                        'Updating...'
+                      ) : (
+                        <>
+                          <Aperture className='mr-2 h-4 w-4' />
+                          Update Agent
+                        </>
+                      )}
+                    </Button>
                   </div>
-                </Card>
-              </div>
+                </div>
+              </Card>
             )}
           </div>
         </div>
-      </Suspense>
+      </div>
     </>
   )
 }

@@ -7,7 +7,7 @@ import {
   createWorkflowWebhook,
   updateWorkflow
 } from  '../../../../actions/agents'
-import { generateWebhookKey, generateAuthToken } from '@/lib/nanoid'
+import { generateWebhookKey, generateAuthToken } from '../../../../../lib/nanoid'
 
 export async function GET(request, { params }) {
   try {

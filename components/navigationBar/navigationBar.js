@@ -1,18 +1,34 @@
 'use client'
-import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import { navMenus } from '../../config/navmenuconfig'
-import Button from '../ui/button'
 import {
   ArrowLeft,
-  RefreshCw,
+  ChevronDown,
+  ChevronUp,
   Download,
   MessageSquare,
-  Workflow,
-  Settings,
   Play,
-  Save
+  RefreshCw,
+  Save,
+  Settings,
+  Workflow,
+  Menu,
+  X
 } from 'lucide-react'
+import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { navMenus } from '../../config/navmenuconfig'
+import Button from '../ui/button'
+
+/**
+ * Modernized NavigationBar Component
+ * Features:
+ * - Clean, organized layout
+ * - Better visual hierarchy
+ * - Smooth animations
+ * - Mobile responsive with hamburger menu
+ * - Consistent styling
+ * - Better component structure
+ */
 
 export default function NavigationBar({
   onLoginClick,
@@ -20,235 +36,289 @@ export default function NavigationBar({
   agent,
   onLogOutClick,
   title,
-  message,
-  fetchData,
-  exportConversations,
-  historyPath,
-  testRun,
-  saveWorkflow,
-  saving,
-  createWorkflow,
-  refresh,
-  fetchExecutionsData
+  message
 }) {
   const pathname = usePathname()
   const router = useRouter()
-  let currentMenu = navMenus.home || []
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
-  // Set current menu based on route
-  if (pathname.startsWith('/dashboard')) {
-    currentMenu = navMenus.dashboard || []
-  }
+  // Determine current menu
+  const getCurrentMenu = () => {
+    if (pathname.startsWith('/dashboard')) {
+      return navMenus.dashboard || []
+    }
 
-  // Hide menu for certain paths
-  const hiddenMenuPaths = [
-    '/conversations',
-    '/agents',
-    '/feedback',
-    '/sandbox',
-    '/workflows',
-    '/executions',
-    '/webhook'
-  ]
-  if (hiddenMenuPaths.some((path) => pathname.includes(path))) {
-    currentMenu = []
-  }
-
-  // Add dynamic agent-based menu
-  if (agent) {
-    currentMenu = [
-      { name: `Agent: ${agent?.name}`, href: `/agents/${agent?.id}/manage` },
-      ...currentMenu
+    const hiddenMenuPaths = [
+      '/conversations',
+      '/agents',
+      '/feedback',
+      '/sandbox',
+      '/workflows',
+      '/executions',
+      '/webhook'
     ]
+
+    if (hiddenMenuPaths.some((path) => pathname.includes(path))) {
+      return []
+    }
+
+    let menu = navMenus.home || []
+
+    // Add agent-specific menu item
+    if (agent) {
+      menu = [{ name: agent.name, href: `/agents/${agent.id}/manage` }, ...menu]
+    }
+
+    return menu
   }
 
-  const actionButtonClasses =
-    'flex items-center gap-1 px-2.5 py-1.5 text-sm font-medium'
+  const currentMenu = getCurrentMenu()
+
+  // Check if we're on specific routes
+  const isHomePage = pathname === '/'
+  const isDashboard = pathname === '/dashboard'
+  const isAgentsPage = pathname.startsWith('/agents')
+  const isWorkflowsPage = pathname.startsWith('/workflows')
+  const isWorkflowBuilder =
+    pathname.includes('/workflows') && pathname.includes('/builder')
+  const isWorkflowExecutions = pathname.includes('/executions')
+  const isConversations = pathname.includes('/conversations')
+  const isWebhooks = pathname === '/webhooks'
 
   return (
-    <header className='bg-opacity-30 z-50 w-screen py-1 backdrop-blur-sm transition-all'>
-      <nav className='flex w-full items-center px-6 pt-2'>
-        {/* LEFT SECTION */}
-        <div className='flex items-center gap-4'>
-          {/* Homepage title */}
-          {pathname === '/' && title && (
-            <Link href='/'>
-              <h1 className='text-xl font-bold text-white'>{title}</h1>
-            </Link>
+    <header className='sticky top-0 z-50 w-full border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>
+      <nav className='mx-auto flex h-16 max-w-[1920px] items-center justify-between gap-4 px-4 sm:px-6'>
+        {/* ========== LEFT SECTION ========== */}
+        <div className='flex items-center gap-3'>
+          {/* Back Button */}
+          {isAgentsPage && pathname !== '/agents/dashboard' && (
+            <Button
+              variant='ghost'
+              size='sm'
+              onClick={() => router.back()}
+              className='group'
+            >
+              <ArrowLeft className='h-4 w-4 transition-transform group-hover:-translate-x-1' />
+            </Button>
           )}
-          {pathname === '/dashboard' && title && (
-            <Link href='/dashboard'>
-              <h1 className='text-xl font-bold text-white'>{title}</h1>
+
+          {isWorkflowsPage && pathname !== '/workflows' && (
+            <Button
+              variant='ghost'
+              size='sm'
+              onClick={() => router.back()}
+              className='group'
+            >
+              <ArrowLeft className='h-4 w-4 transition-transform group-hover:-translate-x-1' />
+            </Button>
+          )}
+
+          {/* Title/Logo */}
+          {(isHomePage || isDashboard) && title && (
+            <Link
+              href={isHomePage ? '/' : '/dashboard'}
+              className='group flex items-center'
+            >
+              <h1 className='text-lg font-bold text-white transition-colors group-hover:text-orange-400 sm:text-xl'>
+                {title}
+              </h1>
             </Link>
           )}
 
-          {/* Agent-related routes */}
-          {(pathname.startsWith('/agents') ||
-            (agent && pathname.startsWith(`/agents/${agent?.id}`))) && (
-            <div className='flex items-center gap-2'>
-              {/* Show back button only when not on dashboard */}
-              {pathname !== '/agents/dashboard' && (
-                <Button variant='ghost' onClick={() => router.back()}>
-                  <ArrowLeft className='h-4 w-4' />
+          {/* Workflows Title */}
+          {isWorkflowBuilder && (
+            <Link href='/workflows' className='group'>
+              <h1 className='text-lg font-bold text-white transition-colors group-hover:text-orange-400 sm:text-xl'>
+                Workflow: {title}
+              </h1>
+            </Link>
+          )}
+
+          {isWorkflowExecutions && (
+            <Link href='/workflows' className='group'>
+              <h1 className='text-lg font-bold text-white transition-colors group-hover:text-orange-400 sm:text-xl'>
+                {title}
+              </h1>
+            </Link>
+          )}
+
+          {pathname === '/workflows' && title && (
+            <h1 className='text-lg font-bold text-white sm:text-xl'>{title}</h1>
+          )}
+
+          {isWebhooks && title && (
+            <Link href='/webhooks' className='group'>
+              <h1 className='text-lg font-bold text-white transition-colors group-hover:text-orange-400 sm:text-xl'>
+                {title}
+              </h1>
+            </Link>
+          )}
+
+          {/* Quick Prompts Toggle (Create Agent) */}
+
+          {/* Message (Status/Section Name) */}
+          {message && (isAgentsPage || isWorkflowsPage) && (
+            <div className='flex items-center gap-2 rounded-lg bg-neutral-900/50 px-3 py-1.5 ring-1 ring-neutral-800'>
+              {isConversations && (
+                <MessageSquare className='h-4 w-4 text-orange-400' />
+              )}
+              <span className='text-sm font-medium text-neutral-200'>
+                {message}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* ========== CENTER SECTION (Menu) ========== */}
+        <div className='hidden flex-1 items-center justify-center lg:flex'>
+          {currentMenu.length > 0 && (
+            <ul className='flex items-center gap-1'>
+              {currentMenu.map((item, index) => (
+                <li key={index}>
+                  {item.href ? (
+                    <Link
+                      href={item.href}
+                      className='rounded-lg px-4 py-2 text-sm font-medium text-neutral-300 transition-all hover:bg-neutral-900/50 hover:text-white'
+                    >
+                      {item.name}
+                    </Link>
+                  ) : (
+                    <span className='px-4 py-2 text-sm font-medium text-neutral-500'>
+                      {item.name}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* ========== RIGHT SECTION (Actions) ========== */}
+        <div className='flex items-center gap-2'>
+          {/* Workflow Actions */}
+
+          {/* Credits Display */}
+          {profile && !isHomePage && (
+            <div className='hidden items-center gap-2 rounded-lg bg-gradient-to-r from-orange-950/20 to-neutral-900/20 px-3 py-1.5 ring-1 ring-orange-600/20 sm:flex'>
+              <span className='text-xs font-medium text-neutral-400'>
+                Credits
+              </span>
+              <span className='text-sm font-bold text-orange-400'>
+                {profile.api_credits || 0}
+              </span>
+            </div>
+          )}
+
+          {/* Auth Buttons */}
+          {isHomePage ? (
+            <Button onClick={onLoginClick} size='sm' className='hidden sm:flex'>
+              Log In
+            </Button>
+          ) : (
+            <Button
+              onClick={onLogOutClick}
+              variant='ghost'
+              size='sm'
+              className='hidden sm:flex'
+            >
+              Log Out
+            </Button>
+          )}
+
+          {/* Mobile Menu Toggle */}
+          {currentMenu.length > 0 && (
+            <Button
+              variant='ghost'
+              size='sm'
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className='lg:hidden'
+            >
+              {mobileMenuOpen ? (
+                <X className='h-5 w-5' />
+              ) : (
+                <Menu className='h-5 w-5' />
+              )}
+            </Button>
+          )}
+        </div>
+      </nav>
+
+      {/* ========== MOBILE MENU ========== */}
+      {mobileMenuOpen && currentMenu.length > 0 && (
+        <div className='animate-slideDown border-t border-neutral-800/50 bg-neutral-950/95 backdrop-blur-xl lg:hidden'>
+          <div className='mx-auto max-w-7xl px-4 py-4'>
+            <ul className='space-y-1'>
+              {currentMenu.map((item, index) => (
+                <li key={index}>
+                  {item.href ? (
+                    <Link
+                      href={item.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className='block rounded-lg px-4 py-2 text-sm font-medium text-neutral-300 transition-all hover:bg-neutral-900/50 hover:text-white'
+                    >
+                      {item.name}
+                    </Link>
+                  ) : (
+                    <span className='block px-4 py-2 text-sm font-medium text-neutral-500'>
+                      {item.name}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+
+            {/* Mobile-only actions */}
+            <div className='mt-4 space-y-2 border-t border-neutral-800/50 pt-4'>
+              {profile && !isHomePage && (
+                <div className='flex items-center justify-between rounded-lg bg-gradient-to-r from-orange-950/20 to-neutral-900/20 px-4 py-2 ring-1 ring-orange-600/20'>
+                  <span className='text-sm font-medium text-neutral-400'>
+                    Credits
+                  </span>
+                  <span className='text-sm font-bold text-orange-400'>
+                    {profile.api_credits || 0}
+                  </span>
+                </div>
+              )}
+
+              {isHomePage ? (
+                <Button
+                  onClick={onLoginClick}
+                  size='sm'
+                  className='w-full sm:hidden'
+                >
+                  Log In
+                </Button>
+              ) : (
+                <Button
+                  onClick={onLogOutClick}
+                  variant='ghost'
+                  size='sm'
+                  className='w-full sm:hidden'
+                >
+                  Log Out
                 </Button>
               )}
             </div>
-          )}
-          {pathname.startsWith('/workflows') && title && (
-            <div className='flex items-center gap-2'>
-              <Button variant='ghost' onClick={() => router.back()}>
-                <ArrowLeft className='h-4 w-4' />
-              </Button>
-              {/* Show back button only when not on dashboard */}
-              {pathname.includes('/builder') && (
-                <>
-                  <Link href='/workflows'>
-                    <h1 className='text-xl font-bold text-white'>{title}</h1>
-                  </Link>
-                </>
-              )}
-              {pathname === '/workflows' && <>{title}</>}
-              {pathname.includes('/executions') && (
-                <>
-                  <Link href='/workflows'>
-                    <h1 className='text-xl font-bold text-white'>{title}</h1>
-                  </Link>
-                </>
-              )}
-            </div>
-          )}
-          {pathname === ('/webhooks') && title && (
-            <Link href='/webhooks'>
-              <h1 className='text-xl font-bold text-white'>{title}</h1>
-            </Link>
-          )}
-
-          {/* Agent-specific subroutes */}
-          {message &&
-            (pathname.startsWith('/agents') ||
-              (agent && pathname.startsWith(`/agents/${agent?.id}`))) && (
-              <div className='flex items-center gap-1 text-white'>
-                {pathname.includes('conversations') && (
-                  <MessageSquare className='h-4 w-4 text-orange-400' />
-                )}
-                <span className='font-bold text-white'>{message}</span>
-              </div>
-            )}
+          </div>
         </div>
+      )}
 
-        {/* MIDDLE SECTION */}
-        <div className='flex flex-1 items-center justify-center gap-4'>
-          <ul className='hidden items-center space-x-8 text-white md:flex'>
-            {currentMenu.map((item, index) => (
-              <li key={index}>
-                {item.href ? (
-                  <Link
-                    href={item.href}
-                    className='font-bold transition-colors hover:text-red-400'
-                  >
-                    {item.name}
-                  </Link>
-                ) : (
-                  <span className='font-bold text-neutral-400'>
-                    {item.name}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
+      <style jsx global>{`
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
 
-        {/* RIGHT SECTION */}
-        <div className='flex items-center gap-4'>
-          {pathname.startsWith('/workflows') && title && (
-            <div className='flex items-center gap-2'>
-              {/* Show back button only when not on dashboard */}
-              {pathname.includes('/builder') && (
-                <>
-                  <Button
-                    variant='outline'
-                    onClick={() => router.push(`${historyPath}`)}
-                  >
-                    <div className='flex flex-row items-center justify-center'>
-                      <Settings className='mr-2 h-4 w-4' />
-                      History
-                    </div>
-                  </Button>
-                  <Button variant='outline' onClick={testRun}>
-                    <div className='flex flex-row items-center justify-center'>
-                      <Play className='mr-2 h-4 w-4' />
-                      Test Run
-                    </div>
-                  </Button>
-                  <Button onClick={saveWorkflow} disabled={saving}>
-                    <div className='flex flex-row items-center justify-center'>
-                      <Save className='mr-2 h-4 w-4' />
-                      {saving ? 'Saving...' : 'Save'}
-                    </div>
-                  </Button>
-                </>
-              )}
-              {pathname === '/workflows' && (
-                <>
-                  {' '}
-                  <Button variant='outline' onClick={createWorkflow}>
-                    <div className='flex flex-row items-center justify-center'>
-                      <Workflow className='mr-2 h-4 w-4' />
-                      Create Workflow
-                    </div>
-                  </Button>
-                </>
-              )}
-
-              {pathname.includes('/executions') && (
-                <>
-                  <Button variant='outline' onClick={fetchExecutionsData}>
-                    <div className='flex flex-row items-center justify-center'>
-                      <RefreshCw className='mr-2 h-4 w-4' />
-                      {refresh}
-                    </div>
-                  </Button>
-                </>
-              )}
-            </div>
-          )}
-          {/* Conversation actions */}
-          {pathname.startsWith(`/agents/${agent?.id}/conversations`) && (
-            <>
-              <Button
-                variant='outline'
-                size='sm'
-                className={actionButtonClasses}
-                onClick={fetchData}
-              >
-                <RefreshCw className='h-4 w-4' />
-                <span>Refresh</span>
-              </Button>
-              <Button
-                variant='outline'
-                size='sm'
-                className={actionButtonClasses}
-                onClick={exportConversations}
-              >
-                <Download className='h-4 w-4' />
-                <span>Export</span>
-              </Button>
-            </>
-          )}
-
-          {/* Auth buttons */}
-          {pathname === '/' && <Button onClick={onLoginClick} text='LOGIN' />}
-
-          {/* Credits */}
-          {profile && pathname !== '/' && (
-            <span className='font-bold text-neutral-400'>
-              Credits: {profile?.api_credits}
-            </span>
-          )}
-
-          {pathname !== '/' && <Button onClick={onLogOutClick} text='LOGOUT' />}
-        </div>
-      </nav>
+        .animate-slideDown {
+          animation: slideDown 0.2s ease-out;
+        }
+      `}</style>
     </header>
   )
 }

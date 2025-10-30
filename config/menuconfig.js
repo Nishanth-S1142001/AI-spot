@@ -1,4 +1,4 @@
-// menuConfig.js
+// menuConfig.js - FIXED VERSION
 import {
   Activity,
   BadgeInfo,
@@ -7,32 +7,27 @@ import {
   Bell,
   Blocks,
   Bot,
-  CloudCheck,
-  CreditCard,
+  Clipboard,
   Home,
   Info,
   LayoutDashboard,
   MessageCircle,
-  MessageSquareMore,
   MessagesSquare,
   Newspaper,
-  Podcast,
-  Clipboard,
   ReceiptIndianRupee,
   Settings,
-  Sigma,
   Slack,
   Telescope,
   User,
-  Workflow,
-  Webhook
+  Webhook,
+  Workflow
 } from 'lucide-react'
 
 export const menuItems = [
   {
     name: 'Home',
+    href: '/dashboard', // ✅ FIXED - Added href
     icon: <Home className='text-orange-500' size={20} />,
-
     key: 'home'
   },
   {
@@ -42,26 +37,36 @@ export const menuItems = [
   },
   {
     name: 'Agents',
-
+    href: '/agents/dashboard', // ✅ FIXED - Added href (you can change to /agents/dashboard if preferred)
     key: 'agents',
     icon: <Bot className='text-orange-500' size={20} />
   },
   {
+    name: 'Integrations',
+    href: '/integrations', // ✅ FIXED - Added href
+    key: 'integrations',
+    icon: <Blocks className='text-orange-500' size={20} />
+  },
+  {
+    name: 'Workflow',
+    icon: <Workflow className='text-orange-500' size={20} />,
+    href: '/workflows'
+  },
+  {
     name: 'Messages',
-    href: '/',
+    href: '/messages', // ✅ FIXED - Changed from '/' to '/messages'
     icon: <MessageCircle className='text-orange-500' size={20} />
   },
-
   {
     name: 'Notifications',
-    href: '/',
+    href: '/notifications', // ✅ FIXED - Changed from '/' to '/notifications'
     icon: <Bell className='text-orange-500' size={20} />
   },
-
   { divider: true },
   {
     name: 'Profile',
     icon: <User className='text-orange-500' size={20} />,
+    key: 'profile', // ✅ ADDED - For active state management
     submenu: [
       { name: 'View Profile', href: '/profile/view' },
       { name: 'Edit Profile', href: '/profile/edit' }
@@ -81,7 +86,7 @@ export const menuItems = [
   {
     name: 'Info',
     icon: <BadgeInfo className='text-orange-500' size={20} />,
-    href: '/help'
+    href: '/info' // ✅ FIXED - Changed from '/help' to '/info'
   },
   {
     name: 'Submit feedback',
@@ -115,14 +120,10 @@ export const subMenuItems = {
       icon: <Webhook className='text-orange-500' size={20} />,
       href: '/webhooks'
     },
-    {
-      name: 'Integrations',
 
-      key: 'integrations',
-      icon: <Blocks className='text-orange-500' size={20} />
-    },
     {
       name: 'Analytics',
+      href: '/analytics', // ✅ FIXED - Added href
       icon: <BarChart3 className='text-orange-500' size={20} />
       // submenu: [
       //   {
@@ -146,14 +147,9 @@ export const subMenuItems = {
       //     icon: <CreditCard className='text-orange-500' size={16} />
       //   }
       // ]
-    },
-
-    {
-      name: 'Workflow',
-      icon: <Workflow className='text-orange-500' size={20} />,
-      href:'/workflows'
     }
   ],
+
   integrations: [
     {
       name: 'Slack',
@@ -184,9 +180,23 @@ export const subMenuItems = {
       icon: <ReceiptIndianRupee className='text-orange-500' size={16} />
     },
     {
-      name: 'Subsciption',
+      name: 'Subscription', // ✅ FIXED - Typo: "Subsciption" → "Subscription"
       href: '/settings/subscription',
       icon: <BadgeInfo className='text-orange-500' size={16} />
+    }
+  ],
+
+  profile: [
+    // ✅ ADDED - Profile submenu for consistency
+    {
+      name: 'View Profile',
+      href: '/profile/view',
+      icon: <User className='text-orange-500' size={20} />
+    },
+    {
+      name: 'Edit Profile',
+      href: '/profile/edit',
+      icon: <Settings className='text-orange-500' size={20} />
     }
   ]
 }
@@ -200,17 +210,17 @@ export const homeMenuItems = [
   },
   {
     name: 'Blog',
-    href: '/',
+    href: '/blog', // ✅ FIXED - Changed from '/' to '/blog'
     icon: <Newspaper className='text-orange-500' size={20} />
   },
   {
     name: 'Help',
-    href: '/',
+    href: '/help',
     icon: <Info className='text-orange-500' size={20} />
   },
   {
     name: 'Spot Feedback',
-    href: '/',
+    href: '/feedback', // ✅ FIXED - Changed from '/' to '/feedback'
     icon: <Clipboard className='text-orange-500' size={20} />
   }
 ]

@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import Button from '../../ui/button'
-import FormInput from '../../ui/formInputField'
+import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { dbClient } from '../../../lib/supabase/dbClient'
 import { useAuth } from '../../providers/AuthProvider'
-import { userAgent } from 'next/server'
+import Button from '../../ui/button'
+import FormInput from '../../ui/formInputField'
 export default function AIAgentConfig({ config, onSave, onClose }) {
   const [agents, setAgents] = useState([])
   const [selectedAgentId, setSelectedAgentId] = useState(config?.agentId || '')

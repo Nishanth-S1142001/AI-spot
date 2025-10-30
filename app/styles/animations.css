@@ -1,0 +1,422 @@
+/* ============================================================================
+   OPTIMIZED ANIMATIONS & STYLES
+   File: styles/animations.css or add to your global.css
+   ============================================================================ */
+
+/* ============================================================================
+   AGENT PULSE ANIMATION
+   Used for agent avatars and interactive elements
+   ============================================================================ */
+
+@keyframes agent-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.3;
+  }
+}
+
+.agent-pulse {
+  animation: agent-pulse 2s ease-in-out infinite;
+}
+
+/* Delayed pulse for layered effect */
+.agent-pulse-delayed {
+  animation: agent-pulse 2s ease-in-out infinite;
+  animation-delay: 0.5s;
+}
+
+/* ============================================================================
+   GLOW EFFECTS
+   Animated glows for cards and interactive elements
+   ============================================================================ */
+
+@keyframes glow-pulse {
+  0%, 100% {
+    opacity: 0.4;
+    filter: blur(60px);
+  }
+  50% {
+    opacity: 0.6;
+    filter: blur(80px);
+  }
+}
+
+.glow-pulse {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+/* ============================================================================
+   SPINNER ANIMATION
+   Loading spinner
+   ============================================================================ */
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* ============================================================================
+   FADE IN ANIMATIONS
+   For tooltips and modal appearances
+   ============================================================================ */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}
+
+@keyframes fade-in-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.fade-in-scale {
+  animation: fade-in-scale 0.3s ease-out forwards;
+}
+
+/* ============================================================================
+   SLIDE ANIMATIONS
+   For sidebars and drawers
+   ============================================================================ */
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.slide-in-right {
+  animation: slide-in-right 0.3s ease-out forwards;
+}
+
+@keyframes slide-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.slide-in-left {
+  animation: slide-in-left 0.3s ease-out forwards;
+}
+
+/* ============================================================================
+   SHIMMER EFFECT
+   For loading skeletons
+   ============================================================================ */
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* ============================================================================
+   BOUNCE ANIMATION
+   For attention-grabbing elements
+   ============================================================================ */
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.bounce {
+  animation: bounce 1s ease-in-out infinite;
+}
+
+/* ============================================================================
+   CARD HOVER EFFECTS
+   Enhanced interactions for cards
+   ============================================================================ */
+
+.card-hover-lift {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3),
+              0 10px 10px -5px rgba(0, 0, 0, 0.2);
+}
+
+/* ============================================================================
+   GRADIENT ANIMATIONS
+   Animated gradients for backgrounds
+   ============================================================================ */
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.gradient-animated {
+  background-size: 200% 200%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+/* ============================================================================
+   RIPPLE EFFECT
+   Click feedback for buttons
+   ============================================================================ */
+
+@keyframes ripple {
+  0% {
+    transform: scale(0);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  animation: ripple 0.6s ease-out;
+}
+
+/* ============================================================================
+   UTILITY CLASSES
+   Quick animation utilities
+   ============================================================================ */
+
+/* Smooth transitions */
+.transition-smooth {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.transition-bounce {
+  transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Delays for staggered animations */
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-500 { animation-delay: 0.5s; }
+.delay-700 { animation-delay: 0.7s; }
+
+/* Duration variants */
+.duration-fast { animation-duration: 0.15s; }
+.duration-normal { animation-duration: 0.3s; }
+.duration-slow { animation-duration: 0.5s; }
+
+/* ============================================================================
+   LOADING STATES
+   Various loading indicators
+   ============================================================================ */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 25%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.05) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.pulse-slow {
+  animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* ============================================================================
+   TOOLTIP ANIMATIONS
+   Smooth tooltip appearances
+   ============================================================================ */
+
+.tooltip-enter {
+  animation: tooltip-fade-in 0.2s ease-out forwards;
+}
+
+@keyframes tooltip-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ============================================================================
+   BADGE ANIMATIONS
+   For status badges and notifications
+   ============================================================================ */
+
+@keyframes badge-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 currentColor;
+  }
+  50% {
+    box-shadow: 0 0 0 4px transparent;
+  }
+}
+
+.badge-pulse {
+  animation: badge-pulse 2s ease-in-out infinite;
+}
+
+/* ============================================================================
+   SCROLL ANIMATIONS
+   Triggered on scroll
+   ============================================================================ */
+
+.fade-up {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.fade-up.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ============================================================================
+   RESPONSIVE ADJUSTMENTS
+   Reduce animations on mobile for performance
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  .agent-pulse,
+  .glow-pulse,
+  .gradient-animated {
+    animation: none; /* Disable heavy animations on mobile */
+  }
+  
+  .card-hover-lift:hover {
+    transform: none; /* Disable lift on touch devices */
+  }
+}
+
+/* Respect user preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .agent-pulse,
+  .glow-pulse,
+  .bounce,
+  .gradient-animated {
+    animation: none !important;
+  }
+}
+
+/* ============================================================================
+   DARK MODE SPECIFIC
+   Ensure animations work in dark mode
+   ============================================================================ */
+
+@media (prefers-color-scheme: dark) {
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.05) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+  }
+  
+  .ripple {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
+
+/* ============================================================================
+   PERFORMANCE OPTIMIZATIONS
+   Use GPU acceleration for animations
+   ============================================================================ */
+
+.agent-pulse,
+.glow-pulse,
+.card-hover-lift,
+.fade-in,
+.slide-in-right,
+.slide-in-left {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Clean up will-change after animation completes */
+.animation-complete {
+  will-change: auto;
+}

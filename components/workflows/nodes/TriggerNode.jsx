@@ -1,17 +1,51 @@
+import { Plus } from 'lucide-react'
 import { Handle, Position } from 'reactflow'
-import { Zap } from 'lucide-react'
 
 export default function TriggerNode({ data }) {
+   const getExecutionColor = () => {
+    if (data.executionState === 'running') {
+      return 'ring-orange-400 shadow-[0_0_30px_rgba(255,165,0,0.8)]'
+    }
+    if (data.executionState === 'success') {
+      return 'ring-green-400 shadow-[0_0_30px_rgba(34,197,94,0.8)]'
+    }
+    if (data.executionState === 'error') {
+      return 'ring-red-400 shadow-[0_0_30px_rgba(239,68,68,0.8)]'
+    }
+    return ''
+  }
   return (
-    <div className='min-w-[140px] rounded-lg bg-green-500 px-2 py-2 text-white shadow-lg h-fit'>
-      <Handle type='source' position={Position.Right} className='h-2 w-2' />
+    <div
+      className={`flex flex-col items-center justify-center bg-transparent w-70 h-70 transition-transform duration-300 ${
+        data.isExecuting ? 'scale-110 animate-pulse-glow' : ''
+      }`} 
+    >
+      <div
+        className={`relative flex h-32 w-32 items-center justify-center rounded-full transition-all node-visual-circle ${
+          data.isExecuting
+            ? `bg-green-500 ring-4 ${getExecutionColor()}`
+            : 'bg-green-400  '
+        }`} data-node-type={data.nodeType}
+      >
+        {/* Source handle (emits flow) */}
+        <Handle
+          type='source'
+          position={Position.Right}
+          style={{
+            width: 12,
+            height: 12,
+            right: -6,
+            background: 'var(--color-orange-500)',
+            border: '2px solid var(--color-orange-400)',
+            borderRadius: '50%',
+          }}
+        />
 
-      <div className='flex items-center space-x-1'>
-        <Zap className='h-4 w-4' />
-        <div>
-          <div className='font-semibold text-sm'>{data.label || 'Start'}</div>
-          <div className='text-xs opacity-90'>Trigger</div>
-        </div>
+        <Plus className='h-12 w-12 text-white' />
+      </div>
+
+      <div className='mt-2 text-lg font-semibold text-neutral-200'>
+        {data.label || 'Start'}
       </div>
     </div>
   )
