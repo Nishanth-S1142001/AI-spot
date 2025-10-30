@@ -1,7 +1,7 @@
 // ============================================
 // scripts/start-task-queue.js
 // Script to start the task queue processor
-// ============================================
+// ===========================================
 
 // Run this with: node scripts/start-task-queue.js
 
