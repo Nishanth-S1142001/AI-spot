@@ -9,6 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "task-queue": "node scripts/start-task-queue.js",
+    "migrate:knowledge": "node scripts/migrate-knowledge-to-vectors.js",
+    "test:vectors": "node scripts/test-vector-setup.js",
     "task-queue:dev": "nodemon scripts/start-task-queue.js"
   },
   "dependencies": {
@@ -20,6 +22,8 @@
     "@supabase/auth-helpers-react": "^0.5.0",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.57.0",
+    "@tanstack/react-query": "^5.90.6",
+    "@tanstack/react-query-devtools": "^5.90.2",
     "@types/node": "^24.3.0",
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",

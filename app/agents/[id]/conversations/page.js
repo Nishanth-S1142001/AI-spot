@@ -1,11 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react'
+import { useState, useEffect, useCallback, useMemo, memo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { format, formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
-import { dbClient } from '../../../../lib/supabase/dbClient'
-import { deleteConversation } from '../../../actions/agents'
 import { useAuth } from '../../../../components/providers/AuthProvider'
 import { useLogout } from '../../../../lib/supabase/auth'
 import SideBarLayout from '../../../../components/sideBarLayout'
@@ -17,6 +15,13 @@ import Badge from '../../../../components/ui/badge'
 import Button from '../../../../components/ui/button'
 import Card from '../../../../components/ui/card'
 import NavigationBar from '../../../../components/navigationBar/navigationBar'
+import {
+  useAgent,
+  useConversations,
+  useConversationStats,
+  useDeleteConversation,
+  useUniqueSessions,
+} from '../../../../lib/hooks/useAgentData'
 import {
   Eye,
   MessageSquare,
@@ -32,7 +37,8 @@ import {
   Zap,
   Activity,
   BarChart3,
-  RefreshCw
+  RefreshCw,
+  Loader2
 } from 'lucide-react'
 
 const ITEMS_PER_PAGE = 12
@@ -98,17 +104,23 @@ const highlightText = (text, searchQuery) => {
 /**
  * Memoized Statistics Card Component
  */
-const StatCard = memo(({ icon: Icon, label, value, subValue, colorClass, bgClass, trend }) => (
+const StatCard = memo(({ icon: Icon, label, value, subValue, colorClass, bgClass, trend, isLoading }) => (
   <Card className={`border-opacity-20 ${bgClass} transition-all hover:scale-[1.02] hover:shadow-lg`}>
     <div className="flex items-center justify-between p-4">
       <div className="flex-1">
         <p className="text-sm font-medium text-neutral-400">{label}</p>
-        <p className={`mt-2 text-3xl font-bold ${colorClass}`}>{value}</p>
-        {subValue && (
-          <div className="mt-2 flex items-center gap-1 text-xs text-neutral-500">
-            {trend && <TrendingUp className="h-3 w-3" />}
-            <span>{subValue}</span>
-          </div>
+        {isLoading ? (
+          <div className="mt-2 h-8 w-20 animate-pulse rounded bg-neutral-800" />
+        ) : (
+          <>
+            <p className={`mt-2 text-3xl font-bold ${colorClass}`}>{value}</p>
+            {subValue && (
+              <div className="mt-2 flex items-center gap-1 text-xs text-neutral-500">
+                {trend && <TrendingUp className="h-3 w-3" />}
+                <span>{subValue}</span>
+              </div>
+            )}
+          </>
         )}
       </div>
       <div className={`flex h-12 w-12 items-center justify-center rounded-full ${bgClass.replace('to-neutral-950/50', 'opacity-40')}`}>
@@ -369,21 +381,32 @@ export default function AgentConversations() {
   const { user, profile, loading: authLoading } = useAuth()
   const { logout } = useLogout()
 
-  // ✅ Ref to prevent redundant fetches
-  const hasFetchedData = useRef(false)
-  const [isInitialized, setIsInitialized] = useState(false)
-  
-  // State
-  const [agent, setAgent] = useState(null)
-  const [conversations, setConversations] = useState([])
-  const [stats, setStats] = useState({
-    totalConversations: 0,
-    totalSessions: 0,
-    avgMessagesPerSession: 0,
-    avgResponseTime: 0,
-    totalTokens: 0
-  })
-  const [fetching, setFetching] = useState(true)
+  // React Query hooks
+  const { 
+    data: agent, 
+    isLoading: agentLoading, 
+    error: agentError 
+  } = useAgent(id)
+
+  const { 
+    data: conversations = [], 
+    isLoading: conversationsLoading,
+    refetch: refetchConversations 
+  } = useConversations(id)
+
+  const { 
+    data: stats = {
+      totalConversations: 0,
+      totalSessions: 0,
+      avgMessagesPerSession: 0,
+      avgResponseTime: 0,
+      totalTokens: 0
+    },
+    isLoading: statsLoading 
+  } = useConversationStats(id)
+
+  const uniqueSessions = useUniqueSessions(id)
+  const deleteConversationMutation = useDeleteConversation(id)
 
   // Filter state
   const [searchTerm, setSearchTerm] = useState('')
@@ -395,112 +418,22 @@ export default function AgentConversations() {
   const [selectedConversation, setSelectedConversation] = useState(null)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
 
-  // ✅ Reset state when agent ID changes
+  // Redirect if not authenticated
   useEffect(() => {
-    hasFetchedData.current = false
-    setIsInitialized(false)
-    setFetching(true)
-    setAgent(null)
-    setConversations([])
-    setStats({
-      totalConversations: 0,
-      totalSessions: 0,
-      avgMessagesPerSession: 0,
-      avgResponseTime: 0,
-      totalTokens: 0
-    })
-    setSearchTerm('')
-    setDateFilter('all')
-    setSessionFilter('all')
-    setCurrentPage(1)
-    setSelectedConversation(null)
-    setShowDetailsModal(false)
-  }, [id])
-
-  // ✅ OPTIMIZATION: Calculate stats with memoization
-  const calculateStats = useCallback((convos) => {
-    if (!convos.length) {
-      setStats({
-        totalConversations: 0,
-        totalSessions: 0,
-        avgMessagesPerSession: 0,
-        avgResponseTime: 0,
-        totalTokens: 0
-      })
-      return
+    if (!authLoading && !user) {
+      router.push('/')
     }
+  }, [authLoading, user, router])
 
-    const uniqueSessions = new Set(convos.map((c) => c.session_id))
-    const totalSessions = uniqueSessions.size
-    const totalConversations = convos.length
-    const avgMessagesPerSession = totalSessions > 0 ? totalConversations / totalSessions : 0
-
-
-    const responseTimes = convos
-      .map((c) => c.metadata?.response_time_ms)
-      .filter(Boolean)
-    const avgResponseTime =
-      responseTimes.length > 0
-        ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length
-        : 0
-
-    const totalTokens = convos
-      .map((c) => c.metadata?.tokens_used || 0)
-      .reduce((a, b) => a + b, 0)
-
-    setStats({
-      totalConversations,
-      totalSessions,
-      avgMessagesPerSession: avgMessagesPerSession.toFixed(1),
-      avgResponseTime: Math.round(avgResponseTime),
-      totalTokens
-    })
-  }, [])
-
-  // ✅ OPTIMIZATION: Fetch data only once per ID
-  const fetchData = useCallback(async () => {
-    if (!user || !id || hasFetchedData.current) return
-
-    hasFetchedData.current = true
-
-    try {
-      setFetching(true)
-      const [agentData, conversationData] = await Promise.all([
-        dbClient.getAgent(id),
-        dbClient.getConversations(id, 200) // Fetch more conversations at once
-      ])
-
-      if (!agentData) {
-        toast.error('Agent not found')
-        router.push('/agents')
-        return
-      }
-
-      setAgent(agentData)
-      setConversations(conversationData || [])
-      calculateStats(conversationData || [])
-    } catch (err) {
-      console.error('Error fetching data:', err)
-      toast.error('Failed to load conversations')
-    } finally {
-      setFetching(false)
-      setIsInitialized(true)
-    }
-  }, [user, id, router, calculateStats])
-
+  // Handle agent not found
   useEffect(() => {
-    if (user && !authLoading) {
-      fetchData()
+    if (agentError && !agentLoading) {
+      toast.error('Agent not found')
+      router.push('/agents')
     }
-  }, [fetchData, user, authLoading])
+  }, [agentError, agentLoading, router])
 
-  // ✅ OPTIMIZATION: Memoized unique sessions
-  const uniqueSessions = useMemo(
-    () => [...new Set(conversations.map((c) => c.session_id))].slice(0, 20),
-    [conversations]
-  )
-
-  // ✅ OPTIMIZATION: Memoized filtered conversations
+  // Memoized filtered conversations
   const filteredConversations = useMemo(() => {
     if (!conversations.length) return []
 
@@ -548,7 +481,7 @@ export default function AgentConversations() {
     })
   }, [conversations, searchTerm, dateFilter, sessionFilter])
 
-  // ✅ OPTIMIZATION: Memoized paginated conversations
+  // Memoized paginated conversations
   const paginatedConversations = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE
     const end = start + ITEMS_PER_PAGE
@@ -562,7 +495,7 @@ export default function AgentConversations() {
     setCurrentPage(1)
   }, [searchTerm, dateFilter, sessionFilter])
 
-  // ✅ OPTIMIZATION: Export CSV
+  // Export CSV
   const exportConversations = useCallback(() => {
     if (!filteredConversations.length) {
       return toast.error('No conversations to export')
@@ -596,28 +529,13 @@ export default function AgentConversations() {
     toast.success(`Exported ${filteredConversations.length} conversations!`)
   }, [filteredConversations, agent])
 
-  // ✅ OPTIMIZATION: Delete with optimistic update
+  // Delete conversation
   const handleDeleteConversation = useCallback(
     async (conversationId) => {
       if (!confirm('Delete this conversation? This action cannot be undone.')) return
-
-      // Optimistic update
-      const previousConversations = conversations
-      const newConversations = conversations.filter((c) => c.id !== conversationId)
-      setConversations(newConversations)
-      calculateStats(newConversations)
-      
-      try {
-        await deleteConversation(conversationId)
-        toast.success('Conversation deleted')
-      } catch (err) {
-        console.error('Error deleting conversation:', err)
-        toast.error('Failed to delete conversation')
-        setConversations(previousConversations) // Rollback
-        calculateStats(previousConversations)
-      }
+      deleteConversationMutation.mutate(conversationId)
     },
-    [conversations, calculateStats]
+    [deleteConversationMutation]
   )
 
   // View conversation details
@@ -646,12 +564,12 @@ export default function AgentConversations() {
 
   // Handle manual refresh
   const handleRefresh = useCallback(() => {
-    hasFetchedData.current = false
-    fetchData()
-  }, [fetchData])
+    refetchConversations()
+    toast.success('Refreshed conversations')
+  }, [refetchConversations])
 
   // Loading state
-  if (authLoading || (fetching && !isInitialized)) {
+  if (authLoading || agentLoading) {
     return (
       <LoadingState
         message={authLoading ? 'Authenticating...' : 'Loading conversations...'}
@@ -665,6 +583,7 @@ export default function AgentConversations() {
   }
 
   const hasFilters = searchTerm || dateFilter !== 'all' || sessionFilter !== 'all'
+  const isLoading = conversationsLoading || statsLoading
 
   return (
     <>
@@ -693,6 +612,7 @@ export default function AgentConversations() {
                   colorClass="text-orange-400"
                   bgClass="border-orange-600/20 bg-gradient-to-br from-orange-900/20 to-neutral-950/50"
                   trend
+                  isLoading={statsLoading}
                 />
 
                 <StatCard
@@ -702,6 +622,7 @@ export default function AgentConversations() {
                   subValue="per conversation"
                   colorClass="text-blue-400"
                   bgClass="border-blue-600/20 bg-gradient-to-br from-blue-900/20 to-neutral-950/50"
+                  isLoading={statsLoading}
                 />
 
                 <StatCard
@@ -711,6 +632,7 @@ export default function AgentConversations() {
                   subValue="processing time"
                   colorClass="text-purple-400"
                   bgClass="border-purple-600/20 bg-gradient-to-br from-purple-900/20 to-neutral-950/50"
+                  isLoading={statsLoading}
                 />
                 
                 <StatCard
@@ -720,6 +642,7 @@ export default function AgentConversations() {
                   subValue="tokens used"
                   colorClass="text-green-400"
                   bgClass="border-green-600/20 bg-gradient-to-br from-green-900/20 to-neutral-950/50"
+                  isLoading={statsLoading}
                 />
               </div>
 
@@ -743,8 +666,9 @@ export default function AgentConversations() {
                         variant="outline" 
                         size="sm"
                         className="flex items-center gap-2"
+                        disabled={conversationsLoading}
                       >
-                        <RefreshCw className="h-4 w-4" />
+                        <RefreshCw className={`h-4 w-4 ${conversationsLoading ? 'animate-spin' : ''}`} />
                         Refresh
                       </Button>
                       <Button 
@@ -752,6 +676,7 @@ export default function AgentConversations() {
                         variant="secondary" 
                         size="sm"
                         className="flex items-center gap-2"
+                        disabled={!filteredConversations.length}
                       >
                         <Download className="h-4 w-4" />
                         Export CSV
@@ -824,15 +749,31 @@ export default function AgentConversations() {
 
                   {/* Results Count */}
                   <p className="text-sm text-neutral-400">
-                    Showing {paginatedConversations.length} of {filteredConversations.length} conversations
-                    {hasFilters && ' matching your filters'}
+                    {conversationsLoading ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading conversations...
+                      </span>
+                    ) : (
+                      <>
+                        Showing {paginatedConversations.length} of {filteredConversations.length} conversations
+                        {hasFilters && ' matching your filters'}
+                      </>
+                    )}
                   </p>
                 </div>
               </Card>
 
               {/* Conversations List */}
               <div id="conversations-section">
-                {filteredConversations.length === 0 ? (
+                {conversationsLoading ? (
+                  <Card className="border-neutral-700/50">
+                    <div className="flex flex-col items-center py-16 text-center">
+                      <Loader2 className="h-12 w-12 animate-spin text-orange-500 mb-4" />
+                      <p className="text-neutral-400">Loading conversations...</p>
+                    </div>
+                  </Card>
+                ) : filteredConversations.length === 0 ? (
                   <Card className="border-neutral-700/50">
                     <div className="flex flex-col items-center py-16 text-center">
                       <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-orange-900/40 to-orange-950/20 ring-1 ring-orange-500/50">
@@ -897,6 +838,28 @@ export default function AgentConversations() {
           }}
         />
       )}
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(23, 23, 23, 0.3);
+          border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(245, 158, 11, 0.3);
+          border-radius: 4px;
+          transition: background 0.2s;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(245, 158, 11, 0.5);
+        }
+      `}</style>
     </>
   )
 }

@@ -19,8 +19,7 @@ import {
   XCircle
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState, useCallback, memo, useMemo, useRef } from 'react'
-import toast from 'react-hot-toast'
+import { useEffect, useState, useCallback, memo, useMemo } from 'react'
 import { useAuth } from '../../components/providers/AuthProvider'
 import Badge from '../../components/ui/badge'
 import Button from '../../components/ui/button'
@@ -32,6 +31,20 @@ import NeonBackground from '../../components/ui/background'
 import NavigationBar from '../../components/navigationBar/navigationBar'
 import { useLogout } from '../../lib/supabase/auth'
 import LoadingState from '../../components/common/loading-state'
+import {
+  useWorkflows,
+  useCreateWorkflow,
+  useDeleteWorkflow
+} from '../../lib/hooks/useWorkflowData'
+
+/**
+ * FULLY OPTIMIZED Workflows List Page
+ * 
+ * React Query Integration:
+ * - Automatic data fetching with caching
+ * - Optimistic updates for better UX
+ * - Consistent with Dashboard patterns
+ */
 
 /**
  * Utility function to highlight matching characters in text
@@ -323,25 +336,19 @@ const CreateWorkflowModal = memo(({ onClose, onCreate }) => {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [triggerType, setTriggerType] = useState('manual')
-  const [creating, setCreating] = useState(false)
+
+  const createWorkflow = useCreateWorkflow()
 
   const handleCreate = useCallback(async () => {
-    if (!name.trim()) {
-      toast.error('Workflow name is required')
-      return
-    }
+    if (!name.trim()) return
 
-    setCreating(true)
-    try {
-      await onCreate({
-        name: name.trim(),
-        description: description.trim(),
-        trigger_type: triggerType
-      })
-    } finally {
-      setCreating(false)
-    }
-  }, [name, description, triggerType, onCreate])
+    await createWorkflow.mutateAsync({
+      name: name.trim(),
+      description: description.trim(),
+      trigger_type: triggerType
+    })
+    onCreate()
+  }, [name, description, triggerType, createWorkflow, onCreate])
 
   const handleKeyPress = useCallback(
     (e) => {
@@ -426,17 +433,17 @@ const CreateWorkflowModal = memo(({ onClose, onCreate }) => {
             <Button
               variant='outline'
               onClick={onClose}
-              disabled={creating}
+              disabled={createWorkflow.isPending}
               className='border-neutral-700 hover:bg-neutral-800'
             >
               Cancel
             </Button>
             <Button
               onClick={handleCreate}
-              disabled={creating || !name.trim()}
+              disabled={createWorkflow.isPending || !name.trim()}
               className='bg-gradient-to-r from-orange-600 to-orange-500 font-semibold shadow-lg shadow-orange-500/30 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50'
             >
-              {creating ? (
+              {createWorkflow.isPending ? (
                 <>
                   <Zap className='mr-2 h-4 w-4 animate-spin' />
                   Creating...
@@ -474,22 +481,22 @@ CreateWorkflowModal.displayName = 'CreateWorkflowModal'
 export default function WorkflowsPage() {
   const router = useRouter()
   const { user, profile, loading: authLoading } = useAuth()
-  const [workflows, setWorkflows] = useState([])
-  const [fetching, setFetching] = useState(true)
-  const [showCreateModal, setShowCreateModal] = useState(false)
   const { logout } = useLogout()
-  const [isInitialized, setIsInitialized] = useState(false)
-  // ✅ NEW: Search and pagination state
+
+  // Local UI state - MUST be declared before any conditional returns
+  const [showCreateModal, setShowCreateModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
-  const [statusFilter, setStatusFilter] = useState('all') // 'all', 'active', 'draft'
-  const [triggerFilter, setTriggerFilter] = useState('all') // 'all', 'webhook', 'schedule', 'manual'
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [triggerFilter, setTriggerFilter] = useState('all')
   const itemsPerPage = 9
 
-  // ✅ Use ref to prevent re-fetching
-  const hasFetchedData = useRef(false)
+  // React Query hooks - MUST be called before any conditional returns
+  const { data: workflows = [], isLoading: workflowsLoading } = useWorkflows()
+  const deleteWorkflow = useDeleteWorkflow()
+  const createWorkflow = useCreateWorkflow()
 
-  // ✅ OPTIMIZATION: Calculate statistics
+  // Calculate statistics - MUST be before conditional returns
   const statistics = useMemo(() => {
     const total = workflows.length
     const active = workflows.filter((w) => w.is_active).length
@@ -514,30 +521,26 @@ export default function WorkflowsPage() {
     }
   }, [workflows])
 
-  // ✅ OPTIMIZATION: Filter workflows based on search and filters
+  // Filter workflows - MUST be before conditional returns
   const filteredWorkflows = useMemo(() => {
     let filtered = workflows
 
-    // Status filter
     if (statusFilter === 'active') {
       filtered = filtered.filter((w) => w.is_active)
     } else if (statusFilter === 'draft') {
       filtered = filtered.filter((w) => !w.is_active)
     }
 
-    // Trigger filter
     if (triggerFilter !== 'all') {
       filtered = filtered.filter((w) => w.trigger_type === triggerFilter)
     }
 
-    // Search filter
     if (searchQuery.trim()) {
       const searchLower = searchQuery.toLowerCase()
       filtered = filtered.filter((workflow) => {
         const nameLower = (workflow.name || '').toLowerCase()
         const descLower = (workflow.description || '').toLowerCase()
 
-        // Check if search characters appear in order in name or description
         let searchIndex = 0
         for (
           let i = 0;
@@ -551,7 +554,6 @@ export default function WorkflowsPage() {
 
         if (searchIndex === searchLower.length) return true
 
-        // Also check description
         searchIndex = 0
         for (
           let i = 0;
@@ -570,78 +572,42 @@ export default function WorkflowsPage() {
     return filtered
   }, [workflows, searchQuery, statusFilter, triggerFilter])
 
-  // ✅ OPTIMIZATION: Paginate filtered workflows
+  // Paginate - MUST be before conditional returns
   const paginatedWorkflows = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage
     const endIndex = startIndex + itemsPerPage
     return filteredWorkflows.slice(startIndex, endIndex)
   }, [filteredWorkflows, currentPage, itemsPerPage])
 
-  const totalPages = Math.ceil(filteredWorkflows.length / itemsPerPage)
+  const totalPages = useMemo(
+    () => Math.ceil(filteredWorkflows.length / itemsPerPage),
+    [filteredWorkflows.length, itemsPerPage]
+  )
 
-  // Reset to first page when search or filter changes
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchQuery, statusFilter, triggerFilter])
+  const hasFilters = useMemo(
+    () => searchQuery || statusFilter !== 'all' || triggerFilter !== 'all',
+    [searchQuery, statusFilter, triggerFilter]
+  )
 
-  // ✅ OPTIMIZATION: Memoized fetch function
-  const fetchWorkflows = useCallback(async () => {
-    try {
-      setFetching(true)
-      const res = await fetch('/api/workflows')
-      const data = await res.json()
-      setWorkflows(data.workflows || [])
-      hasFetchedData.current = true
-    } catch (error) {
-      console.error(error)
-      toast.error('Failed to load workflows')
-    } finally {
-      setFetching(false)
-      setIsInitialized(true) // ✅ ADD THIS
-    }
+  // Handlers - MUST be before conditional returns
+  const handleCreateClick = useCallback(() => setShowCreateModal(true), [])
+  const handleCloseModal = useCallback(() => setShowCreateModal(false), [])
+  
+  const handleCreateSuccess = useCallback(() => {
+    setShowCreateModal(false)
   }, [])
 
-  // ✅ FIXED: Proper auth check and data fetching
-  useEffect(() => {
-    if (authLoading) return // Wait for auth to finish
-
-    if (!user) {
-      router.push('/') // Redirect if no user
-      return
-    }
-
-    // User is authenticated, fetch data if not already fetched
-    if (!hasFetchedData.current) {
-      fetchWorkflows()
-    } else {
-      setIsInitialized(true) // ✅ Ensure initialized is true
-    }
-  }, [authLoading, user, router, fetchWorkflows])
-
-  // ✅ OPTIMIZATION: Memoized create workflow function
-  const createWorkflow = useCallback(
-    async (workflowData) => {
-      try {
-        const res = await fetch('/api/workflows', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(workflowData)
-        })
-        if (!res.ok) throw new Error('Failed to create workflow')
-        const data = await res.json()
-        toast.success('Workflow created!')
-        setShowCreateModal(false)
-        router.push(`/workflows/${data.workflow.id}/builder`)
-      } catch (error) {
-        console.error(error)
-        toast.error('Failed to create workflow')
-      }
-    },
+  const handleEditWorkflow = useCallback(
+    (workflowId) => router.push(`/workflows/${workflowId}/builder`),
     [router]
   )
 
-  // ✅ OPTIMIZATION: Memoized delete workflow function
-  const deleteWorkflow = useCallback(
+  const handleViewExecutions = useCallback(
+    (workflowId) => router.push(`/workflows/${workflowId}/executions`),
+    [router]
+  )
+
+  const handleDeleteWorkflow = useCallback(
     async (workflowId) => {
       if (
         !confirm(
@@ -649,75 +615,54 @@ export default function WorkflowsPage() {
         )
       )
         return
-      try {
-        const res = await fetch(`/api/workflows/${workflowId}`, {
-          method: 'DELETE'
-        })
-        if (!res.ok) throw new Error('Failed to delete workflow')
-        toast.success('Workflow deleted')
 
-        // Optimistic update
-        setWorkflows((prev) => prev.filter((w) => w.id !== workflowId))
-      } catch (error) {
-        console.error(error)
-        toast.error('Failed to delete workflow')
-        // Refetch on error
-        fetchWorkflows()
-      }
+      await deleteWorkflow.mutateAsync(workflowId)
     },
-    [fetchWorkflows]
+    [deleteWorkflow]
   )
 
-  // ✅ OPTIMIZATION: Memoized duplicate workflow function
-  const duplicateWorkflow = useCallback(async (workflow) => {
-    try {
-      const res = await fetch('/api/workflows', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: `${workflow.name} (Copy)`,
-          description: workflow.description,
-          trigger_type: workflow.trigger_type,
-          workflow_data: workflow.workflow_data
-        })
+  const handleDuplicateWorkflow = useCallback(
+    async (workflow) => {
+      await createWorkflow.mutateAsync({
+        name: `${workflow.name} (Copy)`,
+        description: workflow.description,
+        trigger_type: workflow.trigger_type,
+        workflow_data: workflow.workflow_data
       })
-      if (!res.ok) throw new Error('Failed to duplicate workflow')
-      const data = await res.json()
-      toast.success('Workflow duplicated!')
-
-      // Optimistic update
-      setWorkflows((prev) => [data.workflow, ...prev])
-    } catch (error) {
-      console.error(error)
-      toast.error('Failed to duplicate workflow')
-    }
-  }, [])
-
-  // ✅ Memoized handlers
-  const handleCreateClick = useCallback(() => setShowCreateModal(true), [])
-  const handleCloseModal = useCallback(() => setShowCreateModal(false), [])
-  const handleEditWorkflow = useCallback(
-    (workflowId) => router.push(`/workflows/${workflowId}/builder`),
-    [router]
+    },
+    [createWorkflow]
   )
-  const handleViewExecutions = useCallback(
-    (workflowId) => router.push(`/workflows/${workflowId}/executions`),
-    [router]
-  )
+
   const handleSearch = useCallback((query) => setSearchQuery(query), [])
+  
   const handlePageChange = useCallback((page) => {
     setCurrentPage(page)
     document
       .getElementById('workflows-section')
       ?.scrollIntoView({ behavior: 'smooth' })
   }, [])
+
   const handleClearFilters = useCallback(() => {
     setSearchQuery('')
     setStatusFilter('all')
     setTriggerFilter('all')
   }, [])
 
-  if (authLoading || !isInitialized) {
+  // NOW we can do conditional logic - after all hooks are called
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/')
+    }
+  }, [authLoading, user, router])
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, statusFilter, triggerFilter])
+
+  // Loading state
+  if (authLoading || workflowsLoading) {
     return (
       <LoadingState
         message='Loading workflows...'
@@ -727,8 +672,10 @@ export default function WorkflowsPage() {
     )
   }
 
-  const hasFilters =
-    searchQuery || statusFilter !== 'all' || triggerFilter !== 'all'
+  // Don't render if not authenticated
+  if (!user) {
+    return null
+  }
 
   return (
     <>
@@ -747,217 +694,215 @@ export default function WorkflowsPage() {
           {/* Main Content */}
           <div className='custom-scrollbar flex-1 overflow-y-auto'>
             <div className='mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8'>
-              <>
-                {/* Statistics Cards */}
-                {workflows.length > 0 && (
-                  <div className='mb-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4'>
-                    <StatCard
-                      icon={Workflow}
-                      label='Total Workflows'
-                      value={statistics.total}
-                      colorClass='text-orange-400'
-                      bgClass='border-orange-600/20 bg-gradient-to-br from-orange-900/20 to-neutral-950/50'
-                    />
+              {/* Statistics Cards */}
+              {workflows.length > 0 && (
+                <div className='mb-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4'>
+                  <StatCard
+                    icon={Workflow}
+                    label='Total Workflows'
+                    value={statistics.total}
+                    colorClass='text-orange-400'
+                    bgClass='border-orange-600/20 bg-gradient-to-br from-orange-900/20 to-neutral-950/50'
+                  />
 
-                    <StatCard
-                      icon={CheckCircle}
-                      label='Active'
-                      value={statistics.active}
-                      subValue={`${statistics.draft} in draft`}
-                      colorClass='text-green-400'
-                      bgClass='border-green-600/20 bg-gradient-to-br from-green-900/20 to-neutral-950/50'
-                    />
+                  <StatCard
+                    icon={CheckCircle}
+                    label='Active'
+                    value={statistics.active}
+                    subValue={`${statistics.draft} in draft`}
+                    colorClass='text-green-400'
+                    bgClass='border-green-600/20 bg-gradient-to-br from-green-900/20 to-neutral-950/50'
+                  />
 
-                    <StatCard
-                      icon={Activity}
-                      label='Total Executions'
-                      value={statistics.totalExecutions}
-                      colorClass='text-blue-400'
-                      bgClass='border-blue-600/20 bg-gradient-to-br from-blue-900/20 to-neutral-950/50'
-                    />
+                  <StatCard
+                    icon={Activity}
+                    label='Total Executions'
+                    value={statistics.totalExecutions}
+                    colorClass='text-blue-400'
+                    bgClass='border-blue-600/20 bg-gradient-to-br from-blue-900/20 to-neutral-950/50'
+                  />
 
-                    <StatCard
-                      icon={Zap}
-                      label='Most Used Trigger'
-                      value={
-                        statistics.byTrigger.webhook >
-                        statistics.byTrigger.schedule
-                          ? statistics.byTrigger.webhook >
+                  <StatCard
+                    icon={Zap}
+                    label='Most Used Trigger'
+                    value={
+                      statistics.byTrigger.webhook >
+                      statistics.byTrigger.schedule
+                        ? statistics.byTrigger.webhook >
+                          statistics.byTrigger.manual
+                          ? 'Webhook'
+                          : 'Manual'
+                        : statistics.byTrigger.schedule >
                             statistics.byTrigger.manual
-                            ? 'Webhook'
-                            : 'Manual'
-                          : statistics.byTrigger.schedule >
-                              statistics.byTrigger.manual
-                            ? 'Schedule'
-                            : 'Manual'
-                      }
-                      subValue={`${Math.max(...Object.values(statistics.byTrigger))} workflows`}
-                      colorClass='text-purple-400'
-                      bgClass='border-purple-600/20 bg-gradient-to-br from-purple-900/20 to-neutral-950/50'
-                    />
-                  </div>
-                )}
+                          ? 'Schedule'
+                          : 'Manual'
+                    }
+                    subValue={`${Math.max(...Object.values(statistics.byTrigger))} workflows`}
+                    colorClass='text-purple-400'
+                    bgClass='border-purple-600/20 bg-gradient-to-br from-purple-900/20 to-neutral-950/50'
+                  />
+                </div>
+              )}
 
-                {/* Workflows Section */}
-                <div id='workflows-section'>
-                  {workflows.length === 0 ? (
-                    <EmptyState
-                      onCreate={handleCreateClick}
-                      hasSearch={false}
-                    />
-                  ) : (
-                    <>
-                      {/* Header with Search and Filters */}
-                      <div className='mb-8 space-y-4'>
-                        <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
-                          <div>
-                            <h2 className='text-2xl font-bold text-neutral-100'>
-                              Your Workflows
-                            </h2>
-                            <p className='mt-1 text-sm text-neutral-400'>
-                              {filteredWorkflows.length}{' '}
-                              {filteredWorkflows.length === 1
-                                ? 'workflow'
-                                : 'workflows'}
-                              {hasFilters && ' matching your filters'}
-                            </p>
-                          </div>
-
-                          <Button
-                            onClick={handleCreateClick}
-                            className='flex items-center gap-2 bg-gradient-to-r from-orange-600 to-orange-500 shadow-lg shadow-orange-500/30 hover:scale-105'
-                          >
-                            <Plus className='h-4 w-4' />
-                            Create Workflow
-                          </Button>
+              {/* Workflows Section */}
+              <div id='workflows-section'>
+                {workflows.length === 0 ? (
+                  <EmptyState
+                    onCreate={handleCreateClick}
+                    hasSearch={false}
+                  />
+                ) : (
+                  <>
+                    {/* Header with Search and Filters */}
+                    <div className='mb-8 space-y-4'>
+                      <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+                        <div>
+                          <h2 className='text-2xl font-bold text-neutral-100'>
+                            Your Workflows
+                          </h2>
+                          <p className='mt-1 text-sm text-neutral-400'>
+                            {filteredWorkflows.length}{' '}
+                            {filteredWorkflows.length === 1
+                              ? 'workflow'
+                              : 'workflows'}
+                            {hasFilters && ' matching your filters'}
+                          </p>
                         </div>
 
-                        {/* Search Bar */}
-                        <SearchBar
-                          value={searchQuery}
-                          onChange={handleSearch}
-                          placeholder='Search workflows by name or description...'
-                          variant='orange'
-                          debounceMs={300}
-                        />
+                        <Button
+                          onClick={handleCreateClick}
+                          className='flex items-center gap-2 bg-gradient-to-r from-orange-600 to-orange-500 shadow-lg shadow-orange-500/30 hover:scale-105'
+                        >
+                          <Plus className='h-4 w-4' />
+                          Create Workflow
+                        </Button>
+                      </div>
 
-                        {/* Filter Buttons */}
-                        <div className='flex flex-wrap items-center gap-3'>
-                          <Filter className='h-4 w-4 text-neutral-400' />
+                      {/* Search Bar */}
+                      <SearchBar
+                        value={searchQuery}
+                        onChange={handleSearch}
+                        placeholder='Search workflows by name or description...'
+                        variant='orange'
+                        debounceMs={300}
+                      />
 
-                          {/* Status Filters */}
-                          <div className='flex flex-wrap gap-2'>
-                            <span className='text-xs text-neutral-500'>
-                              Status:
-                            </span>
-                            {['all', 'active', 'draft'].map((status) => (
+                      {/* Filter Buttons */}
+                      <div className='flex flex-wrap items-center gap-3'>
+                        <Filter className='h-4 w-4 text-neutral-400' />
+
+                        {/* Status Filters */}
+                        <div className='flex flex-wrap gap-2'>
+                          <span className='text-xs text-neutral-500'>
+                            Status:
+                          </span>
+                          {['all', 'active', 'draft'].map((status) => (
+                            <button
+                              key={status}
+                              onClick={() => setStatusFilter(status)}
+                              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                                statusFilter === status
+                                  ? 'bg-orange-600/30 text-orange-300 ring-1 ring-orange-500/50'
+                                  : 'bg-neutral-800/30 text-neutral-400 hover:bg-neutral-800/50'
+                              }`}
+                            >
+                              {status.charAt(0).toUpperCase() +
+                                status.slice(1)}
+                              {status === 'all' && ` (${statistics.total})`}
+                              {status === 'active' &&
+                                ` (${statistics.active})`}
+                              {status === 'draft' && ` (${statistics.draft})`}
+                            </button>
+                          ))}
+                        </div>
+
+                        <span className='text-neutral-700'>|</span>
+
+                        {/* Trigger Filters */}
+                        <div className='flex flex-wrap gap-2'>
+                          <span className='text-xs text-neutral-500'>
+                            Trigger:
+                          </span>
+                          {['all', 'webhook', 'schedule', 'manual'].map(
+                            (trigger) => (
                               <button
-                                key={status}
-                                onClick={() => setStatusFilter(status)}
+                                key={trigger}
+                                onClick={() => setTriggerFilter(trigger)}
                                 className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                                  statusFilter === status
-                                    ? 'bg-orange-600/30 text-orange-300 ring-1 ring-orange-500/50'
+                                  triggerFilter === trigger
+                                    ? 'bg-purple-600/30 text-purple-300 ring-1 ring-purple-500/50'
                                     : 'bg-neutral-800/30 text-neutral-400 hover:bg-neutral-800/50'
                                 }`}
                               >
-                                {status.charAt(0).toUpperCase() +
-                                  status.slice(1)}
-                                {status === 'all' && ` (${statistics.total})`}
-                                {status === 'active' &&
-                                  ` (${statistics.active})`}
-                                {status === 'draft' && ` (${statistics.draft})`}
+                                {trigger.charAt(0).toUpperCase() +
+                                  trigger.slice(1)}
+                                {trigger === 'all' &&
+                                  ` (${statistics.total})`}
+                                {trigger === 'webhook' &&
+                                  ` (${statistics.byTrigger.webhook})`}
+                                {trigger === 'schedule' &&
+                                  ` (${statistics.byTrigger.schedule})`}
+                                {trigger === 'manual' &&
+                                  ` (${statistics.byTrigger.manual})`}
                               </button>
-                            ))}
-                          </div>
-
-                          <span className='text-neutral-700'>|</span>
-
-                          {/* Trigger Filters */}
-                          <div className='flex flex-wrap gap-2'>
-                            <span className='text-xs text-neutral-500'>
-                              Trigger:
-                            </span>
-                            {['all', 'webhook', 'schedule', 'manual'].map(
-                              (trigger) => (
-                                <button
-                                  key={trigger}
-                                  onClick={() => setTriggerFilter(trigger)}
-                                  className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                                    triggerFilter === trigger
-                                      ? 'bg-purple-600/30 text-purple-300 ring-1 ring-purple-500/50'
-                                      : 'bg-neutral-800/30 text-neutral-400 hover:bg-neutral-800/50'
-                                  }`}
-                                >
-                                  {trigger.charAt(0).toUpperCase() +
-                                    trigger.slice(1)}
-                                  {trigger === 'all' &&
-                                    ` (${statistics.total})`}
-                                  {trigger === 'webhook' &&
-                                    ` (${statistics.byTrigger.webhook})`}
-                                  {trigger === 'schedule' &&
-                                    ` (${statistics.byTrigger.schedule})`}
-                                  {trigger === 'manual' &&
-                                    ` (${statistics.byTrigger.manual})`}
-                                </button>
-                              )
-                            )}
-                          </div>
-
-                          {hasFilters && (
-                            <Button
-                              variant='ghost'
-                              size='sm'
-                              onClick={handleClearFilters}
-                              className='ml-auto text-xs'
-                            >
-                              <XCircle className='mr-1 h-3 w-3' />
-                              Clear Filters
-                            </Button>
+                            )
                           )}
                         </div>
+
+                        {hasFilters && (
+                          <Button
+                            variant='ghost'
+                            size='sm'
+                            onClick={handleClearFilters}
+                            className='ml-auto text-xs'
+                          >
+                            <XCircle className='mr-1 h-3 w-3' />
+                            Clear Filters
+                          </Button>
+                        )}
                       </div>
+                    </div>
 
-                      {/* Workflows Grid */}
-                      {filteredWorkflows.length === 0 ? (
-                        <EmptyState
-                          onCreate={handleCreateClick}
-                          hasSearch={hasFilters}
-                          onClearSearch={handleClearFilters}
-                        />
-                      ) : (
-                        <>
-                          <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3'>
-                            {paginatedWorkflows.map((workflow) => (
-                              <WorkflowCard
-                                key={workflow.id}
-                                workflow={workflow}
-                                onEdit={() => handleEditWorkflow(workflow.id)}
-                                onDelete={() => deleteWorkflow(workflow.id)}
-                                onDuplicate={() => duplicateWorkflow(workflow)}
-                                onView={() => handleViewExecutions(workflow.id)}
-                                searchQuery={searchQuery}
-                              />
-                            ))}
+                    {/* Workflows Grid */}
+                    {filteredWorkflows.length === 0 ? (
+                      <EmptyState
+                        onCreate={handleCreateClick}
+                        hasSearch={hasFilters}
+                        onClearSearch={handleClearFilters}
+                      />
+                    ) : (
+                      <>
+                        <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3'>
+                          {paginatedWorkflows.map((workflow) => (
+                            <WorkflowCard
+                              key={workflow.id}
+                              workflow={workflow}
+                              onEdit={() => handleEditWorkflow(workflow.id)}
+                              onDelete={() => handleDeleteWorkflow(workflow.id)}
+                              onDuplicate={() => handleDuplicateWorkflow(workflow)}
+                              onView={() => handleViewExecutions(workflow.id)}
+                              searchQuery={searchQuery}
+                            />
+                          ))}
+                        </div>
+
+                        {/* Pagination */}
+                        {totalPages > 1 && (
+                          <div className='mt-8'>
+                            <Pagination
+                              currentPage={currentPage}
+                              totalPages={totalPages}
+                              onPageChange={handlePageChange}
+                              maxVisible={5}
+                              variant='orange'
+                            />
                           </div>
-
-                          {/* Pagination */}
-                          {totalPages > 1 && (
-                            <div className='mt-8'>
-                              <Pagination
-                                currentPage={currentPage}
-                                totalPages={totalPages}
-                                onPageChange={handlePageChange}
-                                maxVisible={5}
-                                variant='orange'
-                              />
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </>
-                  )}
-                </div>
-              </>
+                        )}
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
@@ -965,11 +910,32 @@ export default function WorkflowsPage() {
           {showCreateModal && (
             <CreateWorkflowModal
               onClose={handleCloseModal}
-              onCreate={createWorkflow}
+              onCreate={handleCreateSuccess}
             />
           )}
         </div>
       </SideBarLayout>
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(23, 23, 23, 0.3);
+          border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(245, 158, 11, 0.3);
+          border-radius: 4px;
+          transition: background 0.2s;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(245, 158, 11, 0.5);
+        }
+      `}</style>
     </>
   )
 }

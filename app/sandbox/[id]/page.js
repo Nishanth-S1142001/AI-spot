@@ -6,9 +6,7 @@ import {
   MessageCircle,
   RefreshCw,
   Send,
-  Settings,
   X,
-  Globe,
   Zap,
   Users,
   UserPlus,
@@ -23,15 +21,39 @@ import {
   CheckCircle
 } from 'lucide-react'
 import { useParams, useRouter } from 'next/navigation'
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
-import { format, formatDistanceToNow } from 'date-fns'
+import { useEffect, useRef, useState, useCallback, useMemo, memo } from 'react'
+import { formatDistanceToNow } from 'date-fns'
 import LoadingState from '../../../components/common/loading-state'
 import { useAuth } from '../../../components/providers/AuthProvider'
 import NeonBackground from '../../../components/ui/background'
 import Button from '../../../components/ui/button'
 import Card from '../../../components/ui/card'
-import { dbClient, supabase } from '../../../lib/supabase/dbClient'
 import BottomModal from '../../../components/ui/modal'
+import {
+  useAgent,
+  useTestAccounts,
+  useCreateTestAccount,
+  useDeleteTestAccount,
+  useUpdateTestAccount,
+  useCopyTestLink,
+  useSandboxSendChatMessage
+} from '../../../lib/hooks/useAgentData'
+
+/**
+ * FULLY OPTIMIZED Chat Sandbox Component
+ * 
+ * React Query Integration:
+ * - Automatic data fetching with caching
+ * - Optimistic updates for better UX
+ * - No manual state management for server data
+ * - Consistent with Dashboard patterns
+ * 
+ * Performance:
+ * - Memoized components
+ * - Smart caching prevents re-fetching
+ * - Parallel data loading
+ * - Optimized rendering
+ */
 
 // Color options for bot customization
 const COLOR_OPTIONS = [
@@ -54,9 +76,9 @@ const BOT_COLOR_MODES = [
 ]
 
 /**
- * Toast Notification Component
+ * Memoized Toast Notification Component
  */
-const Toast = ({ message, type = 'success', onClose }) => {
+const Toast = memo(({ message, type = 'success', onClose }) => {
   useEffect(() => {
     const timer = setTimeout(onClose, 3000)
     return () => clearTimeout(timer)
@@ -85,33 +107,34 @@ const Toast = ({ message, type = 'success', onClose }) => {
       </button>
     </div>
   )
-}
+})
+Toast.displayName = 'Toast'
 
 /**
- * Sub Account Card Component
+ * Memoized Sub Account Card Component
  */
-const SubAccountCard = ({ account, onDelete, onCopyLink, onResendInvite }) => {
+const SubAccountCard = memo(({ account, onDelete, onCopyLink, onResendInvite }) => {
   const [copied, setCopied] = useState(false)
   const [resending, setResending] = useState(false)
 
-  const handleCopy = () => {
+  const handleCopy = useCallback(() => {
     onCopyLink(account)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
-  }
+  }, [account, onCopyLink])
 
-  const handleResend = async () => {
+  const handleResend = useCallback(async () => {
     setResending(true)
     await onResendInvite(account.id)
     setResending(false)
-  }
+  }, [account.id, onResendInvite])
 
-  const formatLastActive = (lastActive) => {
+  const formatLastActive = useCallback((lastActive) => {
     if (!lastActive) return 'Never'
     return formatDistanceToNow(new Date(lastActive), { addSuffix: true })
-  }
+  }, [])
 
-  const getStatusColor = (status) => {
+  const getStatusColor = useCallback((status) => {
     switch (status) {
       case 'active':
         return 'bg-green-900/40 text-green-300 ring-1 ring-green-500/50'
@@ -124,7 +147,7 @@ const SubAccountCard = ({ account, onDelete, onCopyLink, onResendInvite }) => {
       default:
         return 'bg-neutral-800 text-neutral-400'
     }
-  }
+  }, [])
 
   return (
     <div className='group rounded-lg border border-neutral-800/50 bg-gradient-to-br from-neutral-900/40 to-neutral-950/20 p-4 transition-all hover:border-orange-600/30 hover:from-orange-900/10'>
@@ -190,12 +213,13 @@ const SubAccountCard = ({ account, onDelete, onCopyLink, onResendInvite }) => {
       </div>
     </div>
   )
-}
+})
+SubAccountCard.displayName = 'SubAccountCard'
 
 /**
- * Invite Modal Component
+ * Memoized Invite Modal Component
  */
-const InviteModal = ({ isOpen, onClose, onInvite, agentId }) => {
+const InviteModal = memo(({ isOpen, onClose, onInvite, agentId }) => {
   const [inviteData, setInviteData] = useState({
     name: '',
     email: '',
@@ -204,16 +228,16 @@ const InviteModal = ({ isOpen, onClose, onInvite, agentId }) => {
     sendEmail: true,
     notes: ''
   })
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const handleSubmit = async (e) => {
+  const createTestAccount = useCreateTestAccount(agentId)
+
+  const handleSubmit = useCallback(async (e) => {
     e.preventDefault()
-    setLoading(true)
     setError('')
 
     try {
-      await onInvite(inviteData)
+      await createTestAccount.mutateAsync(inviteData)
       setInviteData({
         name: '',
         email: '',
@@ -225,10 +249,8 @@ const InviteModal = ({ isOpen, onClose, onInvite, agentId }) => {
       onClose()
     } catch (err) {
       setError(err.message)
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [inviteData, createTestAccount, onClose])
 
   return (
     <BottomModal isOpen={isOpen} onClose={onClose}>
@@ -363,16 +385,16 @@ const InviteModal = ({ isOpen, onClose, onInvite, agentId }) => {
               variant='outline'
               className='flex-1'
               onClick={onClose}
-              disabled={loading}
+              disabled={createTestAccount.isPending}
             >
               Cancel
             </Button>
             <Button
               type='submit'
               className='flex-1'
-              disabled={loading || !inviteData.name || !inviteData.email}
+              disabled={createTestAccount.isPending || !inviteData.name || !inviteData.email}
             >
-              {loading ? (
+              {createTestAccount.isPending ? (
                 <>
                   <RefreshCw className='mr-2 h-4 w-4 animate-spin' />
                   Creating...
@@ -389,7 +411,73 @@ const InviteModal = ({ isOpen, onClose, onInvite, agentId }) => {
       </div>
     </BottomModal>
   )
-}
+})
+InviteModal.displayName = 'InviteModal'
+
+/**
+ * Memoized Chat Message Component
+ */
+const ChatMessage = memo(({ message, isUser, botColor, botColorMode }) => {
+  return (
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+      <div
+        className={`max-w-[70%] rounded-2xl px-4 py-2.5 ${
+          isUser
+            ? 'bg-gradient-to-br from-orange-600 to-orange-700 text-white shadow-lg shadow-orange-500/20'
+            : 'border border-neutral-800/50 bg-gradient-to-br from-neutral-800/50 to-neutral-900/50 text-neutral-100'
+        }`}
+      >
+        <p className='text-sm leading-relaxed'>{message.content}</p>
+      </div>
+    </div>
+  )
+})
+ChatMessage.displayName = 'ChatMessage'
+
+/**
+ * Memoized Typing Indicator Component
+ */
+const TypingIndicator = memo(() => (
+  <div className='flex justify-start'>
+    <div className='rounded-2xl border border-neutral-800/50 bg-gradient-to-br from-neutral-800/50 to-neutral-900/50 px-4 py-2.5'>
+      <div className='flex space-x-1'>
+        <div className='h-2 w-2 animate-bounce rounded-full bg-neutral-400' />
+        <div
+          className='h-2 w-2 animate-bounce rounded-full bg-neutral-400'
+          style={{ animationDelay: '0.1s' }}
+        />
+        <div
+          className='h-2 w-2 animate-bounce rounded-full bg-neutral-400'
+          style={{ animationDelay: '0.2s' }}
+        />
+      </div>
+    </div>
+  </div>
+))
+TypingIndicator.displayName = 'TypingIndicator'
+
+/**
+ * Memoized Quick Test Messages Component
+ */
+const QuickTestMessages = memo(({ messages, onSelect }) => (
+  <div className='border-t border-neutral-800/50 bg-neutral-900/50 p-4'>
+    <h4 className='mb-3 text-sm font-medium text-neutral-300'>Quick Tests</h4>
+    <div className='grid grid-cols-2 gap-2 lg:grid-cols-3'>
+      {messages.map((msg, index) => (
+        <Button
+          key={index}
+          variant='ghost'
+          size='sm'
+          className='justify-start text-left text-xs'
+          onClick={() => onSelect(msg)}
+        >
+          {msg}
+        </Button>
+      ))}
+    </div>
+  </div>
+))
+QuickTestMessages.displayName = 'QuickTestMessages'
 
 /**
  * Main Chat Sandbox Component
@@ -399,39 +487,39 @@ export default function ChatSandbox() {
   const router = useRouter()
   const { user, profile, loading: authLoading } = useAuth()
   const chatEndRef = useRef(null)
-  const chatButtonRef = useRef(null)
 
-  // Agent & Auth State
-  const [agent, setAgent] = useState(null)
-  const [fetching, setFetching] = useState(true)
-  const [error, setError] = useState('')
-  const [isInitialized, setIsInitialized] = useState(false)
+  // React Query hooks - fully optimized data fetching
+  const {
+    data: agent,
+    isLoading: agentLoading,
+    error: agentError
+  } = useAgent(id)
 
-  // Chat State
+  const {
+    data: testAccountsData,
+    isLoading: testAccountsLoading
+  } = useTestAccounts(id)
+
+  const subAccounts = testAccountsData?.testAccounts || []
+  const subAccountsStats = testAccountsData?.stats || null
+
+  // Mutations
+  const deleteTestAccount = useDeleteTestAccount(id)
+  const updateTestAccount = useUpdateTestAccount(id)
+  const copyTestLink = useCopyTestLink()
+  const sendChatMessage = useSandboxSendChatMessage(id)
+
+  // Local UI state (not server data)
   const [chatMessages, setChatMessages] = useState([
     { role: 'assistant', content: 'Hi! How can I help you today?' }
   ])
   const [chatInput, setChatInput] = useState('')
-  const [isTyping, setIsTyping] = useState(false)
-  const [loadingResponse, setLoadingResponse] = useState(false)
-
-  // UI Customization State
   const [botColor, setBotColor] = useState('#EA580C')
   const [botColorMode, setBotColorMode] = useState('light')
   const [showPreview, setShowPreview] = useState(false)
-
-  // Analytics State
   const [tokenCount, setTokenCount] = useState(0)
-  const [credits, setCredits] = useState(8450)
-
-  // Sub Accounts State
-  const [subAccounts, setSubAccounts] = useState([])
-  const [subAccountsStats, setSubAccountsStats] = useState(null)
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [showSubAccountsPanel, setShowSubAccountsPanel] = useState(false)
-  const [loadingSubAccounts, setLoadingSubAccounts] = useState(false)
-
-  // Toast State
   const [toast, setToast] = useState(null)
 
   // Quick test messages
@@ -451,130 +539,50 @@ export default function ChatSandbox() {
     setToast({ message, type })
   }, [])
 
-  // Fetch sub-accounts
-  const fetchSubAccounts = useCallback(async () => {
-    if (!user || !id) return
-
-    try {
-      setLoadingSubAccounts(true)
-      const response = await fetch(`/api/agents/${id}/test-accounts`, {
-        headers: {
-          'x-user-id': user.id
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch test accounts')
-      }
-
-      const data = await response.json()
-      setSubAccounts(data.testAccounts || [])
-      setSubAccountsStats(data.stats || null)
-    } catch (err) {
-      console.error('Error fetching test accounts:', err)
-      showToast('Failed to load test accounts', 'error')
-    } finally {
-      setLoadingSubAccounts(false)
-    }
-  }, [id, user, showToast])
-
-  // Fetch agent data
- const fetchAgentData = useCallback(async () => {
-    if (!user || !id) return
-
-    try {
-      setFetching(true)
-      const agentData = await dbClient.getAgent(id, user.id)
-      if (!agentData) throw new Error('Agent not found or access denied')
-      setAgent(agentData)
-
-      // Load sub-accounts
-      await fetchSubAccounts()
-    } catch (err) {
-      console.error(err)
-      setError(err.message)
-    } finally {
-      setFetching(false)
-      setIsInitialized(true)
-    }
-  }, [id, user, fetchSubAccounts])
-
-  // Authentication check - FIXED: Remove router.push that causes issues
+  // Redirect if not authenticated
   useEffect(() => {
-    if (authLoading) return // Wait for auth to finish
-
-    if (!user) {
-      router.push('/') // Redirect if no user
-      return
+    if (!authLoading && !user) {
+      router.push('/')
     }
-
-    // User is authenticated, fetch data if not already initialized
-    if (!isInitialized) {
-      fetchAgentData()
-    }
-  }, [authLoading, user, isInitialized, router, fetchAgentData])
-
-
-  // // Load agent data - FIXED: Better dependency management
-  // useEffect(() => {
-  //   // Only fetch once when we have user and id, and haven't initialized yet
-  //   if (user && id && !isInitialized) {
-  //     fetchAgentData()
-  //   }
-  // }, [user, id, isInitialized, fetchAgentData])
+  }, [authLoading, user, router])
 
   // Auto-scroll chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [chatMessages])
 
-  // Handle chat message send
-  const sendChatMessage = useCallback(async () => {
-    if (!chatInput.trim() || !agent || isTyping) return
+  // Handle chat message send - using React Query mutation
+  const handleSendMessage = useCallback(async () => {
+    if (!chatInput.trim() || !agent || sendChatMessage.isPending) return
 
     const userMessage = chatInput
     setChatMessages((prev) => [...prev, { role: 'user', content: userMessage }])
     setChatInput('')
-    setIsTyping(true)
-    setLoadingResponse(true)
-    setError('')
 
     try {
-      const res = await fetch(`/api/agents/${id}/sandbox_testing`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: userMessage,
-          userId: user?.id,
-          metadata: { sandbox: true }
-        })
+      const data = await sendChatMessage.mutateAsync({
+        message: userMessage,
+        userId: user?.id,
+        metadata: { sandbox: true }
       })
 
-      const data = await res.json()
       const botResponseContent = data.response || '⚠️ No response from bot'
-
-      if (data.error) setError(data.error)
 
       setChatMessages((prev) => [
         ...prev,
         { role: 'assistant', content: botResponseContent }
       ])
 
-      // Update token count
       if (data.tokensUsed) {
         setTokenCount((prev) => prev + data.tokensUsed)
       }
     } catch (err) {
-      console.error(err)
       setChatMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: '⚠️ Unexpected network error.' }
+        { role: 'assistant', content: '⚠️ Unexpected error occurred.' }
       ])
-    } finally {
-      setLoadingResponse(false)
-      setIsTyping(false)
     }
-  }, [chatInput, agent, isTyping, id, user])
+  }, [chatInput, agent, sendChatMessage, user])
 
   // Clear chat
   const clearChat = useCallback(() => {
@@ -584,43 +592,7 @@ export default function ChatSandbox() {
     setTokenCount(0)
   }, [])
 
-  // Handle invite
-  const handleInvite = useCallback(
-    async (inviteData) => {
-      try {
-        const response = await fetch(`/api/agents/${id}/test-accounts`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-user-id': user.id
-          },
-          body: JSON.stringify(inviteData)
-        })
-
-        const data = await response.json()
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to create test account')
-        }
-
-        // Refresh sub-accounts list
-        await fetchSubAccounts()
-
-        showToast(
-          inviteData.sendEmail
-            ? `Invitation sent to ${inviteData.email}!`
-            : `Test account created for ${inviteData.email}!`,
-          'success'
-        )
-      } catch (err) {
-        console.error('Failed to send invite:', err)
-        throw err
-      }
-    },
-    [id, user, fetchSubAccounts, showToast]
-  )
-
-  // Handle delete sub-account
+  // Handle delete sub-account - using React Query mutation
   const handleDeleteSubAccount = useCallback(
     async (accountId) => {
       if (
@@ -631,73 +603,31 @@ export default function ChatSandbox() {
         return
       }
 
-      try {
-        const response = await fetch(
-          `/api/agents/${id}/test-accounts/${accountId}`,
-          {
-            method: 'DELETE',
-            headers: {
-              'x-user-id': user.id
-            }
-          }
-        )
-
-        if (!response.ok) {
-          throw new Error('Failed to delete test account')
-        }
-
-        // Refresh sub-accounts list
-        await fetchSubAccounts()
-        showToast('Test account deleted successfully', 'success')
-      } catch (err) {
-        console.error('Failed to delete test account:', err)
-        showToast('Failed to delete test account', 'error')
-      }
+      await deleteTestAccount.mutateAsync(accountId)
     },
-    [id, user, fetchSubAccounts, showToast]
+    [deleteTestAccount]
   )
 
-  // Handle copy test link
+  // Handle copy test link - using React Query mutation
   const handleCopyTestLink = useCallback(
-    (account) => {
+    async (account) => {
       const testLink =
         account.testLink ||
         `${window.location.origin}/test/${account.access_token}`
-      navigator.clipboard.writeText(testLink)
-      showToast('Test link copied to clipboard!', 'success')
+      await copyTestLink.mutateAsync(testLink)
     },
-    [showToast]
+    [copyTestLink]
   )
 
-  // Handle resend invitation
+  // Handle resend invitation - using React Query mutation
   const handleResendInvite = useCallback(
     async (accountId) => {
-      try {
-        const response = await fetch(
-          `/api/agents/${id}/test-accounts/${accountId}`,
-          {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-user-id': user.id
-            },
-            body: JSON.stringify({
-              action: 'resend_invitation'
-            })
-          }
-        )
-
-        if (!response.ok) {
-          throw new Error('Failed to resend invitation')
-        }
-
-        showToast('Invitation resent successfully!', 'success')
-      } catch (err) {
-        console.error('Failed to resend invitation:', err)
-        showToast('Failed to resend invitation', 'error')
-      }
+      await updateTestAccount.mutateAsync({
+        accountId,
+        updates: { action: 'resend_invitation' }
+      })
     },
-    [id, user, showToast]
+    [updateTestAccount]
   )
 
   // Navigate to full sub-accounts management page
@@ -705,16 +635,15 @@ export default function ChatSandbox() {
     router.push(`/agents/${id}/test-accounts`)
   }, [id, router])
 
-  // FIXED: Better loading state check
-  // Wait for auth to load AND for initial data fetch to complete
-  if (authLoading || (fetching && !isInitialized)) {
+  // Loading state
+  if (authLoading || agentLoading) {
     return (
       <LoadingState message='Loading sandbox...' className='min-h-screen' />
     )
   }
 
   // Error state
-  if (error && !loadingResponse) {
+  if (agentError) {
     return (
       <div className='flex min-h-screen items-center justify-center bg-neutral-900 font-mono'>
         <Card className='max-w-md border-red-600/30 bg-gradient-to-br from-red-900/20 to-neutral-950/50'>
@@ -723,10 +652,10 @@ export default function ChatSandbox() {
               <X className='h-8 w-8 text-red-400' />
             </div>
             <h3 className='mb-2 text-xl font-bold text-neutral-100'>Error</h3>
-            <p className='text-sm text-neutral-400'>{error}</p>
+            <p className='text-sm text-neutral-400'>{agentError.message}</p>
             <Button
               className='mt-6'
-              onClick={() => router.push(`/agents/${agent?.id || ''}/manage`)}
+              onClick={() => router.push(`/agents/${id}/manage`)}
             >
               <ArrowLeft className='mr-2 h-4 w-4' />
               Back to Agents
@@ -772,7 +701,7 @@ export default function ChatSandbox() {
                 <span className='text-neutral-400'>
                   Credits:{' '}
                   <span className='font-semibold text-purple-400'>
-                    {profile?.api_credits || credits}
+                    {profile?.api_credits || 8450}
                   </span>
                 </span>
               </div>
@@ -957,7 +886,7 @@ export default function ChatSandbox() {
 
                       {/* Accounts List */}
                       <div className='custom-scrollbar max-h-[500px] space-y-3 overflow-y-auto'>
-                        {loadingSubAccounts ? (
+                        {testAccountsLoading ? (
                           <div className='rounded-lg border border-neutral-800/50 bg-neutral-900/20 p-6 text-center'>
                             <RefreshCw className='mx-auto mb-2 h-8 w-8 animate-spin text-orange-400' />
                             <p className='text-sm text-neutral-400'>
@@ -1008,7 +937,7 @@ export default function ChatSandbox() {
                 )}
               </div>
 
-              {/* Main Chat Interface - REST OF COMPONENT SAME AS BEFORE */}
+              {/* Main Chat Interface */}
               <div className='lg:col-span-9'>
                 <Card className='flex h-[calc(100vh-180px)] flex-col border-neutral-800/50 bg-gradient-to-br from-neutral-900/40 to-neutral-950/20'>
                   {/* Chat Header */}
@@ -1039,46 +968,17 @@ export default function ChatSandbox() {
                   {/* Messages Container */}
                   <div className='custom-scrollbar flex-1 space-y-4 overflow-y-auto bg-neutral-900/30 p-4'>
                     {chatMessages.map((message, idx) => (
-                      <div
+                      <ChatMessage
                         key={idx}
-                        className={`flex ${
-                          message.role === 'user'
-                            ? 'justify-end'
-                            : 'justify-start'
-                        }`}
-                      >
-                        <div
-                          className={`max-w-[70%] rounded-2xl px-4 py-2.5 ${
-                            message.role === 'user'
-                              ? 'bg-gradient-to-br from-orange-600 to-orange-700 text-white shadow-lg shadow-orange-500/20'
-                              : 'border border-neutral-800/50 bg-gradient-to-br from-neutral-800/50 to-neutral-900/50 text-neutral-100'
-                          }`}
-                        >
-                          <p className='text-sm leading-relaxed'>
-                            {message.content}
-                          </p>
-                        </div>
-                      </div>
+                        message={message}
+                        isUser={message.role === 'user'}
+                        botColor={botColor}
+                        botColorMode={botColorMode}
+                      />
                     ))}
 
                     {/* Typing Indicator */}
-                    {isTyping && (
-                      <div className='flex justify-start'>
-                        <div className='rounded-2xl border border-neutral-800/50 bg-gradient-to-br from-neutral-800/50 to-neutral-900/50 px-4 py-2.5'>
-                          <div className='flex space-x-1'>
-                            <div className='h-2 w-2 animate-bounce rounded-full bg-neutral-400' />
-                            <div
-                              className='h-2 w-2 animate-bounce rounded-full bg-neutral-400'
-                              style={{ animationDelay: '0.1s' }}
-                            />
-                            <div
-                              className='h-2 w-2 animate-bounce rounded-full bg-neutral-400'
-                              style={{ animationDelay: '0.2s' }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                    {sendChatMessage.isPending && <TypingIndicator />}
                     <div ref={chatEndRef} />
                   </div>
 
@@ -1091,7 +991,7 @@ export default function ChatSandbox() {
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && !e.shiftKey) {
                             e.preventDefault()
-                            sendChatMessage()
+                            handleSendMessage()
                           }
                         }}
                         placeholder='Type your message...'
@@ -1099,9 +999,8 @@ export default function ChatSandbox() {
                         className='custom-scrollbar flex-1 resize-none rounded-lg border border-neutral-700 bg-neutral-800 px-4 py-2.5 text-sm text-neutral-100 placeholder-neutral-500 transition-colors focus:border-orange-500 focus:ring-2 focus:ring-orange-500/50 focus:outline-none'
                       />
                       <Button
-                        ref={chatButtonRef}
-                        onClick={sendChatMessage}
-                        disabled={!chatInput.trim() || isTyping}
+                        onClick={handleSendMessage}
+                        disabled={!chatInput.trim() || sendChatMessage.isPending}
                         className='px-6'
                       >
                         <Send className='h-4 w-4' />
@@ -1117,24 +1016,10 @@ export default function ChatSandbox() {
                   </div>
 
                   {/* Quick Test Messages */}
-                  <div className='border-t border-neutral-800/50 bg-neutral-900/50 p-4'>
-                    <h4 className='mb-3 text-sm font-medium text-neutral-300'>
-                      Quick Tests
-                    </h4>
-                    <div className='grid grid-cols-2 gap-2 lg:grid-cols-3'>
-                      {quickTestMessages.map((msg, index) => (
-                        <Button
-                          key={index}
-                          variant='ghost'
-                          size='sm'
-                          className='justify-start text-left text-xs'
-                          onClick={() => setChatInput(msg)}
-                        >
-                          {msg}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
+                  <QuickTestMessages
+                    messages={quickTestMessages}
+                    onSelect={setChatInput}
+                  />
                 </Card>
               </div>
             </div>
@@ -1142,7 +1027,7 @@ export default function ChatSandbox() {
         </div>
       </div>
 
-      {/* Chatbot Preview Modal - SAME AS BEFORE */}
+      {/* Chatbot Preview Modal */}
       {showPreview && (
         <>
           <div
@@ -1234,7 +1119,7 @@ export default function ChatSandbox() {
                   </div>
                 )
               })}
-              {isTyping && (
+              {sendChatMessage.isPending && (
                 <div className='flex justify-start'>
                   <div
                     className='rounded-2xl rounded-tl-sm px-4 py-2'
@@ -1276,7 +1161,7 @@ export default function ChatSandbox() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault()
-                    sendChatMessage()
+                    handleSendMessage()
                   }
                 }}
                 placeholder='Type your message...'
@@ -1289,8 +1174,8 @@ export default function ChatSandbox() {
                 }}
               />
               <button
-                onClick={sendChatMessage}
-                disabled={!chatInput.trim() || isTyping}
+                onClick={handleSendMessage}
+                disabled={!chatInput.trim() || sendChatMessage.isPending}
                 className='flex items-center justify-center rounded-lg p-2.5 shadow-sm transition-opacity disabled:cursor-not-allowed disabled:opacity-50'
                 style={{ backgroundColor: botColor }}
               >
@@ -1304,7 +1189,6 @@ export default function ChatSandbox() {
       <InviteModal
         isOpen={showInviteModal}
         onClose={() => setShowInviteModal(false)}
-        onInvite={handleInvite}
         agentId={id}
       />
 
@@ -1315,6 +1199,27 @@ export default function ChatSandbox() {
           onClose={() => setToast(null)}
         />
       )}
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(23, 23, 23, 0.3);
+          border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(245, 158, 11, 0.3);
+          border-radius: 4px;
+          transition: background 0.2s;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(245, 158, 11, 0.5);
+        }
+      `}</style>
     </>
   )
 }

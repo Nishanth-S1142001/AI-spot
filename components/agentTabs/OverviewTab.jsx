@@ -15,7 +15,8 @@ import {
   MessageCircle,
   Smile,
   Check,
-  Users
+  Users,
+  FileText
 } from 'lucide-react'
 import Link from 'next/link'
 import { format, isValid } from 'date-fns'
@@ -142,7 +143,15 @@ export default function OverviewTab({
                     </>
                   )}
                 </Button>
-
+                <Link
+                  href={`/agents/${agent?.id}/knowledge`}
+                  className='block'
+                >
+                  <Button variant='outline' className='w-full'>
+                    <FileText className='mr-2 h-4 w-4' />
+                    Manage Knowledge
+                  </Button>
+                </Link>
                 <Link
                   href={`/agents/${agent?.id}/playground`}
                   className='block'

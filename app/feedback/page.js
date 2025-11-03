@@ -22,18 +22,29 @@ import { useEffect } from 'react'
 import Button from '../../components/ui/button'
 import FormInput from '../../components/ui/formInputField'
 import Card from '../../components/ui/card'
-import toast from 'react-hot-toast'
 import Link from 'next/link'
 import NeonBackground from '../../components/ui/background'
 import LoadingState from '../../components/common/loading-state'
 import SideBarLayout from '../../components/sideBarLayout'
 import { useLogout } from '../../lib/supabase/auth'
 import NavigationBar from '../../components/navigationBar/navigationBar'
-import { supabase } from '../../lib/supabase/dbClient'
+import { useSubmitFeedback } from '../../lib/hooks/useAgentData'
 
-// ============================================================================
-// OPTIMIZED: Memoized Feedback Type Card Component
-// ============================================================================
+/**
+ * FULLY OPTIMIZED Feedback Page
+ * 
+ * React Query Integration:
+ * - Mutation for form submission
+ * - Automatic success/error handling
+ * - Consistent with other pages
+ * 
+ * Performance:
+ * - Memoized components (already good)
+ * - Optimized form validation
+ * - Better state management
+ */
+
+// Memoized Feedback Type Card Component
 const FeedbackTypeCard = memo(({ type, isSelected, onSelect }) => {
   const Icon = type.icon
 
@@ -47,7 +58,6 @@ const FeedbackTypeCard = memo(({ type, isSelected, onSelect }) => {
           : 'border-neutral-800/50 bg-gradient-to-br from-neutral-900/40 to-neutral-950/20 hover:border-neutral-700 hover:from-neutral-900/60'
       }`}
     >
-      {/* Icon with glow effect */}
       <div
         className={`relative flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg transition-all ${
           isSelected
@@ -67,7 +77,6 @@ const FeedbackTypeCard = memo(({ type, isSelected, onSelect }) => {
         />
       </div>
 
-      {/* Text */}
       <div className='flex-1 text-left'>
         <h3
           className={`font-semibold transition-colors ${
@@ -79,7 +88,6 @@ const FeedbackTypeCard = memo(({ type, isSelected, onSelect }) => {
         <p className='text-sm text-neutral-400'>{type.description}</p>
       </div>
 
-      {/* Selected indicator */}
       {isSelected && (
         <div className='absolute top-4 right-4'>
           <div className='flex h-5 w-5 items-center justify-center rounded-full bg-orange-500'>
@@ -90,12 +98,9 @@ const FeedbackTypeCard = memo(({ type, isSelected, onSelect }) => {
     </button>
   )
 })
-
 FeedbackTypeCard.displayName = 'FeedbackTypeCard'
 
-// ============================================================================
-// OPTIMIZED: Memoized Star Rating Component
-// ============================================================================
+// Memoized Star Rating Component
 const StarRating = memo(({ rating, onRatingChange, disabled }) => {
   return (
     <div className='flex items-center space-x-1'>
@@ -124,12 +129,9 @@ const StarRating = memo(({ rating, onRatingChange, disabled }) => {
     </div>
   )
 })
-
 StarRating.displayName = 'StarRating'
 
-// ============================================================================
-// OPTIMIZED: Memoized Attachment Item Component
-// ============================================================================
+// Memoized Attachment Item Component
 const AttachmentItem = memo(({ file, index, onRemove }) => {
   const formatFileSize = (bytes) => {
     if (bytes < 1024) return bytes + ' B'
@@ -160,24 +162,24 @@ const AttachmentItem = memo(({ file, index, onRemove }) => {
     </div>
   )
 })
-
 AttachmentItem.displayName = 'AttachmentItem'
 
-// ============================================================================
-// OPTIMIZED: Main Feedback Page Component
-// ============================================================================
+// Main Feedback Page Component
 export default function FeedbackPage() {
   const { user, profile, loading: authLoading } = useAuth()
+  const router = useRouter()
+  const { logout } = useLogout()
+  
+  // React Query mutation
+  const submitFeedbackMutation = useSubmitFeedback()
+
+  // State
   const [selectedType, setSelectedType] = useState('general')
   const [rating, setRating] = useState(0)
   const [submitted, setSubmitted] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [attachments, setAttachments] = useState([])
-  const [isInitialized, setIsInitialized] = useState(false)
 
   const fileInputRef = useRef(null)
-  const { logout } = useLogout()
-  const router = useRouter()
 
   const {
     register,
@@ -185,7 +187,7 @@ export default function FeedbackPage() {
     reset,
     formState: { errors }
   } = useForm({
-    mode: 'onBlur', // Optimize: Only validate on blur
+    mode: 'onBlur',
     defaultValues: {
       subject: '',
       message: '',
@@ -194,7 +196,14 @@ export default function FeedbackPage() {
     }
   })
 
-  // OPTIMIZED: Memoized feedback types
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/')
+    }
+  }, [authLoading, user, router])
+
+  // Memoized feedback types
   const feedbackTypes = useMemo(
     () => [
       {
@@ -225,18 +234,7 @@ export default function FeedbackPage() {
     []
   )
 
-  // OPTIMIZED: Auth check with initialization flag
-  useEffect(() => {
-    if (!authLoading) {
-      if (!user) {
-        router.push('/')
-      } else {
-        setIsInitialized(true)
-      }
-    }
-  }, [authLoading, user, router])
-
-  // OPTIMIZED: Memoized file upload handler
+  // Memoized file upload handler
   const handleFileUpload = useCallback((e) => {
     const files = Array.from(e.target.files)
     const maxSize = 5 * 1024 * 1024 // 5MB
@@ -247,26 +245,18 @@ export default function FeedbackPage() {
       'application/pdf'
     ]
 
-    const validFiles = []
-    const invalidFiles = []
+    const validFiles = files.filter(
+      (file) => file.size <= maxSize && allowedTypes.includes(file.type)
+    )
 
-    files.forEach((file) => {
-      if (file.size > maxSize || !allowedTypes.includes(file.type)) {
-        invalidFiles.push(file.name)
-      } else {
-        validFiles.push(file)
-      }
-    })
-
-    if (invalidFiles.length > 0) {
-      toast.error(
-        `${invalidFiles.length} file(s) skipped (max 5MB, PNG/JPG/GIF/PDF only)`
-      )
+    if (validFiles.length !== files.length) {
+      // Some files were invalid
+      const invalidCount = files.length - validFiles.length
+      console.warn(`${invalidCount} file(s) skipped (max 5MB, PNG/JPG/GIF/PDF only)`)
     }
 
     if (validFiles.length > 0) {
       setAttachments((prev) => [...prev, ...validFiles])
-      toast.success(`${validFiles.length} file(s) added`)
     }
 
     // Reset input
@@ -275,73 +265,60 @@ export default function FeedbackPage() {
     }
   }, [])
 
-  // OPTIMIZED: Memoized remove attachment handler
+  // Memoized remove attachment handler
   const removeAttachment = useCallback((index) => {
     setAttachments((prev) => prev.filter((_, i) => i !== index))
-    toast.success('File removed')
   }, [])
 
-  // OPTIMIZED: Memoized submit handler
+  // Memoized submit handler
   const onSubmit = useCallback(
     async (data) => {
+      const formData = new FormData()
+      formData.append('type', selectedType)
+      formData.append('subject', data.subject)
+      formData.append('message', data.message)
+      formData.append('rating', rating)
+      formData.append('email', data.email || user?.email || '')
+      formData.append('userId', user?.id || '')
+      formData.append('userName', profile?.full_name || data.name || '')
+
+      attachments.forEach((file, i) => {
+        formData.append(`file_${i}`, file)
+      })
+
       try {
-        setIsSubmitting(true)
-
-        const formData = new FormData()
-        formData.append('type', selectedType)
-        formData.append('subject', data.subject)
-        formData.append('message', data.message)
-        formData.append('rating', rating)
-        formData.append('email', data.email || user?.email || '')
-        formData.append('userId', user?.id || '')
-        formData.append('userName', profile?.full_name || data.name || '')
-
-        attachments.forEach((file, i) => {
-          formData.append(`file_${i}`, file)
-        })
-
-        const res = await fetch('/api/feedback', {
-          method: 'POST',
-          body: formData
-        })
-
-        if (!res.ok) {
-          const error = await res.json()
-          throw new Error(error.message || 'Submission failed')
-        }
-
-        toast.success('Feedback submitted successfully! 🎉')
+        await submitFeedbackMutation.mutateAsync(formData)
         setSubmitted(true)
         reset()
         setRating(0)
         setAttachments([])
         setSelectedType('general')
-      } catch (err) {
-        console.error('Feedback submission error:', err)
-        toast.error(
-          err.message || 'Failed to submit feedback. Please try again.'
-        )
-      } finally {
-        setIsSubmitting(false)
+      } catch (error) {
+        // Error already handled by mutation
       }
     },
-    [selectedType, rating, attachments, user, profile, reset]
+    [selectedType, rating, attachments, user, profile, reset, submitFeedbackMutation]
   )
 
-  // OPTIMIZED: Show rating section only for relevant types
+  // Show rating section only for relevant types
   const showRating = useMemo(
     () => selectedType === 'general' || selectedType === 'praise',
     [selectedType]
   )
 
   // Loading state
-  if (authLoading || !isInitialized) {
+  if (authLoading) {
     return (
       <LoadingState
         message='Loading feedback form...'
         className='min-h-screen'
       />
     )
+  }
+
+  // Not authenticated
+  if (!user) {
+    return null
   }
 
   // Success state
@@ -351,7 +328,6 @@ export default function FeedbackPage() {
         <NeonBackground />
         <div className='flex min-h-screen items-center justify-center bg-neutral-950/90 p-4'>
           <Card className='w-full max-w-md border-green-600/30 bg-gradient-to-br from-green-900/10 to-neutral-950/50 p-8'>
-            {/* Success icon with animation */}
             <div className='relative mx-auto mb-6 flex h-20 w-20 items-center justify-center'>
               <div className='absolute inset-0 animate-ping rounded-full bg-green-500/20' />
               <div className='relative flex h-16 w-16 items-center justify-center rounded-full bg-green-900/40 ring-2 ring-green-500/50'>
@@ -445,7 +421,7 @@ export default function FeedbackPage() {
                     <StarRating
                       rating={rating}
                       onRatingChange={setRating}
-                      disabled={isSubmitting}
+                      disabled={submitFeedbackMutation.isPending}
                     />
                   </div>
                 )}
@@ -463,8 +439,7 @@ export default function FeedbackPage() {
                           minLength: { value: 2, message: 'Name too short' }
                         })}
                         placeholder='John Doe'
-                        className='w-full rounded-lg border border-neutral-700 bg-neutral-800 px-4 py-2.5 text-neutral-100 transition-colors focus:border-orange-500 focus:ring-2 focus:ring-orange-500/50'
-                        disabled={isSubmitting}
+                        disabled={submitFeedbackMutation.isPending}
                       />
                       {errors.name && (
                         <p className='mt-1 text-xs text-red-400'>
@@ -487,8 +462,7 @@ export default function FeedbackPage() {
                         })}
                         placeholder='john@example.com'
                         type='email'
-                        className='w-full rounded-lg border border-neutral-700 bg-neutral-800 px-4 py-2.5 text-neutral-100 transition-colors focus:border-orange-500 focus:ring-2 focus:ring-orange-500/50'
-                        disabled={isSubmitting}
+                        disabled={submitFeedbackMutation.isPending}
                       />
                       {errors.email && (
                         <p className='mt-1 text-xs text-red-400'>
@@ -517,8 +491,7 @@ export default function FeedbackPage() {
                       }
                     })}
                     placeholder='Brief summary of your feedback'
-                    className='w-full rounded-lg border border-neutral-700 bg-neutral-800 px-4 py-2.5 text-neutral-100 transition-colors focus:border-orange-500 focus:ring-2 focus:ring-orange-500/50'
-                    disabled={isSubmitting}
+                    disabled={submitFeedbackMutation.isPending}
                   />
                   {errors.subject && (
                     <p className='mt-1 text-xs text-red-400'>
@@ -546,8 +519,8 @@ export default function FeedbackPage() {
                     })}
                     rows={6}
                     placeholder='Describe your feedback in detail...'
-                    className='w-full rounded-lg border border-neutral-700 bg-neutral-800 px-4 py-2.5 text-neutral-100 placeholder-neutral-500 transition-colors focus:border-orange-500 focus:ring-2 focus:ring-orange-500/50'
-                    disabled={isSubmitting}
+                    className='w-full rounded-lg border border-neutral-700 bg-neutral-800 px-4 py-2.5 text-neutral-100 placeholder-neutral-500 transition-colors focus:border-orange-500 focus:ring-2 focus:ring-orange-500/50 disabled:opacity-50'
+                    disabled={submitFeedbackMutation.isPending}
                   />
                   {errors.message && (
                     <p className='mt-1 text-xs text-red-400'>
@@ -577,7 +550,7 @@ export default function FeedbackPage() {
                       accept='image/png,image/jpeg,image/gif,application/pdf'
                       className='hidden'
                       onChange={handleFileUpload}
-                      disabled={isSubmitting}
+                      disabled={submitFeedbackMutation.isPending}
                     />
 
                     <Button
@@ -585,7 +558,7 @@ export default function FeedbackPage() {
                       variant='outline'
                       size='sm'
                       className='mx-auto'
-                      disabled={isSubmitting}
+                      disabled={submitFeedbackMutation.isPending}
                       onClick={() => fileInputRef.current?.click()}
                     >
                       <Upload className='mr-2 h-4 w-4' />
@@ -612,10 +585,10 @@ export default function FeedbackPage() {
                 <div className='flex gap-3 pt-4'>
                   <Button
                     type='submit'
-                    disabled={isSubmitting}
+                    disabled={submitFeedbackMutation.isPending}
                     className='flex-1'
                   >
-                    {isSubmitting ? (
+                    {submitFeedbackMutation.isPending ? (
                       <>
                         <Loader2 className='mr-2 h-4 w-4 animate-spin' />
                         Submitting...
@@ -632,7 +605,7 @@ export default function FeedbackPage() {
                     type='button'
                     variant='outline'
                     onClick={() => router.back()}
-                    disabled={isSubmitting}
+                    disabled={submitFeedbackMutation.isPending}
                   >
                     Cancel
                   </Button>
@@ -642,6 +615,27 @@ export default function FeedbackPage() {
           </div>
         </div>
       </SideBarLayout>
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(23, 23, 23, 0.3);
+          border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(245, 158, 11, 0.3);
+          border-radius: 4px;
+          transition: background 0.2s;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(245, 158, 11, 0.5);
+        }
+      `}</style>
     </>
   )
 }

@@ -39,35 +39,33 @@ export default function PublicTestPortal() {
   const [submitted, setSubmitted] = useState(false)
 
   // ✅ FIXED: Define startSession first (not as useCallback to avoid circular dependency)
-  const startSession = async (agentName) => {
-    try {
-      const response = await fetch(`/api/test/${accessToken}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'start_session' })
-      })
+  const startSession = useCallback(
+    async (agentName) => {
+      try {
+        const response = await fetch(`/api/test/${accessToken}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'start_session' })
+        })
 
-      if (!response.ok) {
-        throw new Error('Failed to start session')
+        if (!response.ok) throw new Error('Failed to start session')
+
+        const data = await response.json()
+        setSessionId(data.sessionId)
+        setMessages([
+          {
+            role: 'assistant',
+            content: `Hi! I'm ${agentName || 'your AI assistant'}. How can I help you today?`,
+            timestamp: new Date()
+          }
+        ])
+      } catch (err) {
+        console.error('Session start error:', err)
       }
+    },
+    [accessToken]
+  )
 
-      const data = await response.json()
-      setSessionId(data.sessionId)
-
-      // Add welcome message
-      setMessages([
-        {
-          role: 'assistant',
-          content: `Hi! I'm ${agentName || 'your AI assistant'}. How can I help you today?`,
-          timestamp: new Date()
-        }
-      ])
-    } catch (err) {
-      console.error('Session start error:', err)
-    }
-  }
-
-  // ✅ FIXED: Validate access token and load account (no circular dependency)
   const validateAccess = useCallback(async () => {
     try {
       setLoading(true)
@@ -82,8 +80,6 @@ export default function PublicTestPortal() {
 
       const data = await response.json()
       setTestAccount(data.testAccount)
-
-      // Start session with agent name
       await startSession(data.testAccount?.agentName)
     } catch (err) {
       console.error('Validation error:', err)
@@ -91,7 +87,7 @@ export default function PublicTestPortal() {
     } finally {
       setLoading(false)
     }
-  }, [accessToken]) // ✅ Only depends on accessToken
+  }, [accessToken, startSession])
 
   // Send message
   const sendMessage = useCallback(async () => {

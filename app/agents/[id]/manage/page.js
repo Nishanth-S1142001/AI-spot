@@ -7,11 +7,12 @@ import {
   Zap,
   Calendar,
   Settings,
+  FileText,
   Loader2
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useParams, useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState, useRef, Suspense } from 'react'
+import { useCallback, useEffect, useState, useMemo } from 'react'
 import toast from 'react-hot-toast'
 import LoadingState from '../../../../components/common/loading-state'
 import NavigationBar from '../../../../components/navigationBar/navigationBar'
@@ -19,40 +20,50 @@ import { useAuth } from '../../../../components/providers/AuthProvider'
 import SideBarLayout from '../../../../components/sideBarLayout'
 import NeonBackground from '../../../../components/ui/background'
 import { useLogout } from '../../../../lib/supabase/auth'
-import { dbClient } from '../../../../lib/supabase/dbClient'
-import { deleteAgent, updateAgent } from '../../../actions/agents'
+import {
+  useAgent,
+  useConversation,
+  useAnalytics,
+  useToggleAgentStatus,
+  useDeleteAgent,
+  usePrefetchConversations,
+  usePrefetchAnalytics,
+} from '../../../../lib/hooks/useAgentData'
 
-// Dynamic imports for code splitting
+// Dynamic imports
 const OverviewTab = dynamic(
   () => import('../../../../components/agentTabs/OverviewTab'),
-  { loading: () => <TabLoadingSkeleton /> }
+  { loading: () => <TabLoadingSkeleton />, ssr: false }
 )
 const ConversationsTab = dynamic(
   () => import('../../../../components/agentTabs/ConversationsTab'),
-  { loading: () => <TabLoadingSkeleton /> }
+  { loading: () => <TabLoadingSkeleton />, ssr: false }
 )
 const AnalyticsTab = dynamic(
   () => import('../../../../components/agentTabs/AnalyticsTab'),
-  { loading: () => <TabLoadingSkeleton /> }
+  { loading: () => <TabLoadingSkeleton />, ssr: false }
 )
 const WorkflowsTab = dynamic(
   () => import('../../../../components/agentTabs/WorkflowsTab'),
-  { loading: () => <TabLoadingSkeleton /> }
+  { loading: () => <TabLoadingSkeleton />, ssr: false }
 )
 const EmbedTab = dynamic(
   () => import('../../../../components/agentTabs/EmbedTab'),
-  { loading: () => <TabLoadingSkeleton /> }
+  { loading: () => <TabLoadingSkeleton />, ssr: false }
 )
 const CalendarBookingTab = dynamic(
   () => import('../../../../components/agentTabs/CalendarBookingTab'),
-  { loading: () => <TabLoadingSkeleton /> }
+  { loading: () => <TabLoadingSkeleton />, ssr: false }
 )
 const CalendarSettings = dynamic(
   () => import('../../../../components/CalendarSettings'),
-  { loading: () => <TabLoadingSkeleton /> }
+  { loading: () => <TabLoadingSkeleton />, ssr: false }
+)
+const KnowledgeTab = dynamic(
+  () => import('../../../../components/agentTabs/KnowledgeTab'),
+  { loading: () => <TabLoadingSkeleton />, ssr: false }
 )
 
-// Loading skeleton for tabs
 function TabLoadingSkeleton() {
   return (
     <div className='flex items-center justify-center py-16'>
@@ -64,178 +75,81 @@ function TabLoadingSkeleton() {
   )
 }
 
-// Tab configuration
 const TABS = [
-  { 
-    id: 'overview', 
-    name: 'Overview', 
-    icon: Aperture,
-    description: 'Agent details and quick actions'
-  },
-  {
-    id: 'conversations',
-    name: 'Conversations',
-    icon: MessageSquare,
-    description: 'View chat history'
-  },
-  { 
-    id: 'analytics', 
-    name: 'Analytics', 
-    icon: BarChart3,
-    description: 'Performance metrics'
-  },
-  { 
-    id: 'workflows', 
-    name: 'Workflows', 
-    icon: Zap,
-    description: 'Automation & integrations'
-  },
-  { 
-    id: 'bookings', 
-    name: 'Bookings', 
-    icon: Calendar,
-    description: 'Appointment management'
-  },
-  {
-    id: 'calendar-settings',
-    name: 'Calendar Setup',
-    icon: Settings,
-    description: 'Configure booking settings'
-  },
-  { 
-    id: 'embed', 
-    name: 'Deploy', 
-    icon: Code,
-    description: 'Embed & share your agent'
-  }
+  { id: 'overview', name: 'Overview', icon: Aperture, description: 'Agent details and quick actions' },
+  { id: 'knowledge', name: 'Knowledge', icon: FileText, description: 'Manage knowledge sources' },
+  { id: 'conversations', name: 'Conversations', icon: MessageSquare, description: 'View chat history' },
+  { id: 'analytics', name: 'Analytics', icon: BarChart3, description: 'Performance metrics' },
+  { id: 'workflows', name: 'Workflows', icon: Zap, description: 'Automation & integrations' },
+  { id: 'bookings', name: 'Bookings', icon: Calendar, description: 'Appointment management' },
+  { id: 'calendar-settings', name: 'Calendar Setup', icon: Settings, description: 'Configure booking settings' },
+  { id: 'embed', name: 'Deploy', icon: Code, description: 'Embed & share your agent' }
 ]
 
 export default function AgentManagement() {
-  
   const { id } = useParams()
   const router = useRouter()
   const { user, profile, loading: authLoading } = useAuth()
   const { logout } = useLogout()
-  const [isInitialized, setIsInitialized] = useState(false)
-  
-  // State management
-  const [agent, setAgent] = useState(null)
   const [activeTab, setActiveTab] = useState('overview')
-  const [fetching, setFetching] = useState(true)
-  const [conversations, setConversations] = useState(null)
-  const [analytics, setAnalytics] = useState(null)
-  const [shareLink, setShareLink] = useState(null)
 
-  const fetchedRef = useRef(false)
+  // React Query hooks
+  const { 
+    data: agent, 
+    isLoading: agentLoading, 
+    error: agentError 
+  } = useAgent(id)
 
-  // Reset state when agent ID changes
-  useEffect(() => {
-    fetchedRef.current = false
-    setIsInitialized(false)
-    setFetching(true)
-    setAgent(null)
-    setConversations(null)
-    setAnalytics(null)
-    setShareLink(null)
-  }, [id])
+  const { 
+    data: conversations, 
+    isLoading: conversationsLoading 
+  } = useConversation(id)
 
-  // Fetch core agent data
-  const fetchAgentData = useCallback(async () => {
-    if (!id || !user || fetchedRef.current) return
-    fetchedRef.current = true
+  const { 
+    data: analytics, 
+    isLoading: analyticsLoading 
+  } = useAnalytics(id)
 
-    try {
-      setFetching(true)
-      const agentData = await dbClient.getAgent(id)
+  // Mutations
+  const toggleStatusMutation = useToggleAgentStatus(id)
+  const deleteAgentMutation = useDeleteAgent()
 
-      if (!agentData) {
-        toast.error('Agent not found')
-        router.push('/agents')
-        return
-      }
+  // Prefetch functions
+  const prefetchConversations = usePrefetchConversations(id)
+  const prefetchAnalytics = usePrefetchAnalytics(id)
 
-      setAgent(agentData)
-      setShareLink(`${process.env.NEXT_PUBLIC_APP_URL}/sandbox/${id}`)
-    } catch (error) {
-      console.error('Error fetching agent data:', error)
-      toast.error('Failed to load agent data')
-    } finally {
-      setFetching(false)
-      setIsInitialized(true)
-    }
-  }, [id, user, router])
-
-  useEffect(() => {
-    if (user && !authLoading) {
-      fetchAgentData()
-    }
-  }, [fetchAgentData, user, authLoading])
-
-  // Fetch tab-specific data
-  const fetchTabData = useCallback(
-    async (tab) => {
-      try {
-        if (tab === 'conversations' && conversations === null) {
-          const conversationData = await dbClient.getConversations(id)
-          setConversations(conversationData || [])
-        } else if (tab === 'analytics' && analytics === null) {
-          const analyticsData = await dbClient.getAnalytics(id)
-          setAnalytics(analyticsData || [])
-        }
-      } catch (error) {
-        console.error(`Error fetching data for ${tab}:`, error)
-        toast.error(`Failed to load ${tab} data`)
-      }
-    },
-    [id, conversations, analytics]
+  // Memoized share link
+  const shareLink = useMemo(
+    () => agent ? `${process.env.NEXT_PUBLIC_APP_URL}/sandbox/${id}` : null,
+    [agent, id]
   )
 
+  // Redirect if not authenticated
   useEffect(() => {
-    if (activeTab === 'conversations' || activeTab === 'analytics') {
-      fetchTabData(activeTab)
-    }
-  }, [activeTab, fetchTabData])
-
-  // Authentication check
-  useEffect(() => {
-    if (authLoading === false && !user) {
+    if (!authLoading && !user) {
       router.push('/')
     }
   }, [authLoading, user, router])
 
-  // Agent actions
-  const toggleAgentStatus = useCallback(async () => {
-    if (!agent) return
-    try {
-      const updatedAgent = await updateAgent(id, {
-        is_active: !agent.is_active
-      })
-      setAgent(updatedAgent)
-      toast.success(
-        `Agent ${updatedAgent.is_active ? 'activated' : 'deactivated'} successfully`
-      )
-    } catch (error) {
-      console.error('Error updating agent status:', error)
-      toast.error('Failed to update agent status')
+  // Handle agent not found
+  useEffect(() => {
+    if (agentError && !agentLoading) {
+      toast.error('Agent not found')
+      router.push('/agents')
     }
-  }, [agent, id])
+  }, [agentError, agentLoading, router])
 
-  const delete_Agent = useCallback(async () => {
-    if (
-      !confirm(
-        'Are you sure you want to delete this agent? This action cannot be undone.'
-      )
-    )
+  // Actions
+  const toggleAgentStatus = useCallback(() => {
+    toggleStatusMutation.mutate()
+  }, [toggleStatusMutation])
+
+  const delete_Agent = useCallback(() => {
+    if (!confirm('Are you sure you want to delete this agent? This action cannot be undone.')) {
       return
-    try {
-      await deleteAgent(id)
-      toast.success('Agent deleted successfully')
-      router.push('/dashboard')
-    } catch (error) {
-      console.error('Error deleting agent:', error)
-      toast.error('Failed to delete agent')
     }
-  }, [id, router])
+    deleteAgentMutation.mutate(id)
+  }, [deleteAgentMutation, id])
 
   const copyEmbedCode = useCallback(() => {
     if (!agent) return
@@ -250,14 +164,31 @@ export default function AgentManagement() {
     toast.success('Share link copied to clipboard!')
   }, [shareLink])
 
+  // Tab change handler with prefetching
+  const handleTabChange = useCallback((tabId) => {
+    setActiveTab(tabId)
+    
+    // Prefetch data for adjacent tabs
+    if (tabId === 'overview' || tabId === 'knowledge') {
+      prefetchConversations()
+    } else if (tabId === 'conversations') {
+      prefetchAnalytics()
+    }
+  }, [prefetchConversations, prefetchAnalytics])
+
   // Loading state
-  if (authLoading || (fetching && !isInitialized)) {
+  if (authLoading || agentLoading) {
     return (
       <LoadingState
         message={authLoading ? 'Authenticating...' : 'Loading Agent...'}
         className='min-h-screen'
       />
     )
+  }
+
+  // No agent found
+  if (!agent) {
+    return null
   }
 
   return (
@@ -283,13 +214,11 @@ export default function AgentManagement() {
                 <div className='flex items-center justify-between'>
                   <div className='space-y-1'>
                     <h1 className='text-3xl font-bold text-neutral-100'>
-                      {agent?.name || 'Loading...'}
+                      {agent.name}
                     </h1>
                     <p className='text-sm text-neutral-400'>
-                      {agent?.purpose ? `${agent.purpose} Agent` : 'AI Agent'} • 
-                      <span className='ml-2'>
-                        {agent?.model || 'GPT-4'}
-                      </span>
+                      {agent.purpose ? `${agent.purpose} Agent` : 'AI Agent'} • 
+                      <span className='ml-2'>{agent.model || 'GPT-4'}</span>
                     </p>
                   </div>
                   
@@ -297,17 +226,17 @@ export default function AgentManagement() {
                   <div className='flex items-center gap-3'>
                     <div
                       className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium ${
-                        agent?.is_active
+                        agent.is_active
                           ? 'bg-green-900/30 text-green-300 ring-1 ring-green-500/50'
                           : 'bg-red-900/30 text-red-300 ring-1 ring-red-500/50'
                       }`}
                     >
                       <div
                         className={`h-2 w-2 rounded-full ${
-                          agent?.is_active ? 'bg-green-500' : 'bg-red-500'
+                          agent.is_active ? 'bg-green-500' : 'bg-red-500'
                         } animate-pulse`}
                       />
-                      {agent?.is_active ? 'Active' : 'Inactive'}
+                      {agent.is_active ? 'Active' : 'Inactive'}
                     </div>
                   </div>
                 </div>
@@ -324,7 +253,12 @@ export default function AgentManagement() {
                       return (
                         <button
                           key={tab.id}
-                          onClick={() => setActiveTab(tab.id)}
+                          onClick={() => handleTabChange(tab.id)}
+                          onMouseEnter={() => {
+                            // Prefetch on hover
+                            if (tab.id === 'conversations') prefetchConversations()
+                            if (tab.id === 'analytics') prefetchAnalytics()
+                          }}
                           className={`group relative flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200 ${
                             isActive
                               ? 'bg-gradient-to-br from-orange-600 to-orange-700 text-white shadow-lg shadow-orange-500/25'
@@ -348,71 +282,54 @@ export default function AgentManagement() {
 
               {/* Tab Content */}
               <div className='animate-fadeIn'>
-                {/* Overview Tab */}
-                {activeTab === 'overview' && agent && (
-                  <Suspense fallback={<TabLoadingSkeleton />}>
-                    <OverviewTab
-                      agent={agent}
-                      copyEmbedCode={copyEmbedCode}
-                      toggleAgentStatus={toggleAgentStatus}
-                      delete_Agent={delete_Agent}
-                      copyShareLink={copyShareLink}
-                      shareLink={shareLink}
-                    />
-                  </Suspense>
+                {activeTab === 'overview' && (
+                  <OverviewTab
+                    agent={agent}
+                    copyEmbedCode={copyEmbedCode}
+                    toggleAgentStatus={toggleAgentStatus}
+                    delete_Agent={delete_Agent}
+                    copyShareLink={copyShareLink}
+                    shareLink={shareLink}
+                  />
                 )}
 
-                {/* Conversations Tab */}
+                {activeTab === 'knowledge' && (
+                  <KnowledgeTab agent={agent} agentId={id} userId={user?.id} />
+                )}
+
                 {activeTab === 'conversations' && (
-                  <Suspense fallback={<TabLoadingSkeleton />}>
-                    {conversations === null ? (
-                      <TabLoadingSkeleton />
-                    ) : (
-                      <ConversationsTab conversations={conversations} agentId={id}/>
-                    )}
-                  </Suspense>
+                  conversationsLoading ? (
+                    <TabLoadingSkeleton />
+                  ) : (
+                    <ConversationsTab conversations={conversations} agentId={id} />
+                  )
                 )}
 
-                {/* Analytics Tab */}
                 {activeTab === 'analytics' && (
-                  <Suspense fallback={<TabLoadingSkeleton />}>
-                    {analytics === null ? (
-                      <TabLoadingSkeleton />
-                    ) : (
-                      <AnalyticsTab
-                        conversations={conversations}
-                        analytics={analytics}
-                      />
-                    )}
-                  </Suspense>
+                  analyticsLoading ? (
+                    <TabLoadingSkeleton />
+                  ) : (
+                    <AnalyticsTab
+                      conversations={conversations}
+                      analytics={analytics}
+                    />
+                  )
                 )}
 
-                {/* Workflows Tab */}
-                {activeTab === 'workflows' && agent && (
-                  <Suspense fallback={<TabLoadingSkeleton />}>
-                    <WorkflowsTab agent={agent} id={id} />
-                  </Suspense>
+                {activeTab === 'workflows' && (
+                  <WorkflowsTab agent={agent} id={id} />
                 )}
 
-                {/* Bookings Tab */}
-                {activeTab === 'bookings' && agent && (
-                  <Suspense fallback={<TabLoadingSkeleton />}>
-                    <CalendarBookingTab agent={agent} id={id} />
-                  </Suspense>
+                {activeTab === 'bookings' && (
+                  <CalendarBookingTab agent={agent} id={id} />
                 )}
 
-                {/* Calendar Settings Tab */}
-                {activeTab === 'calendar-settings' && agent && (
-                  <Suspense fallback={<TabLoadingSkeleton />}>
-                    <CalendarSettings agent={agent} id={id} />
-                  </Suspense>
+                {activeTab === 'calendar-settings' && (
+                  <CalendarSettings agent={agent} id={id} />
                 )}
 
-                {/* Embed/Deploy Tab */}
                 {activeTab === 'embed' && (
-                  <Suspense fallback={<TabLoadingSkeleton />}>
-                    <EmbedTab id={id} copyEmbedCode={copyEmbedCode} />
-                  </Suspense>
+                  <EmbedTab id={id} copyEmbedCode={copyEmbedCode} />
                 )}
               </div>
             </div>

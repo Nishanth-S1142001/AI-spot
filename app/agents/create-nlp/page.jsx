@@ -27,25 +27,29 @@ import Button from '../../../components/ui/button'
 import { useLogout } from '../../../lib/supabase/auth'
 
 /**
- * OPTIMIZED Create Agent NLP Component
+ * FULLY OPTIMIZED Create Agent NLP Component
  * 
- * Performance Improvements:
- * - Memoized components to prevent unnecessary re-renders
+ * React Query Integration:
+ * - Consistent auth patterns with other pages
+ * - Agent creation handled via mutation hooks
+ * - Automatic cache invalidation
+ * 
+ * Performance Optimizations:
+ * - Memoized components prevent unnecessary re-renders
  * - No re-fetch on tab switch with useRef tracking
  * - Optimized animations with reduced motion support
- * - Better modal positioning and animations
  * - Lazy rendering of example prompts
+ * - Keyboard shortcuts for better UX
  * 
  * UI Improvements:
  * - Enhanced visual hierarchy
  * - Better example prompt cards with categories
- * - Improved color scheme and gradients
- * - Loading states with skeleton screens
  * - Copy functionality for prompts
- * - Better mobile responsiveness
+ * - Loading states and error handling
+ * - Improved mobile responsiveness
  */
 
-// Categorized example prompts for better organization
+// Categorized example prompts
 const EXAMPLE_PROMPTS = [
   {
     category: 'Customer Support',
@@ -157,7 +161,7 @@ const ExamplePrompt = memo(({ text, onSelect, index, color = 'orange' }) => {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.03, duration: 0.2 }}
-      onClick={() => onSelect && onSelect(text)}
+      onClick={() => onSelect?.(text)}
       className={`group cursor-pointer rounded-lg border ${colors.border} bg-gradient-to-br ${colors.bg} p-4 transition-all ${colors.hover} hover:shadow-lg hover:${colors.ring} hover:ring-2`}
     >
       <div className='flex items-start gap-3'>
@@ -259,13 +263,14 @@ export default function CreateAgentNLP() {
   const { logout } = useLogout()
   const { user, profile, loading: authLoading } = useAuth()
 
+  // State
   const [collapsed, setCollapsed] = useState(true)
   const [selectedPrompt, setSelectedPrompt] = useState('')
   
-  // ✅ FIX: Track if page has been initialized
+  // Track initialization to prevent re-fetch on tab switch
   const hasInitialized = useRef(false)
 
-  // ✅ FIX: Prevent re-initialization on tab switch
+  // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/')
@@ -277,40 +282,59 @@ export default function CreateAgentNLP() {
     }
   }, [authLoading, user, router])
 
-  // ✅ OPTIMIZATION: Memoized callbacks
+  // Handle agent creation success
   const handleAgentCreated = useCallback((agent) => {
+    if (!agent?.id) return
+    
+    // Small delay to show success message
     setTimeout(() => {
       router.push(`/agents/${agent.id}/manage`)
-    }, 2000)
+    }, 1500)
   }, [router])
 
+  // Handle prompt selection
   const handlePromptSelect = useCallback((text) => {
     setSelectedPrompt(text)
     setCollapsed(true)
   }, [])
 
+  // Toggle modal
   const togglePromptCard = useCallback(() => {
     setCollapsed(prev => !prev)
   }, [])
 
+  // Close modal
   const handleCloseModal = useCallback(() => {
     setCollapsed(true)
   }, [])
 
-  // ✅ OPTIMIZATION: Close modal on escape key
+  // Keyboard shortcuts
   useEffect(() => {
-    const handleEscape = (e) => {
+    const handleKeyDown = (e) => {
+      // Escape to close modal
       if (e.key === 'Escape' && !collapsed) {
         setCollapsed(true)
       }
+      
+      // Ctrl/Cmd + K to open modal
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k' && collapsed) {
+        e.preventDefault()
+        setCollapsed(false)
+      }
     }
 
-    window.addEventListener('keydown', handleEscape)
-    return () => window.removeEventListener('keydown', handleEscape)
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [collapsed])
 
+  // Loading state
   if (authLoading) {
     return <LoadingState message='Authenticating...' className='min-h-screen' />
+  }
+
+  // Not authenticated
+  if (!user) {
+    return null
   }
 
   return (
@@ -329,8 +353,8 @@ export default function CreateAgentNLP() {
             />
           </div>
 
-          {/* Example Prompts Modal - Improved positioning and design */}
-          <AnimatePresence>
+          {/* Example Prompts Modal */}
+          <AnimatePresence mode='wait'>
             {!collapsed && (
               <>
                 {/* Backdrop */}
@@ -363,7 +387,9 @@ export default function CreateAgentNLP() {
                             Example Prompts
                           </h3>
                           <p className='text-xs text-neutral-500'>
-                            Click any prompt to get started instantly
+                            Click any prompt to get started • Press{' '}
+                            <kbd className='rounded bg-neutral-800 px-1.5 py-0.5 text-xs'>ESC</kbd>{' '}
+                            to close
                           </p>
                         </div>
                       </div>
@@ -403,7 +429,7 @@ export default function CreateAgentNLP() {
             />
           </div>
 
-          {/* Floating Action Button - Show when modal is closed */}
+          {/* Floating Action Button */}
           <AnimatePresence>
             {collapsed && (
               <motion.button
@@ -413,7 +439,7 @@ export default function CreateAgentNLP() {
                 transition={{ delay: 0.5, duration: 0.3 }}
                 onClick={togglePromptCard}
                 className='fixed bottom-8 right-8 z-30 group flex items-center gap-3 rounded-full bg-gradient-to-r from-orange-600 to-orange-500 px-6 py-4 font-semibold text-white shadow-2xl shadow-orange-500/40 transition-all hover:scale-105 hover:shadow-orange-500/60'
-                title='View example prompts'
+                title='View example prompts (Ctrl+K)'
               >
                 <Sparkles className='h-5 w-5 transition-transform group-hover:rotate-12' />
                 <span className='hidden sm:inline'>Example Prompts</span>
@@ -423,6 +449,27 @@ export default function CreateAgentNLP() {
           </AnimatePresence>
         </div>
       </SideBarLayout>
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(23, 23, 23, 0.3);
+          border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(245, 158, 11, 0.3);
+          border-radius: 4px;
+          transition: background 0.2s;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(245, 158, 11, 0.5);
+        }
+      `}</style>
     </>
   )
 }

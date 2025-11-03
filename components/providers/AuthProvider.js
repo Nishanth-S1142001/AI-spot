@@ -1,7 +1,12 @@
 'use client'
-
 import { useRouter } from 'next/navigation'
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback
+} from 'react'
 import { dbClient } from '../../lib/supabase/dbClient'
 import { createSupabaseClient } from '../../lib/supabase/supabaseClient'
 
@@ -23,41 +28,41 @@ export function AuthProvider({ children }) {
   const router = useRouter()
 
   // ✅ FIXED: Add all dependencies to useCallback
-  const fetchProfile = useCallback(async (userId) => {
-    try {
-      let data = await dbClient.getProfile(userId)
-      if (!data) {
-        const { data: newProfile, error } = await supabase
-          .from('profiles')
-          .insert({
-            id: userId,
-            email: user?.email,
-            full_name: user?.user_metadata?.full_name || ''
-          })
-          .select()
-          .single()
-
-        if (error) throw error
-        data = newProfile
+  const fetchProfile = useCallback(
+    async (userId) => {
+      try {
+        let data = await dbClient.getProfile(userId)
+        if (!data) {
+          const { data: newProfile, error } = await supabase
+            .from('profiles')
+            .insert({
+              id: userId,
+              email: user?.email,
+              full_name: user?.user_metadata?.full_name || ''
+            })
+            .select()
+            .single()
+          if (error) throw error
+          data = newProfile
+        }
+        setProfile(data)
+      } catch (error) {
+        console.error('Error fetching profile:', error)
       }
-      setProfile(data)
-    } catch (error) {
-      console.error('Error fetching profile:', error)
-    }
-  }, [supabase, user?.email, user?.user_metadata?.full_name])
+    },
+    [supabase, user?.email, user?.user_metadata?.full_name]
+  )
 
+  // ✅ FIX: Separate auth initialization from profile fetching to avoid re-setting loading=true during profile fetch
   useEffect(() => {
     const initializeAuth = async () => {
       try {
         setLoading(true)
-
         const {
           data: { session }
         } = await supabase.auth.getSession()
-
         if (session?.user) {
           setUser(session.user)
-          await fetchProfile(session.user.id)
         } else {
           setUser(null)
           setProfile(null)
@@ -68,7 +73,6 @@ export function AuthProvider({ children }) {
         setLoading(false)
       }
     }
-
     initializeAuth()
 
     const {
@@ -76,16 +80,25 @@ export function AuthProvider({ children }) {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         setUser(session.user)
-        await fetchProfile(session.user.id)
       } else {
         setUser(null)
         setProfile(null)
         router.push('/')
       }
+      // ✅ FIX: Always mark loading as complete after auth state changes
+      setLoading(false)
     })
-
     return () => subscription.unsubscribe()
-  }, [fetchProfile, router, supabase.auth])
+  }, [router, supabase.auth]) // Removed fetchProfile from deps
+
+  // ✅ FIX: Separate useEffect to fetch profile when user changes (runs in background, doesn't affect auth loading)
+  useEffect(() => {
+    if (user?.id) {
+      fetchProfile(user.id)
+    } else {
+      setProfile(null)
+    }
+  }, [user, fetchProfile])
 
   const signUp = async (email, password, fullName, lastName) => {
     const { data, error } = await supabase.auth.signUp({
@@ -129,7 +142,6 @@ export function AuthProvider({ children }) {
         .eq('id', user.id)
         .select()
         .single()
-
       if (error) throw error
       setProfile(data)
       return data

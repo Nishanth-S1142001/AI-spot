@@ -33,24 +33,8 @@ export async function deleteAgent(agentId) {
   return await dbServer.deleteAgent(agentId)
 }
 
-// ─────────────────────────────
-// KNOWLEDGE SOURCES
-// ─────────────────────────────
-export async function addKnowledgeSource(agentId, sourceData) {
-  return await dbServer.addKnowledgeSource(agentId, sourceData)
-}
 
-export async function getKnowledgeSources(agentId) {
-  return await dbServer.getKnowledgeSources(agentId)
-}
 
-export async function updateKnowledgeSource(sourceId, updates) {
-  return await dbServer.updateKnowledgeSource(sourceId, updates)
-}
-
-export async function deleteKnowledgeSource(sourceId) {
-  return await dbServer.deleteKnowledgeSource(sourceId)
-}
 
 // ─────────────────────────────
 // CONVERSATIONS
@@ -495,14 +479,11 @@ export async function getBookingStats(agentId, dateFrom, dateTo) {
 export async function checkConversationExists(agentId, sessionId) {
   return await dbServer.checkConversationExists(agentId, sessionId)
 }
- 
 
 // ============================================================================
 // SUB-ACCOUNTS SERVER ACTIONS
 // Add these to your existing actions/agents.js file
 // ============================================================================
-
- 
 
 // ─────────────────────────────
 // TEST ACCOUNTS
@@ -609,7 +590,11 @@ export async function logTestAnalytics(analyticsData) {
 }
 
 export async function getTestAccountAnalytics(testAccountId, dateFrom, dateTo) {
-  return await subAccountsDb.getTestAccountAnalytics(testAccountId, dateFrom, dateTo)
+  return await subAccountsDb.getTestAccountAnalytics(
+    testAccountId,
+    dateFrom,
+    dateTo
+  )
 }
 
 export async function getTestAgentAnalytics(agentId, dateFrom, dateTo) {
@@ -622,4 +607,27 @@ export async function getTestAccountStats(testAccountId) {
 
 export async function getAgentTestStats(agentId, userId) {
   return await subAccountsDb.getAgentTestStats(agentId, userId)
+}
+
+// ─────────────────────────────
+// KNOWLEDGE SOURCES
+// ─────────────────────────────
+
+
+export async function verifyAgentOwnership(agentId, userId) {
+  return await dbServer.verifyAgentOwnership(agentId, userId)
+}
+
+export async function addKnowledgeSource(agentId, sourceData) {
+  return await dbServer.addKnowledgeSource(agentId, sourceData)
+}
+
+export async function updateKnowledgeSource(sourceId, updates) {
+  return await dbServer.updateKnowledgeSource(sourceId, updates)
+}
+export async function getKnowledgeSources(agentId) {
+  return await dbServer.getKnowledgeSources(agentId)
+}
+export async function deleteKnowledgeSource(sourceId, agentId) {
+  return await dbServer.deleteKnowledgeSource(sourceId, agentId)
 }

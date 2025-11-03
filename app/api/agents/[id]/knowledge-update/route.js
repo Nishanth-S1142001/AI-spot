@@ -1,114 +1,113 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { VectorDB } from '../../../../../lib/vector/vectordb'
+import {
+  verifyAgentOwnership,
+  addKnowledgeSource,
+  updateKnowledgeSource
+} from '../../../../actions/agents'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-/**
- * API Route Handler for updating an agent's knowledge base via AI instructions.
- * Path: /api/v1/agents/[id]/knowledge-update
- */
 export async function POST(req, { params }) {
-  const { id } = params // The agent ID from the URL path
+  const { id: agentId } = await params
 
   try {
-    // 1. Extract data from the client-side request body
     const body = await req.json()
-    const {
-      instruction, // Expected from client-side `instructionText`
-      currentKnowledge, // Expected from client-side `botBody`
-      userId
-    } = body
+    const { instructions, userId } = body
 
-    // 2. Validate required fields
-    if (!instruction || !currentKnowledge) {
+    if (!instructions || !userId) {
       return NextResponse.json(
-        {
-          error:
-            'Missing instruction or current knowledge content to make changes to the bot.'
-        },
+        { error: 'Instructions and user ID are required' },
         { status: 400 }
       )
     }
 
-    // 3. Prepare the Prompt for OpenAI
-    // The client sends instruction as a single string, so joining arrays isn't strictly necessary,
-    // but we can keep the defensive logic for robustness.
-    const joinedInstruction = instruction.trim()
-    const joinedContent = currentKnowledge.trim()
+    // Verify ownership
+    const agent = await verifyAgentOwnership(agentId, userId)
+    if (!agent) {
+      return NextResponse.json(
+        { error: 'Agent not found or unauthorized' },
+        { status: 404 }
+      )
+    }
 
-    // 4. Call OpenAI to modify the content
+    // Convert to structured knowledge
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
-          content:
-            'You are a helpful assistant that makes changes to the content provided in the CURRENT KNOWLEDGE section by strictly applying the instruction provided by the user in the INSTRUCTION section. Only return the revised knowledge content, nothing else.'
+          content: `Convert user instructions into clear, structured knowledge entries. Return ONLY the knowledge content, no meta-commentary.`
         },
         {
           role: 'user',
-          content: `CURRENT KNOWLEDGE:\n\n${joinedContent}\n\nINSTRUCTION:\n\n${joinedInstruction}`
+          content: `NEW INSTRUCTION:\n${instructions}\n\nConvert this into a clear knowledge base entry.`
         }
       ],
-      max_tokens: 500,
+      max_tokens: 1000,
       temperature: 0.3
     })
 
-    const revisedContent =
-      completion.choices[0]?.message?.content?.trim() || null
+    const structuredKnowledge = completion.choices[0]?.message?.content?.trim()
 
-    if (!revisedContent) {
+    if (!structuredKnowledge) {
       return NextResponse.json(
-        { error: 'AI failed to generate revised content.' },
+        { error: 'Failed to generate knowledge content' },
         { status: 500 }
       )
     }
 
-    // 5. Success Response
-    // The client expects 'knowledge_base' in the response data object.
-    return NextResponse.json(
+    // Create knowledge source
+    const knowledgeSource = await addKnowledgeSource(agentId, {
+      source_type: 'instruction',
+      file_name: `Instruction: ${instructions.substring(0, 50)}...`,
+      content: structuredKnowledge,
+      summary: JSON.stringify({
+        type: 'user_instruction',
+        instruction: instructions,
+        created_at: new Date().toISOString()
+      }),
+      status: 'processing'
+    })
+
+    // Vectorize
+    const vectorResult = await VectorDB.processKnowledgeSource(
+      agentId,
+      knowledgeSource.id,
+      structuredKnowledge,
       {
-        agentId: id,
-        userId: userId,
-        knowledge_base: revisedContent // Match client's expected key
-      },
-      { status: 200 }
+        type: 'user_instruction',
+        instruction: instructions,
+        fileName: knowledgeSource.file_name
+      }
     )
+
+    // Update status
+    await updateKnowledgeSource(knowledgeSource.id, {
+      status: 'completed',
+      vector_count: vectorResult.vectorCount,
+      processed_at: new Date().toISOString()
+    })
+
+    console.log(`✅ Created ${vectorResult.vectorCount} vectors`)
+
+    return NextResponse.json({
+      success: true,
+      agentId,
+      userId,
+      knowledgeSource: {
+        id: knowledgeSource.id,
+        vectorCount: vectorResult.vectorCount,
+        chunkCount: vectorResult.chunkCount,
+        content: structuredKnowledge.substring(0, 200) + '...'
+      }
+    })
   } catch (error) {
-    console.error(
-      `❌ Error processing knowledge update for agent ${params.id}:`,
-      error
-    )
-
-    // Add logging here if needed, similar to the chat logic
-    // try {
-    //     await dbClient.logAnalytics(id, 'knowledge_update_failed', { error: error.message, userId })
-    // } catch (logError) {
-    //     console.error('Error logging failed analytics:', logError)
-    // }
-
+    console.error(`❌ Error:`, error)
     return NextResponse.json(
-      {
-        error:
-          error.message ||
-          'An internal server error occurred during content revision.',
-        details:
-          process.env.NODE_ENV === 'development' ? error.message : undefined
-      },
+      { error: error.message || 'Internal error' },
       { status: 500 }
     )
   }
-}
-
-// OPTIONS handler for CORS (Good practice for Next.js API routes)
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Max-Age': '86400'
-    }
-  })
 }

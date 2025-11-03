@@ -1,7 +1,3 @@
-// Complete continuation with the full optimized Sub-Accounts Management Page
-// This is part 1 - includes all imports, state, and main component structure
-// File too large - splitting into logical sections
-
 'use client'
 
 import {
@@ -24,12 +20,19 @@ import {
   Zap
 } from 'lucide-react'
 import { useParams, useRouter } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { dbClient } from '../../../../lib/supabase/dbClient'
+import { useCallback, useMemo, useState, useEffect } from 'react'
 import LoadingState from '../../../../components/common/loading-state'
 import Pagination from '../../../../components/common/pagination'
 import SearchBar from '../../../../components/common/search-bar'
 import { useAuth } from '../../../../components/providers/AuthProvider'
+import {
+  useAgent,
+  useTestAccounts,
+  useCreateTestAccount,
+  useDeleteTestAccount,
+  useUpdateTestAccount,
+  useCopyTestLink,
+} from '../../../../lib/hooks/useAgentData'
 import NeonBackground from '../../../../components/ui/background'
 import Button from '../../../../components/ui/button'
 import Card from '../../../../components/ui/card'
@@ -42,29 +45,17 @@ const SubAccountCard = ({
   account,
   onDelete,
   onCopyLink,
-  onResendInvite,
-  onToggleStatus
+  onToggleStatus,
+  isDeleting,
+  isUpdating
 }) => {
   const [copied, setCopied] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [showActions, setShowActions] = useState(false)
 
   const handleCopy = async () => {
-    await onCopyLink(account)
+    await onCopyLink(account.testLink)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
-  }
-
-  const handleResend = async () => {
-    setLoading(true)
-    await onResendInvite(account)
-    setLoading(false)
-  }
-
-  const handleToggle = async () => {
-    setLoading(true)
-    await onToggleStatus(account)
-    setLoading(false)
   }
 
   const getStatusColor = () => {
@@ -96,6 +87,8 @@ const SubAccountCard = ({
         return null
     }
   }
+
+  const isLoading = isDeleting || isUpdating
 
   return (
     <div className='group relative rounded-lg border border-neutral-800/50 bg-gradient-to-br from-neutral-900/40 to-neutral-950/20 p-5 transition-all hover:border-orange-600/30 hover:from-orange-900/10'>
@@ -153,7 +146,7 @@ const SubAccountCard = ({
         <Button
           size='sm'
           onClick={handleCopy}
-          disabled={loading}
+          disabled={isLoading}
           className='flex-1'
         >
           {copied ? (
@@ -172,7 +165,8 @@ const SubAccountCard = ({
         <div className='relative'>
           <button
             onClick={() => setShowActions(!showActions)}
-            className='flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-700 bg-neutral-800/50 text-neutral-400 transition-colors hover:border-neutral-600 hover:bg-neutral-800'
+            disabled={isLoading}
+            className='flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-700 bg-neutral-800/50 text-neutral-400 transition-colors hover:border-neutral-600 hover:bg-neutral-800 disabled:opacity-50'
           >
             <MoreVertical className='h-4 w-4' />
           </button>
@@ -185,20 +179,13 @@ const SubAccountCard = ({
                 onClick={() => setShowActions(false)}
               />
               <div className='absolute top-10 right-0 z-20 w-48 rounded-lg border border-neutral-700 bg-neutral-900 py-1 shadow-xl'>
-                {account.status === 'invited' && (
-                  <button
-                    onClick={handleResend}
-                    disabled={loading}
-                    className='flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-neutral-300 hover:bg-neutral-800'
-                  >
-                    <Mail className='h-4 w-4' />
-                    Resend Invite
-                  </button>
-                )}
                 <button
-                  onClick={handleToggle}
-                  disabled={loading}
-                  className='flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-neutral-300 hover:bg-neutral-800'
+                  onClick={() => {
+                    setShowActions(false)
+                    onToggleStatus(account)
+                  }}
+                  disabled={isLoading}
+                  className='flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-neutral-300 hover:bg-neutral-800 disabled:opacity-50'
                 >
                   {account.is_active ? (
                     <>
@@ -217,7 +204,8 @@ const SubAccountCard = ({
                     setShowActions(false)
                     onDelete(account.id)
                   }}
-                  className='flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-400 hover:bg-red-900/20'
+                  disabled={isLoading}
+                  className='flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-400 hover:bg-red-900/20 disabled:opacity-50'
                 >
                   <Trash2 className='h-4 w-4' />
                   Delete
@@ -242,7 +230,7 @@ const SubAccountCard = ({
 /**
  * Invite Modal Component
  */
-const InviteModal = ({ isOpen, onClose, onInvite, agentId }) => {
+const InviteModal = ({ isOpen, onClose, onInvite, isLoading }) => {
   const [inviteData, setInviteData] = useState({
     name: '',
     email: '',
@@ -251,7 +239,6 @@ const InviteModal = ({ isOpen, onClose, onInvite, agentId }) => {
     sendEmail: true,
     notes: ''
   })
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   const handleSubmit = async (e) => {
@@ -263,9 +250,9 @@ const InviteModal = ({ isOpen, onClose, onInvite, agentId }) => {
       return
     }
 
-    setLoading(true)
     try {
       await onInvite(inviteData)
+      // Reset form on success
       setInviteData({
         name: '',
         email: '',
@@ -274,10 +261,9 @@ const InviteModal = ({ isOpen, onClose, onInvite, agentId }) => {
         sendEmail: true,
         notes: ''
       })
+      onClose()
     } catch (err) {
       setError(err.message || 'Failed to send invite')
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -413,16 +399,16 @@ const InviteModal = ({ isOpen, onClose, onInvite, agentId }) => {
               variant='outline'
               className='flex-1'
               onClick={onClose}
-              disabled={loading}
+              disabled={isLoading}
             >
               Cancel
             </Button>
             <Button
               type='submit'
               className='flex-1'
-              disabled={loading || !inviteData.name || !inviteData.email}
+              disabled={isLoading || !inviteData.name || !inviteData.email}
             >
-              {loading ? (
+              {isLoading ? (
                 <>
                   <RefreshCw className='mr-2 h-4 w-4 animate-spin' />
                   Sending...
@@ -447,68 +433,35 @@ const InviteModal = ({ isOpen, onClose, onInvite, agentId }) => {
 export default function SubAccountsManagementPage() {
   const { id } = useParams()
   const router = useRouter()
-  const { user, profile, loading: authLoading } = useAuth()
+  const { user, loading: authLoading } = useAuth()
 
-  // State
-  const [agent, setAgent] = useState(null)
-  const [testAccounts, setTestAccounts] = useState([])
-  const [stats, setStats] = useState(null)
-  const [fetching, setFetching] = useState(true)
-  const [error, setError] = useState('')
-  const [isInitialized, setIsInitialized] = useState(false)
-
-  // UI State
+  // UI State - must be declared before any conditional returns
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 9
 
-  // Fetch data
-  const fetchData = useCallback(async () => {
-    if (!user || !id) return
+  // React Query hooks - must be called before any conditional returns
+  const {
+    data: agent,
+    isLoading: agentLoading,
+    error: agentError
+  } = useAgent(id)
 
-    try {
-      setFetching(true)
-      setError('')
+  const {
+    data: { testAccounts = [], stats = {} } = {},
+    isLoading: accountsLoading,
+    error: accountsError,
+    refetch: refetchAccounts
+  } = useTestAccounts(id)
 
-      // Fetch agent
-      const agentData = await dbClient.getAgent(id)
-      if (!agentData) {
-        throw new Error('Agent not found')
-      }
-      setAgent(agentData)
+  const createAccountMutation = useCreateTestAccount(id)
+  const deleteAccountMutation = useDeleteTestAccount(id)
+  const updateAccountMutation = useUpdateTestAccount(id)
+  const copyLinkMutation = useCopyTestLink()
 
-      // Fetch test accounts
-      const response = await fetch(`/api/agents/${id}/test-accounts`, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch test accounts')
-      }
-
-      const data = await response.json()
-      setTestAccounts(data.testAccounts || [])
-      setStats(data.stats || {})
-    } catch (err) {
-      console.error('Error fetching data:', err)
-      setError(err.message)
-    } finally {
-      setFetching(false)
-      setIsInitialized(true)
-    }
-  }, [id, user])
-
-  useEffect(() => {
-    if (user && id) {
-      fetchData()
-    }
-  }, [user, id, fetchData])
-
-  // Filter and paginate
+  // Filter and paginate - must be before conditional returns
   const filteredAccounts = useMemo(() => {
     let filtered = testAccounts
 
@@ -535,108 +488,64 @@ export default function SubAccountsManagementPage() {
     return filteredAccounts.slice(start, start + itemsPerPage)
   }, [filteredAccounts, currentPage, itemsPerPage])
 
-  const totalPages = Math.ceil(filteredAccounts.length / itemsPerPage)
+  const totalPages = useMemo(
+    () => Math.ceil(filteredAccounts.length / itemsPerPage),
+    [filteredAccounts.length, itemsPerPage]
+  )
 
-  // Handlers
-  const handleInvite = async (inviteData) => {
-    try {
-      const response = await fetch(`/api/agents/${id}/test-accounts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(inviteData)
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to create test account')
-      }
-
-      const data = await response.json()
-
-      // Show success message
-      alert(
-        data.emailSent
-          ? 'Test account created and invitation sent!'
-          : 'Test account created but email failed to send. You can manually share the test link.'
-      )
-
+  // Handlers - must be before conditional returns
+  const handleInvite = useCallback(
+    async (inviteData) => {
+      await createAccountMutation.mutateAsync(inviteData)
       setShowInviteModal(false)
-      fetchData()
-    } catch (err) {
-      throw err
-    }
-  }
+    },
+    [createAccountMutation]
+  )
 
-  const handleCopyLink = async (account) => {
-    try {
-      await navigator.clipboard.writeText(account.testLink)
-    } catch (err) {
-      console.error('Failed to copy:', err)
-    }
-  }
+  const handleCopyLink = useCallback(
+    (link) => {
+      copyLinkMutation.mutate(link)
+    },
+    [copyLinkMutation]
+  )
 
-  const handleDelete = async (accountId) => {
-    if (
-      !confirm(
-        'Are you sure you want to delete this test account? This will also delete all associated sessions and data.'
-      )
-    ) {
-      return
-    }
-
-    try {
-      const response = await fetch(
-        `/api/agents/${id}/test-accounts/${accountId}`,
-        {
-          method: 'DELETE'
-        }
-      )
-
-      if (!response.ok) {
-        throw new Error('Failed to delete test account')
+  const handleDelete = useCallback(
+    (accountId) => {
+      if (
+        !confirm(
+          'Are you sure you want to delete this test account? This will also delete all associated sessions and data.'
+        )
+      ) {
+        return
       }
+      deleteAccountMutation.mutate(accountId)
+    },
+    [deleteAccountMutation]
+  )
 
-      alert('Test account deleted successfully')
-      fetchData()
-    } catch (err) {
-      alert('Failed to delete test account: ' + err.message)
-    }
-  }
-
-  const handleResendInvite = async (account) => {
-    // TODO: Implement resend invitation
-    alert('Resend invitation functionality coming soon!')
-  }
-
-  const handleToggleStatus = async (account) => {
-    try {
-      const newStatus = account.is_active ? 'suspended' : 'active'
-
-      const response = await fetch(
-        `/api/agents/${id}/test-accounts/${account.id}`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            is_active: !account.is_active,
-            status: newStatus
-          })
+  const handleToggleStatus = useCallback(
+    (account) => {
+      updateAccountMutation.mutate({
+        accountId: account.id,
+        updates: {
+          is_active: !account.is_active,
+          status: account.is_active ? 'suspended' : 'active'
         }
-      )
+      })
+    },
+    [updateAccountMutation]
+  )
 
-      if (!response.ok) {
-        throw new Error('Failed to update test account')
-      }
-
-      alert('Test account updated successfully')
-      fetchData()
-    } catch (err) {
-      alert('Failed to update test account: ' + err.message)
+  // NOW we can do conditional returns - after all hooks are called
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/')
     }
-  }
+  }, [authLoading, user, router])
 
   // Loading state
-  if (authLoading || (fetching && !isInitialized)) {
+  if (authLoading || agentLoading || accountsLoading) {
     return (
       <LoadingState
         message='Loading test accounts...'
@@ -645,23 +554,24 @@ export default function SubAccountsManagementPage() {
     )
   }
 
-  // Error state
-  if (error) {
+  // Handle errors
+  if (agentError || accountsError) {
+    const error = agentError || accountsError
     return (
       <div className='flex min-h-screen items-center justify-center bg-neutral-900 font-mono'>
         <Card className='max-w-md border-red-600/30 bg-gradient-to-br from-red-900/20 to-neutral-950/50'>
-          <div className='text-center'>
+          <div className='p-8 text-center'>
             <div className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-900/40'>
               <AlertCircle className='h-8 w-8 text-red-400' />
             </div>
             <h3 className='mb-2 text-xl font-bold text-neutral-100'>Error</h3>
-            <p className='text-sm text-neutral-400'>{error}</p>
-            <div className='mt-6 flex gap-3'>
+            <p className='text-sm text-neutral-400'>{error.message}</p>
+            <div className='mt-6 flex gap-3 justify-center'>
               <Button variant='outline' onClick={() => router.push('/agents')}>
                 <ArrowLeft className='mr-2 h-4 w-4' />
                 Back to Agents
               </Button>
-              <Button onClick={fetchData}>
+              <Button onClick={() => refetchAccounts()}>
                 <RefreshCw className='mr-2 h-4 w-4' />
                 Retry
               </Button>
@@ -670,6 +580,17 @@ export default function SubAccountsManagementPage() {
         </Card>
       </div>
     )
+  }
+
+  if (!agent) {
+    return (
+      <LoadingState message='Agent not found...' className='min-h-screen' />
+    )
+  }
+
+  // Don't render if not authenticated
+  if (!user) {
+    return null
   }
 
   return (
@@ -692,7 +613,7 @@ export default function SubAccountsManagementPage() {
                     <span className='text-orange-400'>Test</span> Accounts
                   </h1>
                   <p className='text-sm text-neutral-400'>
-                    {agent?.name} • Manage customer testing access
+                    {agent.name} • Manage customer testing access
                   </p>
                 </div>
               </div>
@@ -711,76 +632,76 @@ export default function SubAccountsManagementPage() {
             {/* Stats Cards */}
             <div className='mb-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4'>
               <Card className='border-orange-600/20 bg-gradient-to-br from-orange-900/20 to-neutral-950/50'>
-                <div className='flex items-center justify-between'>
+                <div className='p-4 flex items-center justify-between'>
                   <div>
                     <p className='text-sm font-medium text-neutral-400'>
                       Total Accounts
                     </p>
                     <p className='mt-2 text-3xl font-bold text-orange-400'>
-                      {stats?.totalTestAccounts || 0}
+                      {stats.totalTestAccounts || 0}
                     </p>
+                    <div className='mt-4 text-xs text-neutral-500'>
+                      Active: {stats.activeAccounts || 0}
+                    </div>
                   </div>
                   <div className='flex h-12 w-12 items-center justify-center rounded-full bg-orange-900/40'>
                     <Users className='h-6 w-6 text-orange-400' />
                   </div>
                 </div>
-                <div className='mt-4 text-xs text-neutral-500'>
-                  Active: {stats?.activeAccounts || 0}
-                </div>
               </Card>
 
               <Card className='border-blue-600/20 bg-gradient-to-br from-blue-900/20 to-neutral-950/50'>
-                <div className='flex items-center justify-between'>
+                <div className='p-4 flex items-center justify-between'>
                   <div>
                     <p className='text-sm font-medium text-neutral-400'>
                       Test Sessions
                     </p>
                     <p className='mt-2 text-3xl font-bold text-blue-400'>
-                      {stats?.totalSessions || 0}
+                      {stats.totalSessions || 0}
                     </p>
+                    <div className='mt-4 text-xs text-neutral-500'>All time</div>
                   </div>
                   <div className='flex h-12 w-12 items-center justify-center rounded-full bg-blue-900/40'>
                     <MessageSquare className='h-6 w-6 text-blue-400' />
                   </div>
                 </div>
-                <div className='mt-4 text-xs text-neutral-500'>All time</div>
               </Card>
 
               <Card className='border-green-600/20 bg-gradient-to-br from-green-900/20 to-neutral-950/50'>
-                <div className='flex items-center justify-between'>
+                <div className='p-4 flex items-center justify-between'>
                   <div>
                     <p className='text-sm font-medium text-neutral-400'>
                       Avg Rating
                     </p>
                     <p className='mt-2 text-3xl font-bold text-green-400'>
-                      {stats?.avgRating || 0}
+                      {stats.avgRating || 0}
                     </p>
+                    <div className='mt-4 text-xs text-neutral-500'>
+                      Out of 5 stars
+                    </div>
                   </div>
                   <div className='flex h-12 w-12 items-center justify-center rounded-full bg-green-900/40'>
                     <TrendingUp className='h-6 w-6 text-green-400' />
                   </div>
                 </div>
-                <div className='mt-4 text-xs text-neutral-500'>
-                  Out of 5 stars
-                </div>
               </Card>
 
               <Card className='border-purple-600/20 bg-gradient-to-br from-purple-900/20 to-neutral-950/50'>
-                <div className='flex items-center justify-between'>
+                <div className='p-4 flex items-center justify-between'>
                   <div>
                     <p className='text-sm font-medium text-neutral-400'>
                       Total Messages
                     </p>
                     <p className='mt-2 text-3xl font-bold text-purple-400'>
-                      {stats?.totalMessages || 0}
+                      {stats.totalMessages || 0}
                     </p>
+                    <div className='mt-4 text-xs text-neutral-500'>
+                      Across all sessions
+                    </div>
                   </div>
                   <div className='flex h-12 w-12 items-center justify-center rounded-full bg-purple-900/40'>
                     <Zap className='h-6 w-6 text-purple-400' />
                   </div>
-                </div>
-                <div className='mt-4 text-xs text-neutral-500'>
-                  Across all sessions
                 </div>
               </Card>
             </div>
@@ -874,8 +795,9 @@ export default function SubAccountsManagementPage() {
                       account={account}
                       onDelete={handleDelete}
                       onCopyLink={handleCopyLink}
-                      onResendInvite={handleResendInvite}
                       onToggleStatus={handleToggleStatus}
+                      isDeleting={deleteAccountMutation.isPending}
+                      isUpdating={updateAccountMutation.isPending}
                     />
                   ))}
                 </div>
@@ -902,7 +824,7 @@ export default function SubAccountsManagementPage() {
         isOpen={showInviteModal}
         onClose={() => setShowInviteModal(false)}
         onInvite={handleInvite}
-        agentId={id}
+        isLoading={createAccountMutation.isPending}
       />
     </>
   )

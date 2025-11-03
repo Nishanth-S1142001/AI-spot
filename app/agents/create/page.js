@@ -6,12 +6,10 @@ import {
   CircleArrowRight,
   FileText,
   Link as LinkIcon,
-  Upload,
-  X
+  Loader2
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useDropzone } from 'react-dropzone'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import LoadingState from '../../../components/common/loading-state'
 import NavigationBar from '../../../components/navigationBar/navigationBar'
@@ -21,7 +19,12 @@ import Button from '../../../components/ui/button'
 import Card from '../../../components/ui/card'
 import FormInput from '../../../components/ui/formInputField'
 import { useLogout } from '../../../lib/supabase/auth'
-import { addKnowledgeSource, createAgent } from '../../actions/agents'
+import KnowledgeUploadSection from '../../../components/KnowledgeUploadSection'
+import {
+  useCreateAgent,
+  useFinalizeAgent,
+  useKnowledgeSources,
+} from '../../../lib/hooks/useAgentData'
 
 // ==================== CONSTANTS ====================
 const TONES = [
@@ -87,7 +90,6 @@ const DOMAINS = [
   }
 ]
 
-// ✅ FIXED: Enhanced color mapping with better visibility
 const DOMAIN_COLOR_MAP = {
   blue: {
     gradient: 'from-blue-900/50 to-blue-950/30',
@@ -132,22 +134,19 @@ const DOMAIN_COLOR_MAP = {
 }
 
 // Generate system prompt
-const generateSystemPrompt = (formData, domains) => {
+const generateSystemPrompt = (formData, domains, knowledgeSourcesCount) => {
   const selectedDomain = domains.find((d) => d.id === formData.domain)
   const domainPrompt = selectedDomain?.prompt || ''
-  const knowledgeBase = formData.knowledgeSources
-    .map((s) => s.summary)
-    .join('\n')
 
   return `Your name is ${formData.name}.
 You are an AI ${selectedDomain?.name || formData.domain} assistant with a ${formData.tone} tone.
 
 ${domainPrompt}
 
-Knowledge Base:
-${knowledgeBase || 'No knowledge sources added yet.'}
+You have access to a knowledge base with ${knowledgeSourcesCount} source(s).
+When users ask questions, you will automatically search this knowledge base and provide accurate information based on the most relevant content.
 
-Always be helpful, accurate, and stay in character.`
+Always cite your sources when using information from the knowledge base.`
 }
 
 // ==================== MAIN COMPONENT ====================
@@ -156,31 +155,42 @@ export default function CreateAgent() {
   const { user, profile, loading: authLoading } = useAuth()
   const { logout } = useLogout()
 
-  const hasInitialized = useRef(false)
-  const processingRef = useRef(false)
+  // React Query mutations
+  const createAgentMutation = useCreateAgent()
+  const finalizeAgentMutation = useFinalizeAgent()
 
   // State
   const [step, setStep] = useState(1)
-  const [isProcessingContent, setIsProcessingContent] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [createdAgent, setCreatedAgent] = useState(null)
   const [formData, setFormData] = useState({
     name: '',
     domain: '',
-    tone: 'friendly',
-    knowledgeSources: []
+    tone: 'friendly'
   })
+
+  // Knowledge sources from React Query (only after agent created)
+  const {
+    data: knowledgeSources = [],
+    isLoading: sourcesLoading
+  } = useKnowledgeSources(createdAgent?.id, user?.id)
 
   // Prompt state
   const [prompt, setPrompt] = useState('')
   const [draft, setDraft] = useState('')
   const [isEditing, setIsEditing] = useState(false)
   const [promptError, setPromptError] = useState('')
-  const [websiteUrl, setWebsiteUrl] = useState('')
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/')
+    }
+  }, [authLoading, user, router])
 
   // Memoized system prompt
   const systemPrompt = useMemo(
-    () => generateSystemPrompt(formData, DOMAINS),
-    [formData]
+    () => generateSystemPrompt(formData, DOMAINS, knowledgeSources.length),
+    [formData, knowledgeSources.length]
   )
 
   // Sync prompt with system prompt
@@ -191,126 +201,73 @@ export default function CreateAgent() {
     }
   }, [systemPrompt, isEditing])
 
-  // Auth check
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/')
-    }
-  }, [authLoading, user, router])
-
-  // Memoized callbacks
+  // Callbacks
   const updateForm = useCallback((key, value) => {
     setFormData((prev) => ({ ...prev, [key]: value }))
   }, [])
 
-  const removeKnowledgeSource = useCallback((idToRemove) => {
-    setFormData((prev) => ({
-      ...prev,
-      knowledgeSources: prev.knowledgeSources.filter((s) => s.id !== idToRemove)
-    }))
-    toast.success('Knowledge source removed')
-  }, [])
+  // Handle next to step 2 - creates draft agent
+  const handleNextToStep2 = useCallback(async () => {
+    if (!formData.name.trim()) {
+      toast.error('Please enter an agent name')
+      return
+    }
+    if (!formData.domain) {
+      toast.error('Please select a domain')
+      return
+    }
 
-  // PDF upload
-  const onDrop = useCallback(async (acceptedFiles) => {
-    if (processingRef.current) return
-
-    const file = acceptedFiles[0]
-    if (!file) return toast.error('No file selected')
-    if (file.type !== 'application/pdf') return toast.error('PDF only!')
-    if (file.size > 10 * 1024 * 1024)
-      return toast.error('File size must be < 10MB')
-
-    processingRef.current = true
-    setIsProcessingContent(true)
+    // If agent already created, just go to step 2
+    if (createdAgent) {
+      setStep(2)
+      return
+    }
 
     try {
-      const formDataObj = new FormData()
-      formDataObj.append('file', file)
+      const draftAgentData = {
+        user_id: user.id,
+        name: formData.name,
+        domain: formData.domain,
+        tone: formData.tone,
+        system_prompt: systemPrompt,
+        is_active: false // Draft mode
+      }
 
-      const response = await fetch('/api/extract-pdf', {
-        method: 'POST',
-        body: formDataObj
+      const newAgent = await createAgentMutation.mutateAsync({
+        userId: user.id,
+        agentData: draftAgentData
       })
 
-      if (!response.ok) throw new Error('Failed to extract PDF')
-
-      const data = await response.json()
-      const newSource = {
-        id: Date.now().toString(),
-        type: 'pdf',
-        name: file.name,
-        summary: data.text || '',
-        file_name: file.name
-      }
-
-      setFormData((prev) => ({
-        ...prev,
-        knowledgeSources: [...prev.knowledgeSources, newSource]
-      }))
-
-      toast.success('PDF processed successfully!')
-    } catch (err) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('PDF processing error:', err)
-      }
-      toast.error('Failed to process PDF')
-    } finally {
-      processingRef.current = false
-      setIsProcessingContent(false)
+      setCreatedAgent(newAgent)
+      setStep(2)
+    } catch (error) {
+      console.error('Error creating draft agent:', error)
+      // Error already handled by mutation
     }
-  }, [])
+  }, [formData, user, createdAgent, systemPrompt, createAgentMutation])
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: { 'application/pdf': ['.pdf'] },
-    maxFiles: 1,
-    disabled: isProcessingContent
-  })
-
-  // Website scraper
-  const handleAddWebsite = useCallback(async () => {
-    if (!websiteUrl.trim()) return toast.error('Please enter a website URL')
-    if (processingRef.current) return
-
-    processingRef.current = true
-    setIsProcessingContent(true)
+  // Handle final save - activates agent
+  const handleSave = useCallback(async () => {
+    if (!createdAgent) {
+      toast.error('Agent not created yet')
+      return
+    }
 
     try {
-      const response = await fetch('/api/scrape-website', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: websiteUrl })
+      await finalizeAgentMutation.mutateAsync({
+        agentId: createdAgent.id,
+        updates: {
+          is_active: true,
+          system_prompt: prompt
+        }
       })
 
-      if (!response.ok) throw new Error('Failed to scrape website')
-
-      const data = await response.json()
-      const newSource = {
-        id: Date.now().toString(),
-        type: 'url',
-        name: websiteUrl,
-        summary: data.content || '',
-        source_url: websiteUrl
-      }
-
-      setFormData((prev) => ({
-        ...prev,
-        knowledgeSources: [...prev.knowledgeSources, newSource]
-      }))
-
-      setWebsiteUrl('')
-      toast.success('Website scraped successfully!')
-    } catch (err) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Website scraping error:', err)
-      }
-      toast.error('Failed to scrape website')
-    } finally {
-      processingRef.current = false
-      setIsProcessingContent(false)
+      router.push(`/agents/${createdAgent.id}/manage`)
+    } catch (error) {
+      console.error('Error finalizing agent:', error)
+      // Error already handled by mutation
     }
-  }, [websiteUrl])
+  }, [createdAgent, prompt, router, finalizeAgentMutation])
 
   // Prompt handlers
   const handlePromptSave = useCallback(() => {
@@ -330,53 +287,7 @@ export default function CreateAgent() {
     setPromptError('')
   }, [prompt])
 
-  // Save agent
-  const handleSave = useCallback(async () => {
-    if (!formData.name.trim()) return toast.error('Please enter an agent name')
-    if (!formData.domain) return toast.error('Please select a domain')
-
-    setSaving(true)
-    try {
-      const agentData = {
-        user_id: user.id,
-        name: formData.name,
-        domain: formData.domain,
-        tone: formData.tone,
-        system_prompt: prompt,
-        is_active: true
-      }
-
-      const newAgent = await createAgent(agentData)
-
-      // Add knowledge sources if any
-      if (formData.knowledgeSources.length > 0) {
-        await Promise.all(
-          formData.knowledgeSources.map((source) =>
-            addKnowledgeSource({
-              agent_id: newAgent.id,
-              source_type: source.type,
-              source_url: source.source_url || null,
-              file_name: source.file_name || null,
-              content: source.summary,
-              metadata: {}
-            })
-          )
-        )
-      }
-
-      toast.success('Agent created successfully!')
-      router.push(`/agents/${newAgent.id}/manage`)
-    } catch (err) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Error creating agent:', err)
-      }
-      toast.error('Failed to create agent')
-    } finally {
-      setSaving(false)
-    }
-  }, [formData, prompt, user, router])
-
-  // ✅ FIXED: Get domain colors with enhanced styling
+  // Get domain colors
   const getDomainColorClasses = useCallback((domainId, isSelected) => {
     const domain = DOMAINS.find((d) => d.id === domainId)
     const colors = DOMAIN_COLOR_MAP[domain?.color] || DOMAIN_COLOR_MAP.blue
@@ -392,6 +303,9 @@ export default function CreateAgent() {
   if (authLoading) {
     return <LoadingState message='Authenticating...' className='min-h-screen' />
   }
+
+  const isCreatingAgent = createAgentMutation.isPending
+  const isFinalizingAgent = finalizeAgentMutation.isPending
 
   return (
     <>
@@ -466,10 +380,11 @@ export default function CreateAgent() {
                       value={formData.name}
                       onChange={(e) => updateForm('name', e.target.value)}
                       placeholder='e.g., Sales Assistant, Support Bot...'
+                      disabled={isCreatingAgent}
                     />
                   </div>
 
-                  {/* Domain Selection - ENHANCED */}
+                  {/* Domain Selection */}
                   <div>
                     <label className='mb-3 block text-sm font-medium text-neutral-200'>
                       Select Domain *
@@ -485,8 +400,8 @@ export default function CreateAgent() {
                             className={`group cursor-pointer border transition-all duration-300 hover:scale-105 ${getDomainColorClasses(
                               domain.id,
                               isSelected
-                            )}`}
-                            onClick={() => updateForm('domain', domain.id)}
+                            )} ${isCreatingAgent ? 'opacity-50 pointer-events-none' : ''}`}
+                            onClick={() => !isCreatingAgent && updateForm('domain', domain.id)}
                           >
                             <div className='flex items-center gap-3 p-4'>
                               <div
@@ -536,7 +451,8 @@ export default function CreateAgent() {
                         <button
                           key={tone.id}
                           onClick={() => updateForm('tone', tone.id)}
-                          className={`rounded-lg border p-3 text-left transition-all hover:scale-105 ${
+                          disabled={isCreatingAgent}
+                          className={`rounded-lg border p-3 text-left transition-all hover:scale-105 disabled:opacity-50 disabled:pointer-events-none ${
                             formData.tone === tone.id
                               ? 'border-orange-600/40 bg-gradient-to-br from-orange-900/40 to-orange-950/20 text-orange-300 ring-2 ring-orange-500/30'
                               : 'border-neutral-700/50 bg-neutral-900/30 text-neutral-400 hover:border-neutral-600/50 hover:bg-neutral-900/50 hover:text-neutral-200'
@@ -553,11 +469,20 @@ export default function CreateAgent() {
 
                   <div className='flex justify-end pt-4'>
                     <Button
-                      onClick={() => setStep(2)}
-                      disabled={!formData.name.trim() || !formData.domain}
+                      onClick={handleNextToStep2}
+                      disabled={!formData.name.trim() || !formData.domain || isCreatingAgent}
                     >
-                      Next
-                      <CircleArrowRight className='ml-2 h-4 w-4' />
+                      {isCreatingAgent ? (
+                        <>
+                          <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                          Creating Draft...
+                        </>
+                      ) : (
+                        <>
+                          Next
+                          <CircleArrowRight className='ml-2 h-4 w-4' />
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -566,99 +491,36 @@ export default function CreateAgent() {
 
             {/* Step 2: Knowledge Base */}
             {step === 2 && (
-              <Card className='border-purple-600/20 shadow-xl'>
+              <Card className='border-blue-600/20 shadow-xl'>
                 <div className='space-y-6 p-6'>
                   <div>
                     <h2 className='text-2xl font-bold text-neutral-100'>
                       Knowledge Base
                     </h2>
                     <p className='mt-1 text-sm text-neutral-400'>
-                      Add documents and websites to train your agent
+                      Add documents and websites to power your agent
                     </p>
                   </div>
 
-                  {/* PDF Upload */}
-                  <div>
-                    <label className='mb-2 block text-sm font-medium text-neutral-200'>
-                      Upload PDF
-                    </label>
-                    <div
-                      {...getRootProps()}
-                      className={`cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-all ${
-                        isDragActive
-                          ? 'border-orange-500 bg-orange-900/20'
-                          : 'border-neutral-700 hover:border-neutral-600 hover:bg-neutral-900/50'
-                      } ${isProcessingContent ? 'cursor-not-allowed opacity-50' : ''}`}
-                    >
-                      <input {...getInputProps()} />
-                      <Upload className='mx-auto h-12 w-12 text-neutral-400' />
-                      <p className='mt-2 text-sm text-neutral-300'>
-                        {isProcessingContent
-                          ? 'Processing PDF...'
-                          : 'Drop PDF here or click to upload'}
-                      </p>
-                      <p className='text-xs text-neutral-500'>Max 10MB</p>
-                    </div>
-                  </div>
-
-                  {/* Website URL */}
-                  <div>
-                    <label className='mb-2 block text-sm font-medium text-neutral-200'>
-                      Add Website
-                    </label>
-                    <div className='flex gap-2'>
-                      <FormInput
-                        value={websiteUrl}
-                        onChange={(e) => setWebsiteUrl(e.target.value)}
-                        placeholder='https://example.com'
-                        disabled={isProcessingContent}
-                      />
-                      <Button
-                        onClick={handleAddWebsite}
-                        disabled={!websiteUrl.trim() || isProcessingContent}
-                        variant='secondary'
-                      >
-                        {isProcessingContent ? 'Adding...' : 'Add'}
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Knowledge Sources List */}
-                  {formData.knowledgeSources.length > 0 && (
-                    <div>
-                      <label className='mb-3 block text-sm font-medium text-neutral-200'>
-                        Added Sources ({formData.knowledgeSources.length})
-                      </label>
-                      <div className='space-y-2'>
-                        {formData.knowledgeSources.map((source) => (
-                          <div
-                            key={source.id}
-                            className='flex items-center justify-between rounded-lg border border-neutral-700 bg-neutral-900/50 p-3 transition-all hover:bg-neutral-900'
-                          >
-                            <div className='flex items-center gap-3'>
-                              {source.type === 'pdf' ? (
-                                <FileText className='h-5 w-5 text-orange-400' />
-                              ) : (
-                                <LinkIcon className='h-5 w-5 text-blue-400' />
-                              )}
-                              <span className='truncate text-sm text-neutral-200'>
-                                {source.name}
-                              </span>
-                            </div>
-                            <button
-                              onClick={() => removeKnowledgeSource(source.id)}
-                              className='text-neutral-400 transition-colors hover:text-red-400'
-                            >
-                              <X className='h-4 w-4' />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
+                  {createdAgent ? (
+                    <KnowledgeUploadSection
+                      agentId={createdAgent.id}
+                      userId={user.id}
+                      knowledgeSources={knowledgeSources}
+                    />
+                  ) : (
+                    <div className='flex items-center justify-center py-8'>
+                      <Loader2 className='h-8 w-8 animate-spin text-orange-500' />
+                      <p className='ml-3 text-neutral-400'>Loading...</p>
                     </div>
                   )}
 
                   <div className='flex justify-between pt-4'>
-                    <Button onClick={() => setStep(1)} variant='outline'>
+                    <Button 
+                      onClick={() => setStep(1)} 
+                      variant='outline'
+                      disabled={isFinalizingAgent}
+                    >
                       <CircleArrowLeft className='mr-2 h-4 w-4' />
                       Previous
                     </Button>
@@ -718,13 +580,18 @@ export default function CreateAgent() {
                         Knowledge Sources
                       </h3>
                       <div className='space-y-2 text-sm'>
-                        {formData.knowledgeSources.length > 0 ? (
-                          formData.knowledgeSources.map((source) => (
+                        {sourcesLoading ? (
+                          <div className='flex items-center gap-2'>
+                            <Loader2 className='h-4 w-4 animate-spin text-neutral-400' />
+                            <span className='text-neutral-400'>Loading sources...</span>
+                          </div>
+                        ) : knowledgeSources.length > 0 ? (
+                          knowledgeSources.map((source) => (
                             <div
                               key={source.id}
                               className='flex items-center gap-2'
                             >
-                              {source.type === 'pdf' ? (
+                              {source.type === 'pdf' || source.type === 'file' ? (
                                 <FileText className='h-4 w-4 text-orange-400' />
                               ) : (
                                 <LinkIcon className='h-4 w-4 text-blue-400' />
@@ -757,7 +624,7 @@ export default function CreateAgent() {
                           onChange={(e) => setDraft(e.target.value)}
                         />
                       ) : (
-                        <pre className='font-mono text-sm whitespace-pre-wrap text-neutral-300'>
+                        <pre className='max-h-64 overflow-y-auto font-mono text-sm whitespace-pre-wrap text-neutral-300'>
                           {prompt}
                         </pre>
                       )}
@@ -787,6 +654,7 @@ export default function CreateAgent() {
                             onClick={() => setIsEditing(true)}
                             variant='outline'
                             size='sm'
+                            disabled={isFinalizingAgent}
                           >
                             Edit Prompt
                           </Button>
@@ -799,17 +667,20 @@ export default function CreateAgent() {
                     <Button
                       onClick={() => setStep(2)}
                       variant='outline'
-                      disabled={saving}
+                      disabled={isFinalizingAgent}
                     >
                       <CircleArrowLeft className='mr-2 h-4 w-4' />
                       Previous
                     </Button>
                     <Button
                       onClick={handleSave}
-                      disabled={saving || isProcessingContent}
+                      disabled={isFinalizingAgent || !createdAgent}
                     >
-                      {saving ? (
-                        'Creating...'
+                      {isFinalizingAgent ? (
+                        <>
+                          <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                          Finalizing...
+                        </>
                       ) : (
                         <>
                           <Aperture className='mr-2 h-4 w-4' />
@@ -824,6 +695,27 @@ export default function CreateAgent() {
           </div>
         </div>
       </div>
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(23, 23, 23, 0.3);
+          border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(245, 158, 11, 0.3);
+          border-radius: 4px;
+          transition: background 0.2s;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(245, 158, 11, 0.5);
+        }
+      `}</style>
     </>
   )
 }

@@ -38,12 +38,10 @@ import {
   Sparkles,
   Save,
   Play,
-  Power,
   Eye,
   Maximize2,
   Minimize2
 } from 'lucide-react'
-import toast from 'react-hot-toast'
 import Button from '../../../../components/ui/button'
 import FormInput from '../../../../components/ui/formInputField'
 import LoadingState from '../../../../components/common/loading-state'
@@ -52,12 +50,23 @@ import { useAuth } from '../../../../components/providers/AuthProvider'
 import SideBarLayout from '../../../../components/sideBarLayout'
 import NeonBackground from '../../../../components/ui/background'
 import Card from '../../../../components/ui/card'
-import { supabase } from '../../../../lib/supabase/dbClient'
 import { useLogout } from '../../../../lib/supabase/auth'
+import {
+  useWorkflow,
+  useSaveWorkflow,
+  useExecuteWorkflow,
+  useToggleWorkflowStatus
+} from '../../../../lib/hooks/useWorkflowData'
 
 /**
- * OPTIMIZED WORKFLOW BUILDER
+ * FULLY OPTIMIZED WORKFLOW BUILDER
  *
+ * React Query Integration:
+ * - Automatic workflow data fetching with caching
+ * - Optimistic updates for better UX
+ * - No manual state management for server data
+ * - Consistent with Dashboard patterns
+ * 
  * Performance Improvements:
  * - Lazy loading of heavy components
  * - Memoized callbacks and components
@@ -243,18 +252,25 @@ export default function WorkflowBuilderPage() {
 
   const reactFlowWrapper = useRef(null)
   const saveTimeoutRef = useRef(null)
-  const hasFetchedData = useRef(false)
 
-  // ✅ State management
+  // ✅ React Query hooks - fully optimized data fetching
+  const {
+    data: workflowData,
+    isLoading: workflowLoading,
+    error: workflowError
+  } = useWorkflow(id)
+
+  // Mutations
+  const saveWorkflow = useSaveWorkflow(id)
+  const executeWorkflow = useExecuteWorkflow(id)
+  const toggleWorkflowStatus = useToggleWorkflowStatus(id)
+
+  // ✅ State management - UI state only
   const [reactFlowInstance, setReactFlowInstance] = useState(null)
-  const [fetching, setFetching] = useState(true)
-  const [workflow, setWorkflow] = useState(null)
   const [nodes, setNodes, onNodesChange] = useNodesState([])
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
   const [selectedNode, setSelectedNode] = useState(null)
   const [showNodeConfig, setShowNodeConfig] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [isActive, setIsActive] = useState(false)
   const [isExecuting, setIsExecuting] = useState(false)
   const [executingNodes, setExecutingNodes] = useState(new Set())
   const [executingEdges, setExecutingEdges] = useState(new Set())
@@ -268,6 +284,10 @@ export default function WorkflowBuilderPage() {
     }
     return { x: 0, y: 0 }
   })
+
+  // ✅ Extract workflow data from React Query
+  const workflow = workflowData?.workflow
+  const isActive = workflow?.is_active || false
 
   // ✅ OPTIMIZATION: Memoized node label getter
   const getNodeLabel = useCallback((type) => {
@@ -285,107 +305,79 @@ export default function WorkflowBuilderPage() {
     return labels[type] || type
   }, [])
 
-  // ✅ OPTIMIZATION: Fetch workflow data only once
-  const fetchWorkflow = useCallback(async () => {
-    if (hasFetchedData.current) return
-
-    try {
-      setFetching(true)
-      if (!user) return
-
-      const response = await fetch(`/api/workflows/${id}`)
-      const data = await response.json()
-
-      setWorkflow(data.workflow)
-      setIsActive(data.workflow?.is_active || false)
-
-      const loadedNodes = (data.nodes || []).map((node) => ({
-        id: node.node_id,
-        type: node.node_type,
-        position: { x: node.position_x, y: node.position_y },
-        className: node.node_type,
-        data: {
-          label: node.node_name,
-          config: node.config,
-          isExecuting: false,
-          nodeType: node.node_type
-        }
-      }))
-
-      setNodes(
-        loadedNodes.length > 0
-          ? loadedNodes
-          : [
-              {
-                id: 'trigger_1',
-                type: 'trigger',
-                position: { x: 250, y: 100 },
-                className: 'trigger',
-                data: {
-                  label: 'Start',
-                  nodeType: 'trigger'
-                }
-              }
-            ]
-      )
-
-      const loadedEdges = (data.edges || []).map((edge) => ({
-        id: edge.edge_id,
-        source: edge.source_node_id,
-        target: edge.target_node_id,
-        markerEnd: { type: MarkerType.ArrowClosed },
-        data: edge.condition,
-        animated: false,
-        style: { stroke: '#f97316', strokeWidth: 2 }
-      }))
-
-      setEdges(loadedEdges)
-      hasFetchedData.current = true
-    } catch (error) {
-      console.error('Error fetching workflow:', error)
-      toast.error('Failed to load workflow')
-    } finally {
-      setFetching(false)
-      setIsInitialized(true) // ✅ ADD THIS
-    }
-  }, [user, id, setNodes, setEdges])
-
-  // ✅ FIXED: Combined auth check and data fetching
+  // ✅ Initialize nodes and edges from workflow data
   useEffect(() => {
-    if (authLoading) return // Wait for auth to finish
+    if (!workflowData) return
 
-    if (!user) {
-      router.push('/') // Redirect if no user
-      return
-    }
+    const loadedNodes = (workflowData.nodes || []).map((node) => ({
+      id: node.node_id,
+      type: node.node_type,
+      position: { x: node.position_x, y: node.position_y },
+      className: node.node_type,
+      data: {
+        label: node.node_name,
+        config: node.config,
+        isExecuting: false,
+        nodeType: node.node_type
+      }
+    }))
 
-    // User is authenticated, fetch data if not already fetched
-    if (!hasFetchedData.current) {
-      fetchWorkflow()
-    } else {
-      setIsInitialized(true) // Ensure initialized is true
+    setNodes(
+      loadedNodes.length > 0
+        ? loadedNodes
+        : [
+            {
+              id: 'trigger_1',
+              type: 'trigger',
+              position: { x: 250, y: 100 },
+              className: 'trigger',
+              data: {
+                label: 'Start',
+                nodeType: 'trigger'
+              }
+            }
+          ]
+    )
+
+    const loadedEdges = (workflowData.edges || []).map((edge) => ({
+      id: edge.edge_id,
+      source: edge.source_node_id,
+      target: edge.target_node_id,
+      markerEnd: { type: MarkerType.ArrowClosed },
+      data: edge.condition,
+      animated: false,
+      style: { stroke: '#f97316', strokeWidth: 2 }
+    }))
+
+    setEdges(loadedEdges)
+  }, [workflowData, setNodes, setEdges])
+
+  // ✅ Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/')
     }
-  }, [authLoading, user, router, fetchWorkflow])
+  }, [authLoading, user, router])
 
   // ✅ Track unsaved changes
   useEffect(() => {
-    if (hasFetchedData.current && (nodes.length > 0 || edges.length > 0)) {
+    if (workflowData && (nodes.length > 0 || edges.length > 0)) {
       setHasUnsavedChanges(true)
     }
-  }, [nodes, edges])
+  }, [nodes, edges, workflowData])
 
   // ✅ OPTIMIZATION: Update node execution states efficiently
   useEffect(() => {
     setNodes((nds) =>
       nds.map((node) => {
-        const isExecuting = executingNodes.has(node.id)
-        if (node.data.isExecuting !== isExecuting) {
+        const isNodeExecuting = executingNodes.has(node.id)
+        if (node.data.isExecuting !== isNodeExecuting) {
           return {
             ...node,
-            className: `${node.type} ${isExecuting ? 'executing' : ''}`,
+            className: `${node.type} ${isNodeExecuting ? 'executing' : ''}`,
             data: {
               ...node.data,
-              isExecuting
+              isExecuting: isNodeExecuting
             }
           }
         }
@@ -398,19 +390,19 @@ export default function WorkflowBuilderPage() {
   useEffect(() => {
     setEdges((eds) =>
       eds.map((edge) => {
-        const isExecuting = executingEdges.has(edge.id)
+        const isEdgeExecuting = executingEdges.has(edge.id)
         return {
           ...edge,
-          animated: isExecuting,
+          animated: isEdgeExecuting,
           style: {
             ...edge.style,
-            stroke: isExecuting ? '#fb923c' : '#f97316',
-            strokeWidth: isExecuting ? 3 : 2,
-            filter: isExecuting
+            stroke: isEdgeExecuting ? '#fb923c' : '#f97316',
+            strokeWidth: isEdgeExecuting ? 3 : 2,
+            filter: isEdgeExecuting
               ? 'drop-shadow(0 0 8px rgba(251, 146, 60, 0.8))'
               : 'drop-shadow(0 0 4px rgba(249, 115, 22, 0.3))'
           },
-          className: isExecuting ? 'executing-edge' : ''
+          className: isEdgeExecuting ? 'executing-edge' : ''
         }
       })
     )
@@ -526,7 +518,6 @@ export default function WorkflowBuilderPage() {
       setSelectedNode(null)
       setShowNodeConfig(false)
       setHasUnsavedChanges(true)
-      toast.success('Node deleted')
     }
   }, [selectedNode, setNodes, setEdges])
 
@@ -539,48 +530,6 @@ export default function WorkflowBuilderPage() {
     saveTimeoutRef.current = setTimeout(async () => {
       if (!hasUnsavedChanges) return
 
-      try {
-        const aiNode = nodes.find((n) => n.type === 'ai_agent')
-        const workflowPayload = {
-          nodes,
-          edges,
-          workflow_data: workflow?.workflow_data || {},
-          agent_id: aiNode?.data?.config?.agentId || null,
-          is_active: isActive
-        }
-
-        await fetch(`/api/workflows/${id}/save`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(workflowPayload)
-        })
-
-        setHasUnsavedChanges(false)
-      } catch (error) {
-        console.error('Auto-save error:', error)
-      }
-    }, 3000) // Auto-save after 3 seconds of inactivity
-  }, [nodes, edges, workflow, id, isActive, hasUnsavedChanges])
-
-  // ✅ Trigger auto-save on changes
-  useEffect(() => {
-    if (hasUnsavedChanges) {
-      autoSave()
-    }
-  }, [hasUnsavedChanges, autoSave])
-
-  // ✅ Save workflow manually
-  const saveWorkflow = useCallback(async () => {
-    try {
-      setSaving(true)
-
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(
-          `palette-position-${id}`,
-          JSON.stringify(palettePosition)
-        )
-      }
-
       const aiNode = nodes.find((n) => n.type === 'ai_agent')
       const workflowPayload = {
         nodes,
@@ -590,46 +539,52 @@ export default function WorkflowBuilderPage() {
         is_active: isActive
       }
 
-      const response = await fetch(`/api/workflows/${id}/save`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(workflowPayload)
-      })
-
-      if (!response.ok) throw new Error('Failed to save workflow')
-
+      await saveWorkflow.mutateAsync(workflowPayload)
       setHasUnsavedChanges(false)
-      toast.success('Workflow saved!')
-    } catch (error) {
-      console.error('Error saving workflow:', error)
-      toast.error('Failed to save workflow')
-    } finally {
-      setSaving(false)
-    }
-  }, [nodes, edges, workflow, id, palettePosition, isActive])
+    }, 3000) // Auto-save after 3 seconds of inactivity
+  }, [nodes, edges, workflow, isActive, hasUnsavedChanges, saveWorkflow])
 
-  // ✅ OPTIMIZATION: Execute workflow with visual feedback
-  const executeWorkflow = useCallback(async () => {
-    if (!isActive) {
-      toast.error('Activate the workflow first!')
-      return
+  // ✅ Trigger auto-save on changes
+  useEffect(() => {
+    if (hasUnsavedChanges) {
+      autoSave()
     }
+  }, [hasUnsavedChanges, autoSave])
+
+  // ✅ Save workflow manually - using React Query mutation
+  const handleSaveWorkflow = useCallback(async () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(
+        `palette-position-${id}`,
+        JSON.stringify(palettePosition)
+      )
+    }
+
+    const aiNode = nodes.find((n) => n.type === 'ai_agent')
+    const workflowPayload = {
+      nodes,
+      edges,
+      workflow_data: workflow?.workflow_data || {},
+      agent_id: aiNode?.data?.config?.agentId || null,
+      is_active: isActive
+    }
+
+    await saveWorkflow.mutateAsync(workflowPayload)
+    setHasUnsavedChanges(false)
+  }, [nodes, edges, workflow, id, palettePosition, isActive, saveWorkflow])
+
+  // ✅ OPTIMIZATION: Execute workflow with visual feedback - using React Query mutation
+  const handleExecuteWorkflow = useCallback(async () => {
+    if (!isActive) return
 
     try {
       setIsExecuting(true)
       setExecutingNodes(new Set())
       setExecutingEdges(new Set())
 
-      const response = await fetch(`/api/workflows/${id}/execute`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          triggerData: { test: true, timestamp: Date.now() }
-        })
+      const data = await executeWorkflow.mutateAsync({
+        triggerData: { test: true, timestamp: Date.now() }
       })
-
-      if (!response.ok) throw new Error('Execution failed')
-      const data = await response.json()
 
       if (data.execution_path && Array.isArray(data.execution_path)) {
         setExecutingNodes(new Set([data.execution_path[0]]))
@@ -657,43 +612,24 @@ export default function WorkflowBuilderPage() {
           setExecutingEdges(new Set())
         }, 2000)
       }
-
-      toast.success('Workflow executed successfully!')
     } catch (error) {
-      console.error('Error executing workflow:', error)
-      toast.error('Workflow execution failed')
       setExecutingNodes(new Set())
       setExecutingEdges(new Set())
     } finally {
       setIsExecuting(false)
     }
-  }, [isActive, id, edges])
+  }, [isActive, executeWorkflow, edges])
 
-  // ✅ Toggle workflow active
-  const toggleWorkflowActive = useCallback(async () => {
-    try {
-      const newActiveState = !isActive
-
-      const response = await fetch(`/api/workflows/${id}/save`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nodes,
-          edges,
-          workflow_data: workflow?.workflow_data || {},
-          is_active: newActiveState
-        })
-      })
-
-      if (!response.ok) throw new Error('Failed to update workflow status')
-
-      setIsActive(newActiveState)
-      toast.success(`Workflow ${newActiveState ? 'activated' : 'deactivated'}!`)
-    } catch (error) {
-      console.error(error)
-      toast.error('Failed to update workflow status')
-    }
-  }, [nodes, edges, workflow, isActive, id])
+  // ✅ Toggle workflow active - using React Query mutation
+  const handleToggleWorkflowActive = useCallback(async () => {
+    const aiNode = nodes.find((n) => n.type === 'ai_agent')
+    await toggleWorkflowStatus.mutateAsync({
+      nodes,
+      edges,
+      workflow_data: workflow?.workflow_data || {},
+      agent_id: aiNode?.data?.config?.agentId || null
+    })
+  }, [nodes, edges, workflow, toggleWorkflowStatus])
 
   // ✅ Toggle fullscreen
   const toggleFullscreen = useCallback(() => {
@@ -706,10 +642,10 @@ export default function WorkflowBuilderPage() {
       if (e.ctrlKey || e.metaKey) {
         if (e.key === 's') {
           e.preventDefault()
-          saveWorkflow()
+          handleSaveWorkflow()
         } else if (e.key === 'e') {
           e.preventDefault()
-          executeWorkflow()
+          handleExecuteWorkflow()
         }
       } else if (e.key === 'Delete' && selectedNode) {
         deleteSelectedNode()
@@ -721,14 +657,38 @@ export default function WorkflowBuilderPage() {
 
     window.addEventListener('keydown', handleKeyPress)
     return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [saveWorkflow, executeWorkflow, selectedNode, deleteSelectedNode])
+  }, [handleSaveWorkflow, handleExecuteWorkflow, selectedNode, deleteSelectedNode])
 
-  if (authLoading || !isInitialized) {
+  // Loading state
+  if (authLoading || workflowLoading) {
     return (
       <LoadingState
         message={authLoading ? 'Authenticating...' : 'Loading workflow...'}
         className='min-h-screen'
       />
+    )
+  }
+
+  // Error state
+  if (workflowError) {
+    return (
+      <div className='flex min-h-screen items-center justify-center bg-neutral-900 font-mono'>
+        <Card className='max-w-md border-red-600/30 bg-gradient-to-br from-red-900/20 to-neutral-950/50'>
+          <div className='text-center'>
+            <div className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-900/40'>
+              <X className='h-8 w-8 text-red-400' />
+            </div>
+            <h3 className='mb-2 text-xl font-bold text-neutral-100'>Error</h3>
+            <p className='text-sm text-neutral-400'>{workflowError.message}</p>
+            <Button
+              className='mt-6'
+              onClick={() => router.push('/workflows')}
+            >
+              Back to Workflows
+            </Button>
+          </div>
+        </Card>
+      </div>
     )
   }
 
@@ -782,8 +742,9 @@ export default function WorkflowBuilderPage() {
                   {/* Active/Inactive Toggle */}
                   <div className='flex items-center gap-2'>
                     <button
-                      onClick={toggleWorkflowActive}
-                      className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                      onClick={handleToggleWorkflowActive}
+                      disabled={toggleWorkflowStatus.isPending}
+                      className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors disabled:opacity-50 ${
                         isActive ? 'bg-green-600' : 'bg-neutral-700'
                       }`}
                     >
@@ -815,12 +776,12 @@ export default function WorkflowBuilderPage() {
 
                   {/* Execute Button */}
                   <Button
-                    onClick={executeWorkflow}
-                    disabled={!isActive || isExecuting}
+                    onClick={handleExecuteWorkflow}
+                    disabled={!isActive || isExecuting || executeWorkflow.isPending}
                     size='sm'
                     className='flex items-center gap-2 bg-gradient-to-r from-green-600 to-green-500 shadow-lg shadow-green-500/20 hover:from-green-500 hover:to-green-400 disabled:cursor-not-allowed disabled:opacity-50'
                   >
-                    {isExecuting ? (
+                    {isExecuting || executeWorkflow.isPending ? (
                       <>
                         <div className='h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent' />
                         <span className='hidden sm:inline'>Executing...</span>
@@ -835,12 +796,12 @@ export default function WorkflowBuilderPage() {
 
                   {/* Save Button */}
                   <Button
-                    onClick={saveWorkflow}
-                    disabled={saving || !hasUnsavedChanges}
+                    onClick={handleSaveWorkflow}
+                    disabled={saveWorkflow.isPending || !hasUnsavedChanges}
                     size='sm'
                     className='flex items-center gap-2 bg-gradient-to-r from-orange-600 to-orange-500 shadow-lg shadow-orange-500/20 hover:from-orange-500 hover:to-orange-400 disabled:cursor-not-allowed disabled:opacity-50'
                   >
-                    {saving ? (
+                    {saveWorkflow.isPending ? (
                       <>
                         <div className='h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent' />
                         <span className='hidden sm:inline'>Saving...</span>
@@ -863,8 +824,6 @@ export default function WorkflowBuilderPage() {
           <div
             className={`flex flex-col ${isFullscreen ? 'h-screen' : 'h-[calc(100vh-4rem)]'}`}
           >
-            {/* Instructions */}
-
             {/* Workflow Canvas */}
             <div
               className={`relative flex-1 transition-all ${
@@ -995,11 +954,32 @@ export default function WorkflowBuilderPage() {
           </div>
         </div>
       </SideBarLayout>
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(23, 23, 23, 0.3);
+          border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(245, 158, 11, 0.3);
+          border-radius: 4px;
+          transition: background 0.2s;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(245, 158, 11, 0.5);
+        }
+      `}</style>
     </>
   )
 }
 
-// ✅ OPTIMIZED: Memoized Floating Node Palette
+// ✅ OPTIMIZED: Memoized Floating Node Palette (no changes needed - already optimized)
 const FloatingNodePalette = memo(
   ({ position: externalPosition, onPositionChange }) => {
     const [position, setPosition] = useState(externalPosition || { x: 0, y: 0 })
@@ -1109,7 +1089,7 @@ const FloatingNodePalette = memo(
 )
 FloatingNodePalette.displayName = 'FloatingNodePalette'
 
-// ✅ OPTIMIZED: Memoized Node Icon with Enhanced Tooltip
+// ✅ OPTIMIZED: Memoized Node Icon (no changes needed - already optimized)
 const NodeIcon = memo(({ node, Icon, onDragStart }) => {
   const [showTooltip, setShowTooltip] = useState(false)
 
@@ -1150,7 +1130,7 @@ const NodeIcon = memo(({ node, Icon, onDragStart }) => {
 })
 NodeIcon.displayName = 'NodeIcon'
 
-// ✅ OPTIMIZED: Memoized Config Panel
+// ✅ OPTIMIZED: Memoized Config Panel (no changes needed - already optimized)
 const NodeConfigPanel = memo(({ node, onClose, onSave, onDelete }) => {
   const [config, setConfig] = useState(node.data.config || {})
 
@@ -1239,7 +1219,7 @@ const NodeConfigPanel = memo(({ node, onClose, onSave, onDelete }) => {
 })
 NodeConfigPanel.displayName = 'NodeConfigPanel'
 
-// ✅ Node Specific Config Components
+// ✅ Node Specific Config Components (no changes needed)
 function NodeSpecificConfig({ nodeType, config, onChange, onClose }) {
   switch (nodeType) {
     case 'ai_agent':
@@ -1280,7 +1260,7 @@ function NodeSpecificConfig({ nodeType, config, onChange, onClose }) {
   }
 }
 
-// ✅ Memoized Delay Config
+// ✅ Memoized Config Components (no changes needed - already optimized)
 const DelayConfig = memo(({ config, onSave, onClose }) => {
   const [delayMs, setDelayMs] = useState(config?.delayMs || 1000)
 
@@ -1319,7 +1299,6 @@ const DelayConfig = memo(({ config, onSave, onClose }) => {
 })
 DelayConfig.displayName = 'DelayConfig'
 
-// ✅ Memoized Loop Config
 const LoopConfig = memo(({ config, onSave, onClose }) => {
   const [arrayPath, setArrayPath] = useState(config?.arrayPath || '')
   const [itemVariable, setItemVariable] = useState(
@@ -1372,7 +1351,6 @@ const LoopConfig = memo(({ config, onSave, onClose }) => {
 })
 LoopConfig.displayName = 'LoopConfig'
 
-// ✅ Memoized Transform Config
 const TransformConfig = memo(({ config, onSave, onClose }) => {
   const [mappings, setMappings] = useState(config?.mappings || { output: '' })
 

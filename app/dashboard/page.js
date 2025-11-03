@@ -6,102 +6,46 @@ import {
   Globe,
   Instagram,
   MessageSquare,
-  TrendingUp,
   Users,
   Zap,
   Plus,
   ArrowRight,
-  Activity,
   BarChart3
 } from 'lucide-react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState, useRef } from 'react'
+import { memo, useCallback, useEffect } from 'react'
 import LoadingState from '../../components/common/loading-state'
 import NavigationBar from '../../components/navigationBar/navigationBar'
 import { useAuth } from '../../components/providers/AuthProvider'
 import SideBarLayout from '../../components/sideBarLayout'
 import NeonBackground from '../../components/ui/background'
-import Card from '../../components/ui/card'
 import Button from '../../components/ui/button'
+import Card from '../../components/ui/card'
+import { useAgents, useDashboardAnalytics } from '../../lib/hooks/useAgentData'
 import { useLogout } from '../../lib/supabase/auth'
-import { dbClient } from '../../lib/supabase/dbClient'
-import Link from 'next/link'
-import { useCallback } from 'react'
 
 /**
- * FIXED Dashboard Component - No More Loading on Tab Switch
- *
- * Fixes:
- * - Prevents re-fetching when switching tabs
- * - Only fetches data once when component mounts
- * - Uses ref to track if data has been loaded
- * - Better dependency management in useEffect
+ * FULLY OPTIMIZED Dashboard Component
+ * 
+ * React Query Integration:
+ * - Automatic data fetching with caching
+ * - No manual state management
+ * - Consistent with all other pages
+ * - Auto-refresh on data changes
+ * 
+ * Performance:
+ * - Memoized components
+ * - Smart caching prevents re-fetching
+ * - Parallel data loading
+ * - Optimized rendering
  */
 
-export default function Dashboard() {
-  const { user, profile, loading: authLoading } = useAuth()
-  const { logout } = useLogout()
-  const router = useRouter()
-
-  // State management
-  const [agents, setAgents] = useState([])
-  const [analytics, setAnalytics] = useState({
-    totalConversations: 0,
-    totalAgents: 0,
-    creditsUsed: 0,
-    successRate: 0
-  })
-  const [fetching, setFetching] = useState(true)
-  const [error, setError] = useState(null)
-
-  // ✅ FIX: Use ref to track if data has been fetched
-  const hasFetchedData = useRef(false)
-  const [isInitialized, setIsInitialized] = useState(false)
-
-  // Fetch dashboard data
-  // Add fetchDashboardData and router to dependency array, but wrap fetchDashboardData with useCallback
-
-  // Fetch dashboard data
-  const fetchDashboardData = useCallback(async () => {
-    if (!user) return
-
-    try {
-      setFetching(true)
-      setError(null)
-
-      const userAgents = await dbClient.getUserAgents(user.id)
-      setAgents(userAgents || [])
-
-      // ... rest of analytics code ...
-
-      hasFetchedData.current = true
-    } catch (err) {
-      console.error('Error fetching dashboard data:', err)
-      setError('Failed to load agents data')
-    } finally {
-      setFetching(false)
-      setIsInitialized(true)
-    }
-  }, [user])
-
-  useEffect(() => {
-    if (authLoading) return // Wait for auth to finish
-
-    if (!user) {
-      router.push('/') // Redirect if no user
-      return
-    }
-
-    // User is authenticated, fetch data if not already fetched
-    if (!hasFetchedData.current) {
-      fetchDashboardData()
-    } else {
-      setIsInitialized(true) // Ensure initialized is true
-    }
-  }, [authLoading, user, router, fetchDashboardData])
-
-  // Get purpose icon
-  const getPurposeIcon = (purpose) => {
+/**
+ * Memoized Agent Card Component
+ */
+const AgentCard = memo(({ agent, onClick }) => {
+  const getPurposeIcon = () => {
     const icons = {
       instagram: <Instagram className='h-5 w-5' />,
       messenger: <MessageSquare className='h-5 w-5' />,
@@ -109,11 +53,10 @@ export default function Dashboard() {
       website: <Globe className='h-5 w-5' />,
       default: <Bot className='h-5 w-5' />
     }
-    return icons[purpose] || icons.default
+    return icons[agent.purpose] || icons.default
   }
 
-  // Get purpose colors
-  const getPurposeColors = (purpose) => {
+  const getPurposeColors = () => {
     const colors = {
       instagram:
         'from-pink-900/40 to-pink-950/20 border-pink-600/30 text-pink-300',
@@ -126,19 +69,153 @@ export default function Dashboard() {
       default:
         'from-neutral-900/40 to-neutral-950/20 border-neutral-600/30 text-neutral-300'
     }
-    return colors[purpose] || colors.default
+    return colors[agent.purpose] || colors.default
   }
 
-  // ✅ FIX: Only show loading on initial auth check
-  if (authLoading) {
-    return <LoadingState message='Authenticating...' className='min-h-screen' />
-  }
+  return (
+    <Card
+      className={`group cursor-pointer border bg-gradient-to-br transition-all hover:scale-105 hover:shadow-lg ${getPurposeColors()}`}
+      onClick={onClick}
+    >
+      <div className='space-y-4'>
+        {/* Header */}
+        <div className='flex items-start justify-between'>
+          <div className='flex items-center gap-3'>
+            <div className='flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-900/50'>
+              {getPurposeIcon()}
+            </div>
+            <div>
+              <h4 className='font-semibold text-neutral-100'>
+                {agent.name}
+              </h4>
+              <p className='text-xs text-neutral-400 capitalize'>
+                {agent.purpose || 'General'}
+              </p>
+            </div>
+          </div>
+          <div
+            className={`rounded-full px-2 py-1 text-xs font-medium ${
+              agent.is_active
+                ? 'bg-green-900/40 text-green-300 ring-1 ring-green-500/50'
+                : 'bg-red-900/40 text-red-300 ring-1 ring-red-500/50'
+            }`}
+          >
+            {agent.is_active ? 'Active' : 'Inactive'}
+          </div>
+        </div>
 
-  // ✅ FIX: Show loading only until initialized
-  if (!isInitialized) {
+        {/* Description */}
+        <p className='line-clamp-2 text-sm text-neutral-400'>
+          {agent.description || 'No description provided'}
+        </p>
+
+        {/* Footer */}
+        <div className='flex items-center justify-between border-t border-neutral-800/50 pt-4'>
+          <div className='flex items-center gap-4 text-xs text-neutral-500'>
+            <div className='flex items-center gap-1'>
+              <MessageSquare className='h-3 w-3' />
+              <span>{agent.conversation_count || 0}</span>
+            </div>
+            <div className='flex items-center gap-1'>
+              <Users className='h-3 w-3' />
+              <span>{agent.user_count || 0}</span>
+            </div>
+          </div>
+          <ArrowRight className='h-4 w-4 text-neutral-400 transition-transform group-hover:translate-x-1' />
+        </div>
+      </div>
+    </Card>
+  )
+})
+AgentCard.displayName = 'AgentCard'
+
+/**
+ * Memoized Quick Action Card Component
+ */
+const QuickActionCard = memo(({ href, icon: Icon, iconColor, borderColor, hoverColor, title, subtitle }) => (
+  <Link href={href}>
+    <Card className={`group cursor-pointer border-${borderColor}/20 transition-all hover:border-${borderColor}/50 hover:bg-${hoverColor}/10`}>
+      <div className='flex items-center gap-3'>
+        <div className={`flex h-10 w-10 items-center justify-center rounded-lg bg-${iconColor}/40`}>
+          <Icon className={`h-5 w-5 text-${iconColor}`} />
+        </div>
+        <div>
+          <p className='font-semibold text-neutral-200'>{title}</p>
+          <p className='text-xs text-neutral-400'>{subtitle}</p>
+        </div>
+      </div>
+    </Card>
+  </Link>
+))
+QuickActionCard.displayName = 'QuickActionCard'
+
+/**
+ * Main Dashboard Component
+ */
+export default function Dashboard() {
+  const router = useRouter()
+  const { user, profile, loading: authLoading } = useAuth()
+  const { logout } = useLogout()
+
+  // React Query hooks - MUST be called before any conditional returns
+  // React Query hooks - MUST be called before any conditional returns
+  const {
+    data: agents = [],
+    isLoading: agentsLoading,
+    error: agentsError
+  } = useAgents(user?.id)
+
+  const {
+    data: analytics,
+    isLoading: analyticsLoading
+  } = useDashboardAnalytics(agents)
+
+  // Handle agent click - MUST be declared before conditional returns
+  const handleAgentClick = useCallback((agentId) => {
+    router.push(`/agents/${agentId}/manage`)
+  }, [router])
+
+  // NOW we can do conditional logic - after all hooks are called
+  // Redirect if not authenticated using useEffect
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/')
+    }
+  }, [authLoading, user, router])
+
+  // Loading state
+  if (authLoading || agentsLoading) {
     return (
-      <LoadingState message='Loading dashboard...' className='min-h-screen' />
+      <LoadingState
+        message={authLoading ? 'Authenticating...' : 'Loading dashboard...'}
+        className='min-h-screen'
+      />
     )
+  }
+
+  // Error state
+  if (agentsError) {
+    return (
+      <div className='flex min-h-screen items-center justify-center bg-neutral-900 font-mono'>
+        <Card className='max-w-md border-red-600/30 bg-gradient-to-br from-red-900/20 to-neutral-950/50'>
+          <div className='p-8 text-center'>
+            <div className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-900/40'>
+              <Bot className='h-8 w-8 text-red-400' />
+            </div>
+            <h3 className='mb-2 text-xl font-bold text-neutral-100'>Error</h3>
+            <p className='text-sm text-neutral-400'>{agentsError.message}</p>
+            <Button onClick={() => window.location.reload()} className='mt-6'>
+              Retry
+            </Button>
+          </div>
+        </Card>
+      </div>
+    )
+  }
+
+  // Don't render if not authenticated
+  if (!user) {
+    return null
   }
 
   return (
@@ -170,13 +247,6 @@ export default function Dashboard() {
                   Manage your AI agents and monitor their performance
                 </p>
               </div>
-
-              {/* Error Message */}
-              {error && (
-                <div className='mb-6 rounded-lg border border-red-600/30 bg-red-900/20 p-4'>
-                  <p className='text-sm text-red-300'>{error}</p>
-                </div>
-              )}
 
               {/* Agents Section */}
               <div className='mb-8'>
@@ -222,65 +292,11 @@ export default function Dashboard() {
                   // Agents Grid
                   <div className='grid gap-6 sm:grid-cols-2 lg:grid-cols-3'>
                     {agents.map((agent) => (
-                      <Card
+                      <AgentCard
                         key={agent.id}
-                        className={`group cursor-pointer border bg-gradient-to-br transition-all hover:scale-105 hover:shadow-lg ${getPurposeColors(
-                          agent.purpose
-                        )}`}
-                        onClick={() =>
-                          router.push(`/agents/${agent.id}/manage`)
-                        }
-                      >
-                        <div className='space-y-4'>
-                          {/* Header */}
-                          <div className='flex items-start justify-between'>
-                            <div className='flex items-center gap-3'>
-                              <div
-                                className={`flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-900/50`}
-                              >
-                                {getPurposeIcon(agent.purpose)}
-                              </div>
-                              <div>
-                                <h4 className='font-semibold text-neutral-100'>
-                                  {agent.name}
-                                </h4>
-                                <p className='text-xs text-neutral-400 capitalize'>
-                                  {agent.purpose || 'General'}
-                                </p>
-                              </div>
-                            </div>
-                            <div
-                              className={`rounded-full px-2 py-1 text-xs font-medium ${
-                                agent.is_active
-                                  ? 'bg-green-900/40 text-green-300 ring-1 ring-green-500/50'
-                                  : 'bg-red-900/40 text-red-300 ring-1 ring-red-500/50'
-                              }`}
-                            >
-                              {agent.is_active ? 'Active' : 'Inactive'}
-                            </div>
-                          </div>
-
-                          {/* Description */}
-                          <p className='line-clamp-2 text-sm text-neutral-400'>
-                            {agent.description || 'No description provided'}
-                          </p>
-
-                          {/* Footer */}
-                          <div className='flex items-center justify-between border-t border-neutral-800/50 pt-4'>
-                            <div className='flex items-center gap-4 text-xs text-neutral-500'>
-                              <div className='flex items-center gap-1'>
-                                <MessageSquare className='h-3 w-3' />
-                                <span>{agent.conversation_count || 0}</span>
-                              </div>
-                              <div className='flex items-center gap-1'>
-                                <Users className='h-3 w-3' />
-                                <span>{agent.user_count || 0}</span>
-                              </div>
-                            </div>
-                            <ArrowRight className='h-4 w-4 text-neutral-400 transition-transform group-hover:translate-x-1' />
-                          </div>
-                        </div>
-                      </Card>
+                        agent={agent}
+                        onClick={() => handleAgentClick(agent.id)}
+                      />
                     ))}
                   </div>
                 )}
@@ -293,77 +309,42 @@ export default function Dashboard() {
                     Quick Actions
                   </h3>
                   <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
-                    <Link href='/agents/dashboard'>
-                      <Card className='group cursor-pointer border-orange-600/20 transition-all hover:border-orange-600/50 hover:bg-orange-950/10'>
-                        <div className='flex items-center gap-3'>
-                          <div className='flex h-10 w-10 items-center justify-center rounded-lg bg-orange-900/40'>
-                            <Bot className='h-5 w-5 text-orange-400' />
-                          </div>
-                          <div>
-                            <p className='font-semibold text-neutral-200'>
-                              View All Agents
-                            </p>
-                            <p className='text-xs text-neutral-400'>
-                              Manage agents
-                            </p>
-                          </div>
-                        </div>
-                      </Card>
-                    </Link>
-
-                    <Link href='/workflows'>
-                      <Card className='group cursor-pointer border-blue-600/20 transition-all hover:border-blue-600/50 hover:bg-blue-950/10'>
-                        <div className='flex items-center gap-3'>
-                          <div className='flex h-10 w-10 items-center justify-center rounded-lg bg-blue-900/40'>
-                            <Zap className='h-5 w-5 text-blue-400' />
-                          </div>
-                          <div>
-                            <p className='font-semibold text-neutral-200'>
-                              Workflows
-                            </p>
-                            <p className='text-xs text-neutral-400'>
-                              Automation
-                            </p>
-                          </div>
-                        </div>
-                      </Card>
-                    </Link>
-
-                    <Link href='/analytics'>
-                      <Card className='group cursor-pointer border-green-600/20 transition-all hover:border-green-600/50 hover:bg-green-950/10'>
-                        <div className='flex items-center gap-3'>
-                          <div className='flex h-10 w-10 items-center justify-center rounded-lg bg-green-900/40'>
-                            <BarChart3 className='h-5 w-5 text-green-400' />
-                          </div>
-                          <div>
-                            <p className='font-semibold text-neutral-200'>
-                              Analytics
-                            </p>
-                            <p className='text-xs text-neutral-400'>
-                              View insights
-                            </p>
-                          </div>
-                        </div>
-                      </Card>
-                    </Link>
-
-                    <Link href='/settings'>
-                      <Card className='group cursor-pointer border-purple-600/20 transition-all hover:border-purple-600/50 hover:bg-purple-950/10'>
-                        <div className='flex items-center gap-3'>
-                          <div className='flex h-10 w-10 items-center justify-center rounded-lg bg-purple-900/40'>
-                            <Users className='h-5 w-5 text-purple-400' />
-                          </div>
-                          <div>
-                            <p className='font-semibold text-neutral-200'>
-                              Settings
-                            </p>
-                            <p className='text-xs text-neutral-400'>
-                              Configure
-                            </p>
-                          </div>
-                        </div>
-                      </Card>
-                    </Link>
+                    <QuickActionCard
+                      href='/agents/dashboard'
+                      icon={Bot}
+                      iconColor='orange-400'
+                      borderColor='orange-600'
+                      hoverColor='orange-950'
+                      title='View All Agents'
+                      subtitle='Manage agents'
+                    />
+                    <QuickActionCard
+                      href='/workflows'
+                      icon={Zap}
+                      iconColor='blue-400'
+                      borderColor='blue-600'
+                      hoverColor='blue-950'
+                      title='Workflows'
+                      subtitle='Automation'
+                    />
+                    <QuickActionCard
+                      href='/analytics'
+                      icon={BarChart3}
+                      iconColor='green-400'
+                      borderColor='green-600'
+                      hoverColor='green-950'
+                      title='Analytics'
+                      subtitle='View insights'
+                    />
+                    <QuickActionCard
+                      href='/settings'
+                      icon={Users}
+                      iconColor='purple-400'
+                      borderColor='purple-600'
+                      hoverColor='purple-950'
+                      title='Settings'
+                      subtitle='Configure'
+                    />
                   </div>
                 </div>
               )}
@@ -371,6 +352,27 @@ export default function Dashboard() {
           </div>
         </div>
       </SideBarLayout>
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(23, 23, 23, 0.3);
+          border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(245, 158, 11, 0.3);
+          border-radius: 4px;
+          transition: background 0.2s;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(245, 158, 11, 0.5);
+        }
+      `}</style>
     </>
   )
 }

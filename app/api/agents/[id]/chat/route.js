@@ -1,18 +1,17 @@
 /**
- * COMPLETE CHAT ROUTE WITH FIXED BOOKING INTEGRATION
- * All original features (actions, caching, rate limiting, credits) + booking fixes
- *
- * KEY FIXES:
- * 1. Added isConfirmationIntent() detection
- * 2. Proper data accumulation across messages
- * 3. Explicit confirmation handling
- * 4. State persistence in conversation metadata
+ * COMPLETE CHAT ROUTE WITH VECTOR SEARCH AND BOOKING INTEGRATION
+ * Features:
+ * - Vector-based knowledge retrieval
+ * - Booking flow handling
+ * - Rate limiting, caching, credits
+ * - Analytics and conversation logging
  */
 
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { checkRateLimit } from '../../../../../lib/api/rate-limiter'
 import { BookingParser } from '../../../../../lib/booking/booking-utils'
+import { VectorDB } from '../../../../../lib/vector/vectordb'
 import {
   deductCredits,
   getAgent,
@@ -56,7 +55,15 @@ export async function POST(request, context) {
 
   try {
     body = await request.json()
-    const { message, sessionId, userId, metadata = {} } = body
+    const {
+      message,
+      sessionId,
+      userId,
+      metadata = {},
+      useKnowledgeBase = true,
+      knowledgeSearchThreshold = 0.7,
+      knowledgeResultLimit = 3
+    } = body
 
     // 1. Fast-fail validation
     if (!message || !sessionId) {
@@ -141,16 +148,144 @@ export async function POST(request, context) {
     }
 
     // ============================================================
-    // 5. FIXED BOOKING SYSTEM INTEGRATION
+    // 5. VECTOR KNOWLEDGE BASE SEARCH
+    // ============================================================
+
+    // In your POST handler, update the vector search section:
+
+    // ============================================================
+    // 5. VECTOR KNOWLEDGE BASE SEARCH - IMPROVED
+    // ============================================================
+
+    // ============================================================
+    // 5. VECTOR KNOWLEDGE BASE SEARCH - WITH FALLBACK
+    // ============================================================
+
+    let knowledgeContext = ''
+    let retrievedSources = []
+    let vectorSearchPerformed = false
+
+    if (useKnowledgeBase && knowledgeSources && knowledgeSources.length > 0) {
+      try {
+        console.log('🔍 Performing vector search for:', message)
+
+        const searchResults = await VectorDB.searchKnowledge(
+          agentId,
+          message,
+          knowledgeResultLimit,
+          knowledgeSearchThreshold
+        )
+
+        if (searchResults && searchResults.length > 0) {
+          vectorSearchPerformed = true
+
+          // Build context from search results
+          knowledgeContext = '\n\n=== KNOWLEDGE BASE CONTEXT ===\n'
+          knowledgeContext +=
+            'The following information is from documents the user has provided. This is THE SOURCE OF TRUTH - prioritize this information over your general knowledge:\n\n'
+
+          searchResults.forEach((result, index) => {
+            const relevancePercent = (result.similarity * 100).toFixed(1)
+            knowledgeContext += `[Document ${index + 1}] (${result.metadata?.fileName || 'Uploaded Document'}) - Relevance: ${relevancePercent}%\n`
+            knowledgeContext += `${result.content}\n\n`
+
+            retrievedSources.push({
+              sourceId: result.knowledge_source_id,
+              sourceName:
+                result.metadata?.fileName ||
+                result.metadata?.url ||
+                'Uploaded Document',
+              similarity: result.similarity,
+              relevanceScore: relevancePercent,
+              content: result.content.substring(0, 200) + '...'
+            })
+          })
+
+          knowledgeContext += '=== END KNOWLEDGE BASE CONTEXT ===\n\n'
+          knowledgeContext += 'CRITICAL INSTRUCTIONS:\n'
+          knowledgeContext +=
+            '1. ALWAYS reference the specific content from the documents above when answering\n'
+          knowledgeContext +=
+            '2. If the user asks about "the document", "the cover letter", "the file", etc., they mean the documents provided above\n'
+          knowledgeContext +=
+            '3. Extract and cite specific information from these documents\n'
+          knowledgeContext +=
+            '4. If the answer is in the documents, use that information - do NOT give generic advice\n'
+          knowledgeContext +=
+            '5. If you cannot find the answer in the documents, say so explicitly\n\n'
+
+          console.log(
+            `✅ Found ${searchResults.length} relevant knowledge sources`
+          )
+        } else {
+          // ✅ CRITICAL FIX: FALLBACK - Load ALL documents when vector search fails
+          console.log(
+            '⚠️ Vector search found nothing - using fallback: loading all documents'
+          )
+
+          // Get the actual document content from knowledge_sources
+          if (knowledgeSources.length > 0) {
+            vectorSearchPerformed = true // Mark as performed even though using fallback
+
+            knowledgeContext =
+              '\n\n=== KNOWLEDGE BASE CONTEXT (FULL DOCUMENTS) ===\n'
+            knowledgeContext +=
+              'The user has uploaded the following document(s). Since your question was general, here is the COMPLETE content:\n\n'
+
+            knowledgeSources.forEach((source, index) => {
+              const fileName =
+                source.file_name || source.source_url || 'Uploaded Document'
+              const content = source.content || ''
+
+              // Limit to reasonable size (e.g., 3000 chars per document)
+              const truncatedContent =
+                content.length > 3000
+                  ? content.substring(0, 3000) +
+                    '\n\n[... content truncated ...]'
+                  : content
+
+              knowledgeContext += `[Document ${index + 1}] ${fileName}\n`
+              knowledgeContext += `${truncatedContent}\n\n`
+
+              retrievedSources.push({
+                sourceId: source.id,
+                sourceName: fileName,
+                similarity: 1.0, // Full match since we're using entire doc
+                relevanceScore: '100.0',
+                content: content.substring(0, 200) + '...'
+              })
+            })
+
+            knowledgeContext += '=== END KNOWLEDGE BASE CONTEXT ===\n\n'
+            knowledgeContext += 'CRITICAL INSTRUCTIONS:\n'
+            knowledgeContext +=
+              '1. The user is asking about THEIR uploaded documents - use the content above\n'
+            knowledgeContext +=
+              '2. Extract specific information from the documents to answer their question\n'
+            knowledgeContext +=
+              '3. DO NOT give generic advice - use the actual document content\n'
+            knowledgeContext +=
+              '4. If asked about "the cover letter", "the document", etc. - they mean the content above\n\n'
+
+            console.log(
+              `✅ Loaded ${knowledgeSources.length} full document(s) as fallback`
+            )
+          }
+        }
+      } catch (searchError) {
+        console.error('❌ Knowledge base search error:', searchError)
+        // Continue without knowledge base if search fails
+      }
+    }
+    // ============================================================
+    // 6. BOOKING SYSTEM INTEGRATION
     // ============================================================
 
     let bookingContext = null
     let isBookingFlow = false
 
-    // **FIX #1: Check for confirmation intent**
     const isConfirmation = BookingParser.isConfirmationIntent(message)
 
-    // Get accumulated booking data from previous messages
     const recentBookingMessages = recentConversations
       .filter((conv) => conv.metadata?.booking_context)
       .slice(0, 3)
@@ -159,7 +294,6 @@ export async function POST(request, context) {
     const lastBookingContext =
       recentBookingMessages[0]?.metadata?.booking_context
 
-    // **FIX #2: Get accumulated booking data**
     let accumulatedData = lastBookingContext?.extractedData || {
       date: null,
       time: null,
@@ -170,24 +304,15 @@ export async function POST(request, context) {
       notes: null
     }
 
-    // Check if current message is booking-related (now includes confirmations)
     const currentMessageIsBooking = BookingParser.isBookingIntent(message)
 
-    // Enhanced debug logging
     console.log('=== BOOKING DEBUG ===')
     console.log('Message:', message)
     console.log('Agent Calendar:', agentCalendar ? 'EXISTS' : 'NULL')
-    console.log('Calendar Active:', agentCalendar?.is_active)
     console.log('Is Booking Intent:', currentMessageIsBooking)
     console.log('Is Confirmation:', isConfirmation)
     console.log('Was In Booking Flow:', wasInBookingFlow)
-    console.log('Last Booking Complete:', lastBookingContext?.isComplete)
-    console.log('Last Booking Created:', lastBookingContext?.bookingCreated)
-    console.log('💾 Accumulated Data:', accumulatedData)
 
-    // Enter booking flow if:
-    // 1. Calendar is active AND current message has booking intent
-    // 2. OR we were in a booking flow and it's not complete yet
     if (
       agentCalendar?.is_active &&
       (currentMessageIsBooking ||
@@ -197,7 +322,6 @@ export async function POST(request, context) {
     ) {
       isBookingFlow = true
 
-      // **FIX #3: Parse current message and merge with accumulated data**
       const parser = new BookingParser()
       const bookingData = parser.parseBookingRequest(message)
 
@@ -233,18 +357,11 @@ export async function POST(request, context) {
         newDataCollected = true
       }
 
-      console.log('📊 New data collected:', newDataCollected)
-      console.log('📝 Updated accumulated data:', accumulatedData)
-
-      // **FIX #4: Check completeness with accumulated data**
       const required = ['date', 'time', 'name', 'email']
       const isComplete = required.every(
         (field) => accumulatedData[field] !== null
       )
 
-      console.log('✅ Has All Required Data:', isComplete)
-
-      // Store parsed data in session
       bookingContext = {
         isBookingFlow: true,
         extractedData: accumulatedData,
@@ -257,19 +374,13 @@ export async function POST(request, context) {
         }
       }
 
-      // **FIX #5: Create booking on confirmation OR when data is complete**
       const shouldCreateBooking =
         isComplete &&
         (isConfirmation ||
           (newDataCollected && !lastBookingContext?.bookingCreated))
 
-      console.log('🚀 Should Create Booking:', shouldCreateBooking)
-
       if (shouldCreateBooking) {
-        console.log('📝 Creating booking with data:', accumulatedData)
-
         try {
-          // Create booking via internal API
           const bookingResponse = await fetch(
             `${process.env.NEXT_PUBLIC_APP_URL}/api/agents/${agentId}/bookings`,
             {
@@ -295,10 +406,7 @@ export async function POST(request, context) {
             bookingContext.bookingCreated = true
             bookingContext.bookingId = bookingResult.booking.id
             bookingContext.externalUrl = bookingResult.booking.external_url
-            console.log(
-              '✅ Booking created successfully:',
-              bookingResult.booking
-            )
+            console.log('✅ Booking created successfully')
           } else {
             bookingContext.bookingError = bookingResult.error
             console.error('❌ Booking creation failed:', bookingResult.error)
@@ -311,14 +419,15 @@ export async function POST(request, context) {
     }
 
     // ============================================================
-    // 6. BUILD SYSTEM PROMPT WITH BOOKING CONTEXT
+    // 7. BUILD ENHANCED SYSTEM PROMPT
     // ============================================================
 
-    let systemPrompt = generateSystemPrompt(
-      agent,
-      knowledgeSources,
-      agentCalendar
-    )
+    let systemPrompt = generateSystemPrompt(agent, agentCalendar)
+
+    // Add vector knowledge context FIRST (higher priority)
+    if (knowledgeContext) {
+      systemPrompt += `\n${knowledgeContext}`
+    }
 
     // Add booking-specific instructions if in booking flow
     if (isBookingFlow) {
@@ -331,23 +440,19 @@ Confidence: ${(bookingContext.confidence * 100).toFixed(0)}%
 
 ${
   !bookingContext.isComplete
-    ? `
-MISSING INFORMATION:
+    ? `MISSING INFORMATION:
 ${!bookingContext.extractedData.date ? '- Date (ask for specific date or day of week)\n' : ''}
 ${!bookingContext.extractedData.time ? '- Time (ask for preferred time)\n' : ''}
 ${!bookingContext.extractedData.name ? '- Full name\n' : ''}
 ${!bookingContext.extractedData.email ? '- Email address\n' : ''}
 
-INSTRUCTIONS: Ask for the missing information naturally, one or two items at a time. Be conversational and helpful.
-`
+INSTRUCTIONS: Ask for the missing information naturally, one or two items at a time.`
     : ''
 }
 
 ${
   bookingContext.isComplete && !bookingContext.bookingCreated
-    ? `
-ALL INFORMATION COLLECTED! 
-Please confirm all the details with the user and ask them to confirm before proceeding with the booking.
+    ? `ALL INFORMATION COLLECTED! Please confirm all details with the user.
 
 Details to confirm:
 - Date: ${bookingContext.extractedData.date}
@@ -355,37 +460,32 @@ Details to confirm:
 - Name: ${bookingContext.extractedData.name}
 - Email: ${bookingContext.extractedData.email}
 ${bookingContext.extractedData.phone ? `- Phone: ${bookingContext.extractedData.phone}\n` : ''}
-${bookingContext.extractedData.notes ? `- Notes: ${bookingContext.extractedData.notes}\n` : ''}
-`
+${bookingContext.extractedData.notes ? `- Notes: ${bookingContext.extractedData.notes}\n` : ''}`
     : ''
 }
 
 ${
   bookingContext.bookingCreated
-    ? `
-✅ BOOKING CONFIRMED!
+    ? `✅ BOOKING CONFIRMED!
 Booking ID: ${bookingContext.bookingId}
-${bookingContext.externalUrl ? `External booking URL: ${bookingContext.externalUrl}\n` : ''}
+${bookingContext.externalUrl ? `External URL: ${bookingContext.externalUrl}\n` : ''}
 
-INSTRUCTIONS: Confirm the booking details and provide next steps. If there's an external URL (Calendly), guide them to complete the booking there. Thank them for booking!
-`
+INSTRUCTIONS: Confirm the booking and provide next steps.`
     : ''
 }
 
 ${
   bookingContext.bookingError
-    ? `
-⚠️ BOOKING ERROR: ${bookingContext.bookingError}
+    ? `⚠️ BOOKING ERROR: ${bookingContext.bookingError}
 
-INSTRUCTIONS: Apologize for the issue and suggest alternative times or ask them to try again.
-`
+INSTRUCTIONS: Apologize and suggest alternatives.`
     : ''
 }
 `
     }
 
     // ============================================================
-    // 7. BUILD CONVERSATION HISTORY
+    // 8. BUILD CONVERSATION HISTORY
     // ============================================================
 
     const conversationHistory = recentConversations
@@ -396,11 +496,11 @@ INSTRUCTIONS: Apologize for the issue and suggest alternative times or ask them 
       ])
 
     // ============================================================
-    // 8. CALL OPENAI
+    // 9. CALL OPENAI
     // ============================================================
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: agent.model || 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
         ...conversationHistory.slice(-10),
@@ -422,16 +522,19 @@ INSTRUCTIONS: Apologize for the issue and suggest alternative times or ask them 
     const responseTime = Date.now() - startTime
 
     // ============================================================
-    // 9. SAVE CONVERSATION WITH BOOKING METADATA
+    // 10. SAVE CONVERSATION WITH ENHANCED METADATA
     // ============================================================
 
     const conversationMetadata = {
       ...metadata,
-      model: 'gpt-4o-mini',
+      model: agent.model || 'gpt-4o-mini',
       tokens_used: tokensUsed,
       tokens_usage_metadata: tokensUsage,
       response_time_ms: responseTime,
-      user_id: userId
+      user_id: userId,
+      vector_search_performed: vectorSearchPerformed,
+      knowledge_sources_used: retrievedSources.length,
+      knowledge_sources: retrievedSources
     }
 
     if (bookingContext) {
@@ -456,13 +559,12 @@ INSTRUCTIONS: Apologize for the issue and suggest alternative times or ask them 
           bookingContext.confidence
         )
       } catch (linkError) {
-        console.error('Error linking booking to conversation:', linkError)
-        // Don't fail the request if linking fails
+        console.error('Error linking booking:', linkError)
       }
     }
 
     // ============================================================
-    // 10. ANALYTICS AND CREDITS
+    // 11. ANALYTICS AND CREDITS
     // ============================================================
 
     Promise.all([
@@ -477,7 +579,9 @@ INSTRUCTIONS: Apologize for the issue and suggest alternative times or ask them 
           response_time_ms: responseTime,
           booking_flow: isBookingFlow,
           booking_complete: bookingContext?.isComplete || false,
-          booking_created: bookingContext?.bookingCreated || false
+          booking_created: bookingContext?.bookingCreated || false,
+          vector_search_performed: vectorSearchPerformed,
+          knowledge_sources_used: retrievedSources.length
         },
         tokensUsed,
         true
@@ -486,7 +590,7 @@ INSTRUCTIONS: Apologize for the issue and suggest alternative times or ask them 
     ]).catch((err) => console.error('Background task error:', err))
 
     // ============================================================
-    // 11. RETURN RESPONSE WITH BOOKING INFO
+    // 12. RETURN ENHANCED RESPONSE
     // ============================================================
 
     return NextResponse.json(
@@ -497,6 +601,15 @@ INSTRUCTIONS: Apologize for the issue and suggest alternative times or ask them 
         responseTimeMs: responseTime,
         agentId,
         timestamp: new Date().toISOString(),
+        knowledge: {
+          searchPerformed: vectorSearchPerformed,
+          sourcesFound: retrievedSources.length,
+          sources: retrievedSources.map((s) => ({
+            name: s.sourceName,
+            relevance: s.relevanceScore,
+            preview: s.content
+          }))
+        },
         bookingContext: bookingContext
           ? {
               isBookingFlow: bookingContext.isBookingFlow,
@@ -513,7 +626,9 @@ INSTRUCTIONS: Apologize for the issue and suggest alternative times or ask them 
         headers: {
           'Cache-Control': 'no-store, max-age=0',
           'X-Response-Time': `${responseTime}ms`,
-          'X-Tokens-Used': tokensUsed.toString()
+          'X-Tokens-Used': tokensUsed.toString(),
+          'X-Knowledge-Used': vectorSearchPerformed.toString(),
+          'X-Knowledge-Sources': retrievedSources.length.toString()
         }
       }
     )
@@ -603,14 +718,14 @@ export async function GET(request, context) {
 }
 
 // Helper function to generate system prompt
-function generateSystemPrompt(agent, knowledgeSources, agentCalendar) {
+function generateSystemPrompt(agent, agentCalendar) {
   const purposeInstructions = {
     instagram:
       'You are an Instagram DM assistant. Respond professionally and help users with their inquiries.',
     messenger:
       'You are a Messenger chatbot. Provide helpful responses and guide users.',
     calendar:
-      'You are a calendar booking assistant. Help users schedule appointments efficiently and professionally.',
+      'You are a calendar booking assistant. Help users schedule appointments efficiently.',
     website:
       'You are a website customer support agent. Answer questions and provide assistance.',
     general:
@@ -633,27 +748,15 @@ ${agent?.persona ? `Your personality: ${agent?.persona}\n` : ''}`
 
   if (agentCalendar?.is_active) {
     prompt += `\n\n=== CALENDAR BOOKING CAPABILITIES ===
-You have access to a calendar booking system with the following configuration:
+You have access to a calendar booking system:
 - Integration: ${agentCalendar.integration_type}
 - Default duration: ${agentCalendar.booking_duration} minutes
 - Timezone: ${agentCalendar.timezone}
 ${agentCalendar.calendly_url ? `- Calendly URL: ${agentCalendar.calendly_url}\n` : ''}
 
-When users want to schedule appointments:
-1. Ask for their preferred date and time naturally
-2. Collect their name and email address
-3. Ask for phone number if needed
-4. Confirm all details before finalizing
-
-Be conversational and helpful throughout the booking process.
+When users want to schedule appointments, collect: date, time, name, email.
+Be conversational and confirm all details before finalizing.
 `
-  }
-
-  if (knowledgeSources && knowledgeSources.length > 0) {
-    const knowledgeContext = knowledgeSources
-      .map((source) => `${source.file_name || 'Knowledge'}:\n${source.content}`)
-      .join('\n\n')
-    prompt += `\n\nKnowledge Base:\n${knowledgeContext}\n\nUse this information to answer questions accurately.`
   }
 
   if (agent?.system_prompt) {
@@ -671,21 +774,9 @@ async function linkBookingToConversation(
   confidence
 ) {
   try {
-    // You can implement this to update the booking record with conversation details
-    // Or create a separate linking table if needed
     console.log(
       `Linking booking ${bookingId} to conversation ${conversationId}`
     )
-
-    // Example implementation (adjust based on your database schema):
-    // await supabase
-    //   .from('bookings')
-    //   .update({
-    //     conversation_id: conversationId,
-    //     booking_metadata: { extractedData, confidence }
-    //   })
-    //   .eq('id', bookingId)
-
     return true
   } catch (error) {
     console.error('Error in linkBookingToConversation:', error)

@@ -21,7 +21,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useRef, useState, memo, useMemo, useCallback } from 'react'
+import { useState, memo, useMemo, useCallback, useEffect } from 'react'
 import LoadingState from '../../../components/common/loading-state'
 import NavigationBar from '../../../components/navigationBar/navigationBar'
 import { useAuth } from '../../../components/providers/AuthProvider'
@@ -30,10 +30,13 @@ import NeonBackground from '../../../components/ui/background'
 import Button from '../../../components/ui/button'
 import Card from '../../../components/ui/card'
 import { useLogout } from '../../../lib/supabase/auth'
-import { dbClient } from '../../../lib/supabase/dbClient'
 import BottomModal from '../../../components/ui/modal'
 import Pagination from '../../../components/common/pagination'
 import SearchBar from '../../../components/common/search-bar'
+import {
+  useAgents,
+  useDashboardAnalytics
+} from '../../../lib/hooks/useAgentData'
 import '../../styles/agent-dashboard-styles.css'
 
 /**
@@ -45,7 +48,6 @@ const highlightText = (text, searchQuery) => {
   const searchLower = searchQuery.toLowerCase()
   const textLower = text.toLowerCase()
 
-  // Find all matching character positions
   const matches = []
   let searchIndex = 0
 
@@ -60,17 +62,14 @@ const highlightText = (text, searchQuery) => {
     }
   }
 
-  // If not all characters matched, return original text
   if (searchIndex < searchLower.length) {
     return text
   }
 
-  // Build highlighted text
   const parts = []
   let lastIndex = 0
 
   matches.forEach((matchIndex) => {
-    // Add non-highlighted text before this match
     if (matchIndex > lastIndex) {
       parts.push(
         <span key={`text-${lastIndex}`}>
@@ -79,7 +78,6 @@ const highlightText = (text, searchQuery) => {
       )
     }
 
-    // Add highlighted character
     parts.push(
       <span
         key={`highlight-${matchIndex}`}
@@ -92,7 +90,6 @@ const highlightText = (text, searchQuery) => {
     lastIndex = matchIndex + 1
   })
 
-  // Add remaining text
   if (lastIndex < text.length) {
     parts.push(<span key={`text-${lastIndex}`}>{text.slice(lastIndex)}</span>)
   }
@@ -101,12 +98,9 @@ const highlightText = (text, searchQuery) => {
 }
 
 /**
- * OPTIMIZED Agent Card Component with Search Highlighting
+ * Memoized Agent Card Component with Search Highlighting
  */
 const AgentCardWithInfo = memo(({ agent, searchQuery }) => {
-  const cardRef = useRef(null)
-
-  // Get purpose icon
   const getPurposeIcon = () => {
     const iconProps = 'h-6 w-6'
     switch (agent?.purpose) {
@@ -123,7 +117,6 @@ const AgentCardWithInfo = memo(({ agent, searchQuery }) => {
     }
   }
 
-  // Get purpose colors
   const getPurposeColors = () => {
     const baseColors = {
       instagram: 'from-pink-900/40 to-pink-950/20 border-pink-600/30',
@@ -148,7 +141,6 @@ const AgentCardWithInfo = memo(({ agent, searchQuery }) => {
 
   return (
     <Card
-      ref={cardRef}
       className={`group cursor-pointer border bg-gradient-to-br transition-all hover:scale-[1.02] hover:shadow-2xl ${getPurposeColors()}`}
     >
       <div className='space-y-6'>
@@ -258,48 +250,94 @@ const AgentCardWithInfo = memo(({ agent, searchQuery }) => {
     </Card>
   )
 })
-
 AgentCardWithInfo.displayName = 'AgentCardWithInfo'
 
 /**
- * ENHANCED Dashboard Component with Search and Pagination
+ * Memoized Analytics Card Component
+ */
+const AnalyticsCard = memo(({ icon: Icon, label, value, subtext, color }) => {
+  const colorClasses = {
+    orange: 'border-orange-600/20 from-orange-900/20',
+    blue: 'border-blue-600/20 from-blue-900/20',
+    green: 'border-green-600/20 from-green-900/20',
+    purple: 'border-purple-600/20 from-purple-900/20'
+  }
+
+  const iconBgClasses = {
+    orange: 'bg-orange-900/40',
+    blue: 'bg-blue-900/40',
+    green: 'bg-green-900/40',
+    purple: 'bg-purple-900/40'
+  }
+
+  const textClasses = {
+    orange: 'text-orange-400',
+    blue: 'text-blue-400',
+    green: 'text-green-400',
+    purple: 'text-purple-400'
+  }
+
+  return (
+    <Card
+      className={`border ${colorClasses[color]} bg-gradient-to-br to-neutral-950/50`}
+    >
+      <div className='flex items-center justify-between'>
+        <div>
+          <p className='text-sm font-medium text-neutral-400'>{label}</p>
+          <p className={`mt-2 text-3xl font-bold ${textClasses[color]}`}>
+            {value}
+          </p>
+        </div>
+        <div
+          className={`flex h-12 w-12 items-center justify-center rounded-full ${iconBgClasses[color]}`}
+        >
+          <Icon className={`h-6 w-6 ${textClasses[color]}`} />
+        </div>
+      </div>
+      {subtext && (
+        <div className='mt-4 flex items-center text-xs text-neutral-500'>
+          <Activity className='mr-1 h-3 w-3' />
+          {subtext}
+        </div>
+      )}
+    </Card>
+  )
+})
+AnalyticsCard.displayName = 'AnalyticsCard'
+
+/**
+ * Main Dashboard Component
  */
 export default function AgentsDashboard() {
   const { user, profile, loading: authLoading } = useAuth()
   const { logout } = useLogout()
   const router = useRouter()
 
-  // Refs
-  const hasFetchedData = useRef(false)
-
-  // State management
-  const [agents, setAgents] = useState([])
-  const [analytics, setAnalytics] = useState({
-    totalConversations: 0,
-    totalAgents: 0,
-    creditsUsed: 0,
-    successRate: 0
-  })
-  const [fetching, setFetching] = useState(true)
-  const [error, setError] = useState(null)
+  // UI State - must be declared before any conditional returns
   const [isAgentCardOpen, setIsAgentCardOpen] = useState(false)
-  const [isInitialized, setIsInitialized] = useState(false)
-  
-  // Search and pagination state
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 6 // Agents per page
+  const itemsPerPage = 6
 
-  // ✅ Reset state on mount/unmount (this component doesn't have an id param)
-  // But we still need to ensure clean state on component mount
-  useEffect(() => {
-    // This component doesn't navigate based on ID, but we reset on mount
-    return () => {
-      hasFetchedData.current = false
-    }
-  }, [])
+  // React Query hooks - must be called before any conditional returns
+  const {
+    data: agents = [],
+    isLoading: agentsLoading,
+    error: agentsError
+  } = useAgents(user?.id)
 
-  // ✅ OPTIMIZATION: Filter agents based on search query
+  const {
+    data: analytics = {
+      totalConversations: 0,
+      totalAgents: 0,
+      creditsUsed: 0,
+      successRate: 0,
+      activeAgents: 0
+    },
+    isLoading: analyticsLoading
+  } = useDashboardAnalytics(agents)
+
+  // Filter agents based on search query
   const filteredAgents = useMemo(() => {
     if (!searchQuery.trim()) {
       return agents
@@ -309,9 +347,8 @@ export default function AgentsDashboard() {
 
     return agents.filter((agent) => {
       const nameLower = (agent.name || '').toLowerCase()
-
-      // Check if all characters in search query exist in order in agent name
       let searchIndex = 0
+
       for (
         let i = 0;
         i < nameLower.length && searchIndex < searchLower.length;
@@ -326,108 +363,80 @@ export default function AgentsDashboard() {
     })
   }, [agents, searchQuery])
 
-  // ✅ OPTIMIZATION: Paginate filtered agents
+  // Paginate filtered agents
   const paginatedAgents = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage
     const endIndex = startIndex + itemsPerPage
     return filteredAgents.slice(startIndex, endIndex)
   }, [filteredAgents, currentPage, itemsPerPage])
 
-  // Calculate total pages
-  const totalPages = Math.ceil(filteredAgents.length / itemsPerPage)
+  const totalPages = useMemo(
+    () => Math.ceil(filteredAgents.length / itemsPerPage),
+    [filteredAgents.length, itemsPerPage]
+  )
 
-  // Reset to first page when search changes
+  // Reset to first page when search changes - use useEffect instead of useMemo
   useEffect(() => {
     setCurrentPage(1)
   }, [searchQuery])
 
-  // Optimized fetch function
-  const fetchDashboardData = useCallback(async () => {
-    if (!user || hasFetchedData.current) return
-    hasFetchedData.current = true
-
-    try {
-      setFetching(true)
-      setError(null)
-
-      const userAgents = await dbClient.getUserAgents(user.id)
-      setAgents(userAgents || [])
-
-      const analyticsPromises = (userAgents || []).map((agent) =>
-        dbClient.getAnalytics(agent.id).catch(() => [])
-      )
-      const allAgentAnalytics = await Promise.all(analyticsPromises)
-
-      let totalConversations = 0
-      let totalCreditsUsed = 0
-      let successfulInteractions = 0
-      let totalInteractions = 0
-
-      allAgentAnalytics.flat().forEach((record) => {
-        if (record.event_type === 'conversation') {
-          totalConversations++
-          totalInteractions++
-          if (record.success) successfulInteractions++
-        }
-        totalCreditsUsed += record.tokens_used || 0
-      })
-
-      setAnalytics({
-        totalConversations,
-        totalAgents: userAgents?.length || 0,
-        creditsUsed: totalCreditsUsed,
-        successRate:
-          totalInteractions > 0
-            ? Math.round((successfulInteractions / totalInteractions) * 100)
-            : 0
-      })
-    } catch (err) {
-      console.error('Error fetching dashboard data:', err)
-      setError('Failed to load agents data')
-    } finally {
-      setFetching(false)
-      setIsInitialized(true)
-    }
-  }, [user])
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/')
-      return
-    }
-
-    if (user && !hasFetchedData.current) {
-      fetchDashboardData()
-    }
-  }, [authLoading, user, fetchDashboardData, router])
-
-  const handleNewAgent = () => {
+  // Handlers
+  const handleNewAgent = useCallback(() => {
     setIsAgentCardOpen(false)
-  }
+  }, [])
 
-  // Handle search
   const handleSearch = useCallback((query) => {
     setSearchQuery(query)
   }, [])
 
-  // Handle page change
   const handlePageChange = useCallback((page) => {
     setCurrentPage(page)
-    // Scroll to top of agents section
     document
       .getElementById('agents-section')
       ?.scrollIntoView({ behavior: 'smooth' })
   }, [])
 
+  // NOW we can do conditional returns - after all hooks are called
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/')
+    }
+  }, [authLoading, user, router])
+
   // Loading states
-  if (authLoading) {
-    return <LoadingState message='Authenticating...' className='min-h-screen' />
+  if (authLoading || agentsLoading) {
+    return (
+      <LoadingState
+        message={authLoading ? 'Authenticating...' : 'Loading your agents...'}
+        className='min-h-screen'
+      />
+    )
   }
 
-  if (fetching && !isInitialized) {
+  // Error state
+  if (agentsError) {
     return (
-      <LoadingState message='Loading your agents...' className='min-h-screen' />
+      <div className='flex min-h-screen items-center justify-center bg-neutral-900 font-mono'>
+        <Card className='max-w-md border-red-600/30 bg-gradient-to-br from-red-900/20 to-neutral-950/50'>
+          <div className='p-8 text-center'>
+            <div className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-900/40'>
+              <Bot className='h-8 w-8 text-red-400' />
+            </div>
+            <h3 className='mb-2 text-xl font-bold text-neutral-100'>Error</h3>
+            <p className='text-sm text-neutral-400'>{agentsError.message}</p>
+            <Button onClick={() => window.location.reload()} className='mt-6'>
+              Retry
+            </Button>
+          </div>
+        </Card>
+      </div>
     )
+  }
+
+  // Don't render if not authenticated
+  if (!user) {
+    return null
   }
 
   return (
@@ -480,85 +489,34 @@ export default function AgentsDashboard() {
 
               {/* Analytics Cards */}
               <div className='mb-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4'>
-                <Card className='border-orange-600/20 bg-gradient-to-br from-orange-900/20 to-neutral-950/50'>
-                  <div className='flex items-center justify-between'>
-                    <div>
-                      <p className='text-sm font-medium text-neutral-400'>
-                        Total Agents
-                      </p>
-                      <p className='mt-2 text-3xl font-bold text-orange-400'>
-                        {analytics.totalAgents}
-                      </p>
-                    </div>
-                    <div className='flex h-12 w-12 items-center justify-center rounded-full bg-orange-900/40'>
-                      <Bot className='h-6 w-6 text-orange-400' />
-                    </div>
-                  </div>
-                  <div className='mt-4 flex items-center text-xs text-neutral-500'>
-                    <TrendingUp className='mr-1 h-3 w-3' />
-                    Active: {agents.filter((a) => a.is_active).length}
-                  </div>
-                </Card>
-
-                <Card className='border-blue-600/20 bg-gradient-to-br from-blue-900/20 to-neutral-950/50'>
-                  <div className='flex items-center justify-between'>
-                    <div>
-                      <p className='text-sm font-medium text-neutral-400'>
-                        Conversations
-                      </p>
-                      <p className='mt-2 text-3xl font-bold text-blue-400'>
-                        {analytics.totalConversations}
-                      </p>
-                    </div>
-                    <div className='flex h-12 w-12 items-center justify-center rounded-full bg-blue-900/40'>
-                      <MessageSquare className='h-6 w-6 text-blue-400' />
-                    </div>
-                  </div>
-                  <div className='mt-4 flex items-center text-xs text-neutral-500'>
-                    <Activity className='mr-1 h-3 w-3' />
-                    All time interactions
-                  </div>
-                </Card>
-
-                <Card className='border-green-600/20 bg-gradient-to-br from-green-900/20 to-neutral-950/50'>
-                  <div className='flex items-center justify-between'>
-                    <div>
-                      <p className='text-sm font-medium text-neutral-400'>
-                        Success Rate
-                      </p>
-                      <p className='mt-2 text-3xl font-bold text-green-400'>
-                        {analytics.successRate}%
-                      </p>
-                    </div>
-                    <div className='flex h-12 w-12 items-center justify-center rounded-full bg-green-900/40'>
-                      <TrendingUp className='h-6 w-6 text-green-400' />
-                    </div>
-                  </div>
-                  <div className='mt-4 flex items-center text-xs text-neutral-500'>
-                    <Activity className='mr-1 h-3 w-3' />
-                    Performance metric
-                  </div>
-                </Card>
-
-                <Card className='border-purple-600/20 bg-gradient-to-br from-purple-900/20 to-neutral-950/50'>
-                  <div className='flex items-center justify-between'>
-                    <div>
-                      <p className='text-sm font-medium text-neutral-400'>
-                        Credits Used
-                      </p>
-                      <p className='mt-2 text-3xl font-bold text-purple-400'>
-                        {analytics.creditsUsed.toLocaleString()}
-                      </p>
-                    </div>
-                    <div className='flex h-12 w-12 items-center justify-center rounded-full bg-purple-900/40'>
-                      <Zap className='h-6 w-6 text-purple-400' />
-                    </div>
-                  </div>
-                  <div className='mt-4 flex items-center text-xs text-neutral-500'>
-                    <Activity className='mr-1 h-3 w-3' />
-                    Available: {profile?.api_credits || 0}
-                  </div>
-                </Card>
+                <AnalyticsCard
+                  icon={Bot}
+                  label='Total Agents'
+                  value={analytics.totalAgents}
+                  subtext={`Active: ${analytics.activeAgents}`}
+                  color='orange'
+                />
+                <AnalyticsCard
+                  icon={MessageSquare}
+                  label='Conversations'
+                  value={analytics.totalConversations}
+                  subtext='All time interactions'
+                  color='blue'
+                />
+                <AnalyticsCard
+                  icon={TrendingUp}
+                  label='Success Rate'
+                  value={`${analytics.successRate}%`}
+                  subtext='Performance metric'
+                  color='green'
+                />
+                <AnalyticsCard
+                  icon={Zap}
+                  label='Credits Used'
+                  value={analytics.creditsUsed.toLocaleString()}
+                  subtext={`Available: ${profile?.api_credits || 0}`}
+                  color='purple'
+                />
               </div>
 
               {/* Agents Section */}
@@ -576,7 +534,6 @@ export default function AgentsDashboard() {
                   </div>
 
                   <div className='flex flex-col gap-3 sm:flex-row sm:items-center'>
-                    {/* Search Bar */}
                     {agents.length > 0 && (
                       <div className='w-full sm:w-80'>
                         <SearchBar
@@ -600,7 +557,6 @@ export default function AgentsDashboard() {
                 </div>
 
                 {agents.length === 0 ? (
-                  // Empty State
                   <Card className='border-orange-600/20 bg-gradient-to-br from-orange-950/10 to-neutral-950/50'>
                     <div className='flex flex-col items-center py-16 text-center'>
                       <div className='mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-orange-900/40'>
@@ -620,7 +576,6 @@ export default function AgentsDashboard() {
                     </div>
                   </Card>
                 ) : filteredAgents.length === 0 ? (
-                  // No Search Results
                   <Card className='border-neutral-700/50 bg-gradient-to-br from-neutral-900/20 to-neutral-950/50'>
                     <div className='flex flex-col items-center py-16 text-center'>
                       <div className='mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-neutral-800/40'>
@@ -643,7 +598,6 @@ export default function AgentsDashboard() {
                   </Card>
                 ) : (
                   <>
-                    {/* Agents Grid */}
                     <div className='grid gap-6 sm:grid-cols-1 lg:grid-cols-2'>
                       {paginatedAgents.map((agent) => (
                         <AgentCardWithInfo
@@ -654,7 +608,6 @@ export default function AgentsDashboard() {
                       ))}
                     </div>
 
-                    {/* Pagination */}
                     {totalPages > 1 && (
                       <div className='mt-8'>
                         <Pagination
@@ -785,6 +738,27 @@ export default function AgentsDashboard() {
           </div>
         </div>
       </BottomModal>
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(23, 23, 23, 0.3);
+          border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(245, 158, 11, 0.3);
+          border-radius: 4px;
+          transition: background 0.2s;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(245, 158, 11, 0.5);
+        }
+      `}</style>
     </>
   )
 }

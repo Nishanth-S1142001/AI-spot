@@ -71,44 +71,6 @@ export const dbServer = {
     if (error) throw error
   },
 
-  // Knowledge Sources
-  async addKnowledgeSource(agentId, sourceData) {
-    const { data, error } = await supabaseAdmin
-      .from('knowledge_sources')
-      .insert({ ...sourceData, agent_id: agentId })
-      .select()
-      .single()
-    if (error) throw error
-    return data
-  },
-
-  async updateKnowledgeSource(sourceId, updates) {
-    const { data, error } = await supabaseAdmin
-      .from('knowledge_sources')
-      .update(updates)
-      .eq('id', sourceId)
-      .select()
-      .single()
-    if (error) throw error
-    return data
-  },
-
-  async getKnowledgeSources(agentId) {
-    const { data, error } = await supabaseAdmin
-      .from('knowledge_sources')
-      .select('*')
-      .eq('agent_id', agentId)
-    if (error) throw error
-    return data
-  },
-
-  async deleteKnowledgeSource(sourceId) {
-    const { error } = await supabaseAdmin
-      .from('knowledge_sources')
-      .delete()
-      .eq('id', sourceId)
-    if (error) throw error
-  },
 
   // Conversations
   async saveConversation(
@@ -213,7 +175,7 @@ export const dbServer = {
       .from('profiles')
       .update({ api_credits: newCredits })
       .eq('id', userId)
-      .select()
+      .select() 
       .single()
     if (error) throw error
     return data
@@ -1357,6 +1319,73 @@ export const dbServer = {
 
     if (error) throw error
     return data || [] // Return array (empty if none)
+  },
+  async verifyAgentOwnership(agentId, userId) {
+    const { data, error } = await supabaseAdmin
+      .from('agents')
+      .select('id, user_id')
+      .eq('id', agentId)
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (error) {
+      console.error('Database Error (verifyAgentOwnership):', error)
+      throw error
+    }
+    return data
+  },
+  async addKnowledgeSource(agentId, sourceData) {
+    const { data, error } = await supabaseAdmin
+      .from('knowledge_sources')
+      .insert({ ...sourceData, agent_id: agentId })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Database Error (addKnowledgeSource):', error)
+      throw error
+    }
+    return data
+  },
+  async updateKnowledgeSource(sourceId, updates) {
+    const { data, error } = await supabaseAdmin
+      .from('knowledge_sources')
+      .update(updates)
+      .eq('id', sourceId)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Database Error (updateKnowledgeSource):', error)
+      throw error
+    }
+    return data
+  },
+  async getKnowledgeSources(agentId) {
+    const { data, error } = await supabaseAdmin
+      .from('knowledge_sources')
+      .select('*')
+      .eq('agent_id', agentId)
+      .order('created_at', { ascending: false }) // Added ordering for list consistency
+
+    if (error) {
+      console.error('Database Error (getKnowledgeSources):', error)
+      throw error
+    }
+    return data || []
+  },
+  async deleteKnowledgeSource(sourceId, agentId) {
+    const { error } = await supabaseAdmin
+      .from('knowledge_sources')
+      .delete()
+      .eq('id', sourceId)
+      .eq('agent_id', agentId) // Enforce agent ownership during deletion
+
+    if (error) {
+      console.error('Database Error (deleteKnowledgeSource):', error)
+      throw error
+    }
+    return true
   }
 }
 // ============================================================================
@@ -1377,10 +1406,12 @@ export const subAccountsDb = {
   async getTestAccountsByAgent(agentId, userId) {
     const { data, error } = await supabaseAdmin
       .from('test_accounts')
-      .select(`
+      .select(
+        `
         *,
         agents!inner(id, name, user_id)
-      `)
+      `
+      )
       .eq('agent_id', agentId)
       .eq('agents.user_id', userId)
       .order('created_at', { ascending: false })
@@ -1395,10 +1426,12 @@ export const subAccountsDb = {
   async getTestAccountsByUser(userId) {
     const { data, error } = await supabaseAdmin
       .from('test_accounts')
-      .select(`
+      .select(
+        `
         *,
         agents!inner(id, name, user_id)
-      `)
+      `
+      )
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
 
@@ -1412,10 +1445,12 @@ export const subAccountsDb = {
   async getTestAccount(accountId) {
     const { data, error } = await supabaseAdmin
       .from('test_accounts')
-      .select(`
+      .select(
+        `
         *,
         agents(id, name, user_id, system_prompt, model, temperature)
-      `)
+      `
+      )
       .eq('id', accountId)
       .single()
 
@@ -1429,7 +1464,8 @@ export const subAccountsDb = {
   async getTestAccountByToken(accessToken) {
     const { data, error } = await supabaseAdmin
       .from('test_accounts')
-      .select(`
+      .select(
+        `
         *,
         agents(
           id, 
@@ -1443,7 +1479,8 @@ export const subAccountsDb = {
           max_tokens,
           knowledge_base
         )
-      `)
+      `
+      )
       .eq('access_token', accessToken)
       .eq('is_active', true)
       .single()
@@ -1457,9 +1494,9 @@ export const subAccountsDb = {
 
     // Check if expired
     if (data.expires_at && new Date(data.expires_at) < new Date()) {
-      await this.updateTestAccount(data.id, { 
+      await this.updateTestAccount(data.id, {
         status: 'expired',
-        is_active: false 
+        is_active: false
       })
       return null
     }
@@ -1520,7 +1557,7 @@ export const subAccountsDb = {
       'increment_test_account_sessions',
       { account_id: accountId }
     )
-    
+
     if (error) {
       // Fallback if function doesn't exist
       const account = await this.getTestAccount(accountId)
@@ -1529,7 +1566,7 @@ export const subAccountsDb = {
         last_active_at: new Date().toISOString()
       })
     }
-    
+
     return data
   },
 
@@ -1549,11 +1586,15 @@ export const subAccountsDb = {
    */
   async checkTestAccountLimits(accountId) {
     const account = await this.getTestAccount(accountId)
-    
+
     return {
       canCreateSession: account.sessions_count < account.max_sessions,
-      remainingSessions: Math.max(0, account.max_sessions - account.sessions_count),
-      isExpired: account.expires_at && new Date(account.expires_at) < new Date(),
+      remainingSessions: Math.max(
+        0,
+        account.max_sessions - account.sessions_count
+      ),
+      isExpired:
+        account.expires_at && new Date(account.expires_at) < new Date(),
       isActive: account.is_active && account.status === 'active'
     }
   },
@@ -1583,10 +1624,12 @@ export const subAccountsDb = {
   async getTestSessionsByAgent(agentId, limit = 50) {
     const { data, error } = await supabaseAdmin
       .from('test_sessions')
-      .select(`
+      .select(
+        `
         *,
         test_accounts(id, name, email)
-      `)
+      `
+      )
       .eq('agent_id', agentId)
       .order('started_at', { ascending: false })
       .limit(limit)
@@ -1601,10 +1644,12 @@ export const subAccountsDb = {
   async getTestSession(sessionId) {
     const { data, error } = await supabaseAdmin
       .from('test_sessions')
-      .select(`
+      .select(
+        `
         *,
         test_accounts(id, name, email)
-      `)
+      `
+      )
       .eq('id', sessionId)
       .single()
 
@@ -1686,10 +1731,12 @@ export const subAccountsDb = {
   async getTestInvitationsByAgent(agentId) {
     const { data, error } = await supabaseAdmin
       .from('test_invitations')
-      .select(`
+      .select(
+        `
         *,
         test_accounts(id, name, email, status)
-      `)
+      `
+      )
       .eq('agent_id', agentId)
       .order('created_at', { ascending: false })
 
@@ -1703,11 +1750,13 @@ export const subAccountsDb = {
   async getTestInvitationByToken(invitationToken) {
     const { data, error } = await supabaseAdmin
       .from('test_invitations')
-      .select(`
+      .select(
+        `
         *,
         test_accounts(id, name, email, access_token),
         agents(id, name)
-      `)
+      `
+      )
       .eq('invitation_token', invitationToken)
       .single()
 
@@ -1772,7 +1821,7 @@ export const subAccountsDb = {
    */
   async acceptInvitation(invitationToken) {
     const invitation = await this.getTestInvitationByToken(invitationToken)
-    
+
     if (!invitation) {
       throw new Error('Invitation not found or expired')
     }
@@ -1834,10 +1883,12 @@ export const subAccountsDb = {
   async getTestAgentAnalytics(agentId, dateFrom, dateTo) {
     let query = supabaseAdmin
       .from('test_analytics')
-      .select(`
+      .select(
+        `
         *,
         test_accounts(id, name, email)
-      `)
+      `
+      )
       .eq('agent_id', agentId)
       .order('created_at', { ascending: false })
 
@@ -1859,30 +1910,30 @@ export const subAccountsDb = {
     ])
 
     const totalMessages = analytics.filter(
-      a => a.event_type === 'message_sent'
+      (a) => a.event_type === 'message_sent'
     ).length
 
     const totalTokens = analytics.reduce(
-      (sum, a) => sum + (a.tokens_used || 0), 
+      (sum, a) => sum + (a.tokens_used || 0),
       0
     )
 
     const avgResponseTime = analytics
-      .filter(a => a.response_time_ms)
+      .filter((a) => a.response_time_ms)
       .reduce((sum, a, _, arr) => sum + a.response_time_ms / arr.length, 0)
 
-    const ratings = sessions
-      .filter(s => s.rating)
-      .map(s => s.rating)
+    const ratings = sessions.filter((s) => s.rating).map((s) => s.rating)
 
-    const avgRating = ratings.length > 0
-      ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length
-      : 0
+    const avgRating =
+      ratings.length > 0
+        ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length
+        : 0
 
     return {
       totalSessions: sessions.length,
-      activeSessions: sessions.filter(s => s.status === 'active').length,
-      completedSessions: sessions.filter(s => s.status === 'completed').length,
+      activeSessions: sessions.filter((s) => s.status === 'active').length,
+      completedSessions: sessions.filter((s) => s.status === 'completed')
+        .length,
       totalMessages,
       totalTokens,
       avgResponseTime: Math.round(avgResponseTime),
@@ -1896,7 +1947,7 @@ export const subAccountsDb = {
    */
   async getAgentTestStats(agentId, userId) {
     const testAccounts = await this.getTestAccountsByAgent(agentId, userId)
-    
+
     if (testAccounts.length === 0) {
       return {
         totalTestAccounts: 0,
@@ -1908,8 +1959,8 @@ export const subAccountsDb = {
       }
     }
 
-    const accountIds = testAccounts.map(a => a.id)
-    
+    const accountIds = testAccounts.map((a) => a.id)
+
     const { data: sessions } = await supabaseAdmin
       .from('test_sessions')
       .select('*')
@@ -1921,7 +1972,7 @@ export const subAccountsDb = {
       .in('test_account_id', accountIds)
 
     const totalMessages = (analytics || []).filter(
-      a => a.event_type === 'message_sent'
+      (a) => a.event_type === 'message_sent'
     ).length
 
     const totalTokens = (analytics || []).reduce(
@@ -1930,17 +1981,18 @@ export const subAccountsDb = {
     )
 
     const ratings = (sessions || [])
-      .filter(s => s.rating)
-      .map(s => s.rating)
+      .filter((s) => s.rating)
+      .map((s) => s.rating)
 
-    const avgRating = ratings.length > 0
-      ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length
-      : 0
+    const avgRating =
+      ratings.length > 0
+        ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length
+        : 0
 
     return {
       totalTestAccounts: testAccounts.length,
       activeAccounts: testAccounts.filter(
-        a => a.is_active && a.status === 'active'
+        (a) => a.is_active && a.status === 'active'
       ).length,
       totalSessions: (sessions || []).length,
       totalMessages,
