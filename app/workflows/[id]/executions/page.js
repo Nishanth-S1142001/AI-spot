@@ -213,6 +213,11 @@ export default function WorkflowExecutionsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState('all')
   const itemsPerPage = 8
+  const userProfile = {
+  name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
+  email: user?.email || 'guest@example.com',
+  avatar: profile?.avatar_url || null
+}
   
   // React Query hooks - MUST be called before any conditional returns
   const { data: workflowData } = useWorkflow(id)
@@ -306,7 +311,7 @@ export default function WorkflowExecutionsPage() {
   return (
     <>
       <NeonBackground />
-      <SideBarLayout>
+      <SideBarLayout userProfile={userProfile}>
         <div className="sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl">
           <NavigationBar profile={profile} title={workflow?.name || 'Execution History'} />
         </div>

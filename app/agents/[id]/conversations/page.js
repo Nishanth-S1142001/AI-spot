@@ -20,7 +20,7 @@ import {
   useConversations,
   useConversationStats,
   useDeleteConversation,
-  useUniqueSessions,
+  useUniqueSessions
 } from '../../../../lib/hooks/useAgentData'
 import {
   Eye,
@@ -51,24 +51,28 @@ const highlightText = (text, searchQuery) => {
 
   const searchLower = searchQuery.toLowerCase()
   const textLower = text.toLowerCase()
-  
+
   const matches = []
   let searchIndex = 0
-  
-  for (let i = 0; i < textLower.length && searchIndex < searchLower.length; i++) {
+
+  for (
+    let i = 0;
+    i < textLower.length && searchIndex < searchLower.length;
+    i++
+  ) {
     if (textLower[i] === searchLower[searchIndex]) {
       matches.push(i)
       searchIndex++
     }
   }
-  
+
   if (searchIndex < searchLower.length) {
     return text
   }
-  
+
   const parts = []
   let lastIndex = 0
-  
+
   matches.forEach((matchIndex) => {
     if (matchIndex > lastIndex) {
       parts.push(
@@ -77,163 +81,188 @@ const highlightText = (text, searchQuery) => {
         </span>
       )
     }
-    
+
     parts.push(
-      <span 
+      <span
         key={`highlight-${matchIndex}`}
-        className="bg-orange-500/40 text-orange-200 font-bold rounded px-0.5"
+        className='rounded bg-orange-500/40 px-0.5 font-bold text-orange-200'
       >
         {text[matchIndex]}
       </span>
     )
-    
+
     lastIndex = matchIndex + 1
   })
-  
+
   if (lastIndex < text.length) {
-    parts.push(
-      <span key={`text-${lastIndex}`}>
-        {text.slice(lastIndex)}
-      </span>
-    )
+    parts.push(<span key={`text-${lastIndex}`}>{text.slice(lastIndex)}</span>)
   }
-  
+
   return <>{parts}</>
 }
 
 /**
  * Memoized Statistics Card Component
  */
-const StatCard = memo(({ icon: Icon, label, value, subValue, colorClass, bgClass, trend, isLoading }) => (
-  <Card className={`border-opacity-20 ${bgClass} transition-all hover:scale-[1.02] hover:shadow-lg`}>
-    <div className="flex items-center justify-between p-4">
-      <div className="flex-1">
-        <p className="text-sm font-medium text-neutral-400">{label}</p>
-        {isLoading ? (
-          <div className="mt-2 h-8 w-20 animate-pulse rounded bg-neutral-800" />
-        ) : (
-          <>
-            <p className={`mt-2 text-3xl font-bold ${colorClass}`}>{value}</p>
-            {subValue && (
-              <div className="mt-2 flex items-center gap-1 text-xs text-neutral-500">
-                {trend && <TrendingUp className="h-3 w-3" />}
-                <span>{subValue}</span>
-              </div>
-            )}
-          </>
-        )}
+const StatCard = memo(
+  ({
+    icon: Icon,
+    label,
+    value,
+    subValue,
+    colorClass,
+    bgClass,
+    trend,
+    isLoading
+  }) => (
+    <Card
+      className={`border-opacity-20 ${bgClass} transition-all hover:scale-[1.02] hover:shadow-lg`}
+    >
+      <div className='flex items-center justify-between p-4'>
+        <div className='flex-1'>
+          <p className='text-sm font-medium text-neutral-400'>{label}</p>
+          {isLoading ? (
+            <div className='mt-2 h-8 w-20 animate-pulse rounded bg-neutral-800' />
+          ) : (
+            <>
+              <p className={`mt-2 text-3xl font-bold ${colorClass}`}>{value}</p>
+              {subValue && (
+                <div className='mt-2 flex items-center gap-1 text-xs text-neutral-500'>
+                  {trend && <TrendingUp className='h-3 w-3' />}
+                  <span>{subValue}</span>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+        <div
+          className={`flex h-12 w-12 items-center justify-center rounded-full ${bgClass.replace('to-neutral-950/50', 'opacity-40')}`}
+        >
+          <Icon className={`h-6 w-6 ${colorClass}`} />
+        </div>
       </div>
-      <div className={`flex h-12 w-12 items-center justify-center rounded-full ${bgClass.replace('to-neutral-950/50', 'opacity-40')}`}>
-        <Icon className={`h-6 w-6 ${colorClass}`} />
-      </div>
-    </div>
-  </Card>
-))
+    </Card>
+  )
+)
 StatCard.displayName = 'StatCard'
 
 /**
  * Memoized Conversation Card Component
  */
-const ConversationCard = memo(({ conversation, searchTerm, onView, onDelete }) => {
-  const formattedTime = useMemo(
-    () => formatDistanceToNow(new Date(conversation.created_at), { addSuffix: true }),
-    [conversation.created_at]
-  )
+const ConversationCard = memo(
+  ({ conversation, searchTerm, onView, onDelete }) => {
+    const formattedTime = useMemo(
+      () =>
+        formatDistanceToNow(new Date(conversation.created_at), {
+          addSuffix: true
+        }),
+      [conversation.created_at]
+    )
 
-  const responseTime = conversation.metadata?.response_time_ms
+    const responseTime = conversation.metadata?.response_time_ms
 
-  return (
-    <Card className="group border-neutral-700/50 bg-gradient-to-br from-neutral-900/50 to-neutral-950/30 transition-all hover:scale-[1.01] hover:border-orange-600/30 hover:shadow-lg hover:shadow-orange-500/10">
-      <div className="flex items-start justify-between p-5">
-        <div className="flex-1 min-w-0 space-y-4">
-          {/* Header */}
-          <div className="flex items-center flex-wrap gap-3">
-            <div className="flex items-center gap-2 text-sm text-neutral-400">
-              <Clock className="h-4 w-4" />
-              <span>{formattedTime}</span>
+    return (
+      <Card className='group border-neutral-700/50 bg-gradient-to-br from-neutral-900/50 to-neutral-950/30 transition-all hover:scale-[1.01] hover:border-orange-600/30 hover:shadow-lg hover:shadow-orange-500/10'>
+        <div className='flex items-start justify-between p-5'>
+          <div className='min-w-0 flex-1 space-y-4'>
+            {/* Header */}
+            <div className='flex flex-wrap items-center gap-3'>
+              <div className='flex items-center gap-2 text-sm text-neutral-400'>
+                <Clock className='h-4 w-4' />
+                <span>{formattedTime}</span>
+              </div>
+              <Badge variant='outline' className='font-mono text-xs'>
+                {conversation.session_id.slice(0, 12)}...
+              </Badge>
+              {responseTime && (
+                <div className='flex items-center gap-1 rounded-full bg-purple-900/20 px-2 py-1 text-xs text-purple-300'>
+                  <Zap className='h-3 w-3' />
+                  <span>{responseTime}ms</span>
+                </div>
+              )}
             </div>
-            <Badge variant="outline" className="text-xs font-mono">
-              {conversation.session_id.slice(0, 12)}...
-            </Badge>
-            {responseTime && (
-              <div className="flex items-center gap-1 rounded-full bg-purple-900/20 px-2 py-1 text-xs text-purple-300">
-                <Zap className="h-3 w-3" />
-                <span>{responseTime}ms</span>
+
+            {/* Messages */}
+            <div className='space-y-4'>
+              {/* User Message */}
+              <div className='flex items-start gap-3'>
+                <div className='flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-900/30 ring-1 ring-blue-500/30'>
+                  <User className='h-4 w-4 text-blue-400' />
+                </div>
+                <div className='min-w-0 flex-1'>
+                  <p className='mb-1.5 text-xs font-semibold text-blue-300'>
+                    User
+                  </p>
+                  <p className='line-clamp-2 text-sm break-words text-neutral-300'>
+                    {highlightText(conversation.user_message || '', searchTerm)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Agent Response */}
+              <div className='flex items-start gap-3'>
+                <div className='flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-orange-900/30 ring-1 ring-orange-500/30'>
+                  <Bot className='h-4 w-4 text-orange-400' />
+                </div>
+                <div className='min-w-0 flex-1'>
+                  <p className='mb-1.5 text-xs font-semibold text-orange-300'>
+                    Agent
+                  </p>
+                  <p className='line-clamp-2 text-sm break-words text-neutral-300'>
+                    {highlightText(
+                      conversation.agent_response || '',
+                      searchTerm
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Metadata Footer */}
+            {conversation.metadata?.tokens_used && (
+              <div className='flex items-center gap-3 border-t border-neutral-800/50 pt-3 text-xs text-neutral-500'>
+                <div className='flex items-center gap-1'>
+                  <BarChart3 className='h-3 w-3' />
+                  <span>{conversation.metadata.tokens_used} tokens</span>
+                </div>
+                {conversation.metadata?.model && (
+                  <>
+                    <span className='text-neutral-700'>•</span>
+                    <span className='font-mono'>
+                      {conversation.metadata.model}
+                    </span>
+                  </>
+                )}
               </div>
             )}
           </div>
 
-          {/* Messages */}
-          <div className="space-y-4">
-            {/* User Message */}
-            <div className="flex items-start gap-3">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-900/30 ring-1 ring-blue-500/30">
-                <User className="h-4 w-4 text-blue-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="mb-1.5 text-xs font-semibold text-blue-300">User</p>
-                <p className="line-clamp-2 text-sm text-neutral-300 break-words">
-                  {highlightText(conversation.user_message || '', searchTerm)}
-                </p>
-              </div>
-            </div>
-
-            {/* Agent Response */}
-            <div className="flex items-start gap-3">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-orange-900/30 ring-1 ring-orange-500/30">
-                <Bot className="h-4 w-4 text-orange-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="mb-1.5 text-xs font-semibold text-orange-300">Agent</p>
-                <p className="line-clamp-2 text-sm text-neutral-300 break-words">
-                  {highlightText(conversation.agent_response || '', searchTerm)}
-                </p>
-              </div>
-            </div>
+          {/* Actions */}
+          <div className='ml-4 flex flex-col gap-2'>
+            <Button
+              variant='ghost'
+              size='sm'
+              onClick={onView}
+              className='h-8 w-8 p-0 text-blue-400 hover:bg-blue-600/20 hover:text-blue-300'
+              title='View Details'
+            >
+              <Eye className='h-4 w-4' />
+            </Button>
+            <Button
+              variant='ghost'
+              size='sm'
+              onClick={onDelete}
+              className='h-8 w-8 p-0 text-red-400 hover:bg-red-600/20 hover:text-red-300'
+              title='Delete'
+            >
+              <Trash2 className='h-4 w-4' />
+            </Button>
           </div>
-
-          {/* Metadata Footer */}
-          {conversation.metadata?.tokens_used && (
-            <div className="flex items-center gap-3 border-t border-neutral-800/50 pt-3 text-xs text-neutral-500">
-              <div className="flex items-center gap-1">
-                <BarChart3 className="h-3 w-3" />
-                <span>{conversation.metadata.tokens_used} tokens</span>
-              </div>
-              {conversation.metadata?.model && (
-                <>
-                  <span className="text-neutral-700">•</span>
-                  <span className="font-mono">{conversation.metadata.model}</span>
-                </>
-              )}
-            </div>
-          )}
         </div>
-
-        {/* Actions */}
-        <div className="ml-4 flex flex-col gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onView}
-            className="h-8 w-8 p-0 text-blue-400 hover:bg-blue-600/20 hover:text-blue-300"
-            title="View Details"
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onDelete}
-            className="h-8 w-8 p-0 text-red-400 hover:bg-red-600/20 hover:text-red-300"
-            title="Delete"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </Card>
-  )
-})
+      </Card>
+    )
+  }
+)
 ConversationCard.displayName = 'ConversationCard'
 
 /**
@@ -243,56 +272,64 @@ const ConversationDetailsModal = memo(({ conversation, onClose }) => {
   if (!conversation) return null
 
   return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+    <div
+      className='fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm'
       onClick={onClose}
     >
-      <div 
-        className="mx-4 w-full max-w-3xl max-h-[90vh] overflow-y-auto custom-scrollbar rounded-xl border border-orange-600/30 bg-gradient-to-br from-neutral-900 to-neutral-950 shadow-2xl shadow-orange-500/20 animate-in fade-in zoom-in duration-200"
+      <div
+        className='custom-scrollbar animate-in fade-in zoom-in mx-4 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-orange-600/30 bg-gradient-to-br from-neutral-900 to-neutral-950 shadow-2xl shadow-orange-500/20 duration-200'
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-neutral-800/50 bg-neutral-900/90 backdrop-blur-sm p-6">
+        <div className='sticky top-0 z-10 flex items-center justify-between border-b border-neutral-800/50 bg-neutral-900/90 p-6 backdrop-blur-sm'>
           <div>
-            <h3 className="text-2xl font-bold text-orange-400 flex items-center gap-2">
-              <MessageSquare className="h-6 w-6" />
+            <h3 className='flex items-center gap-2 text-2xl font-bold text-orange-400'>
+              <MessageSquare className='h-6 w-6' />
               Conversation Details
             </h3>
-            <p className="mt-1 text-sm text-neutral-400">
+            <p className='mt-1 text-sm text-neutral-400'>
               {format(new Date(conversation.created_at), 'PPpp')}
             </p>
           </div>
           <Button
-            variant="ghost"
+            variant='ghost'
             onClick={onClose}
-            className="text-neutral-400 hover:text-neutral-200"
+            className='text-neutral-400 hover:text-neutral-200'
           >
             ✕
           </Button>
         </div>
 
         {/* Content */}
-        <div className="space-y-6 p-6">
+        <div className='space-y-6 p-6'>
           {/* Metadata Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="rounded-lg border border-neutral-700/50 bg-neutral-800/30 p-4">
-              <label className="block text-xs font-semibold text-neutral-400 mb-2">Session ID</label>
-              <p className="font-mono text-sm text-neutral-200 break-all">{conversation.session_id}</p>
+          <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
+            <div className='rounded-lg border border-neutral-700/50 bg-neutral-800/30 p-4'>
+              <label className='mb-2 block text-xs font-semibold text-neutral-400'>
+                Session ID
+              </label>
+              <p className='font-mono text-sm break-all text-neutral-200'>
+                {conversation.session_id}
+              </p>
             </div>
-            <div className="rounded-lg border border-neutral-700/50 bg-neutral-800/30 p-4">
-              <label className="block text-xs font-semibold text-neutral-400 mb-2">Conversation ID</label>
-              <p className="font-mono text-sm text-neutral-200 break-all">{conversation.id}</p>
+            <div className='rounded-lg border border-neutral-700/50 bg-neutral-800/30 p-4'>
+              <label className='mb-2 block text-xs font-semibold text-neutral-400'>
+                Conversation ID
+              </label>
+              <p className='font-mono text-sm break-all text-neutral-200'>
+                {conversation.id}
+              </p>
             </div>
           </div>
 
           {/* User Message */}
           <div>
-            <label className="mb-3 flex items-center gap-2 text-sm font-semibold text-blue-300">
-              <User className="h-4 w-4" />
+            <label className='mb-3 flex items-center gap-2 text-sm font-semibold text-blue-300'>
+              <User className='h-4 w-4' />
               User Message
             </label>
-            <div className="rounded-lg border border-blue-600/30 bg-gradient-to-br from-blue-900/20 to-neutral-950/50 p-4">
-              <p className="whitespace-pre-wrap text-sm text-neutral-200 leading-relaxed">
+            <div className='rounded-lg border border-blue-600/30 bg-gradient-to-br from-blue-900/20 to-neutral-950/50 p-4'>
+              <p className='text-sm leading-relaxed whitespace-pre-wrap text-neutral-200'>
                 {conversation.user_message}
               </p>
             </div>
@@ -300,12 +337,12 @@ const ConversationDetailsModal = memo(({ conversation, onClose }) => {
 
           {/* Agent Response */}
           <div>
-            <label className="mb-3 flex items-center gap-2 text-sm font-semibold text-orange-300">
-              <Bot className="h-4 w-4" />
+            <label className='mb-3 flex items-center gap-2 text-sm font-semibold text-orange-300'>
+              <Bot className='h-4 w-4' />
               Agent Response
             </label>
-            <div className="rounded-lg border border-orange-600/30 bg-gradient-to-br from-orange-900/20 to-neutral-950/50 p-4">
-              <p className="whitespace-pre-wrap text-sm text-neutral-200 leading-relaxed">
+            <div className='rounded-lg border border-orange-600/30 bg-gradient-to-br from-orange-900/20 to-neutral-950/50 p-4'>
+              <p className='text-sm leading-relaxed whitespace-pre-wrap text-neutral-200'>
                 {conversation.agent_response}
               </p>
             </div>
@@ -314,38 +351,48 @@ const ConversationDetailsModal = memo(({ conversation, onClose }) => {
           {/* Technical Details */}
           {conversation.metadata && (
             <div>
-              <label className="mb-3 flex items-center gap-2 text-sm font-semibold text-purple-300">
-                <Activity className="h-4 w-4" />
+              <label className='mb-3 flex items-center gap-2 text-sm font-semibold text-purple-300'>
+                <Activity className='h-4 w-4' />
                 Performance Metrics
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
                 {conversation.metadata.tokens_used && (
-                  <div className="rounded-lg border border-neutral-700/50 bg-neutral-800/30 p-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-neutral-400">Tokens Used</span>
-                      <div className="flex items-center gap-1">
-                        <BarChart3 className="h-3 w-3 text-green-400" />
-                        <span className="font-bold text-green-400">{conversation.metadata.tokens_used}</span>
+                  <div className='rounded-lg border border-neutral-700/50 bg-neutral-800/30 p-4'>
+                    <div className='flex items-center justify-between'>
+                      <span className='text-xs text-neutral-400'>
+                        Tokens Used
+                      </span>
+                      <div className='flex items-center gap-1'>
+                        <BarChart3 className='h-3 w-3 text-green-400' />
+                        <span className='font-bold text-green-400'>
+                          {conversation.metadata.tokens_used}
+                        </span>
                       </div>
                     </div>
                   </div>
                 )}
                 {conversation.metadata.response_time_ms && (
-                  <div className="rounded-lg border border-neutral-700/50 bg-neutral-800/30 p-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-neutral-400">Response Time</span>
-                      <div className="flex items-center gap-1">
-                        <Zap className="h-3 w-3 text-purple-400" />
-                        <span className="font-bold text-purple-400">{conversation.metadata.response_time_ms}ms</span>
+                  <div className='rounded-lg border border-neutral-700/50 bg-neutral-800/30 p-4'>
+                    <div className='flex items-center justify-between'>
+                      <span className='text-xs text-neutral-400'>
+                        Response Time
+                      </span>
+                      <div className='flex items-center gap-1'>
+                        <Zap className='h-3 w-3 text-purple-400' />
+                        <span className='font-bold text-purple-400'>
+                          {conversation.metadata.response_time_ms}ms
+                        </span>
                       </div>
                     </div>
                   </div>
                 )}
                 {conversation.metadata.model && (
-                  <div className="rounded-lg border border-neutral-700/50 bg-neutral-800/30 p-4 sm:col-span-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-neutral-400">Model</span>
-                      <span className="font-mono text-sm font-bold text-blue-400">{conversation.metadata.model}</span>
+                  <div className='rounded-lg border border-neutral-700/50 bg-neutral-800/30 p-4 sm:col-span-2'>
+                    <div className='flex items-center justify-between'>
+                      <span className='text-xs text-neutral-400'>Model</span>
+                      <span className='font-mono text-sm font-bold text-blue-400'>
+                        {conversation.metadata.model}
+                      </span>
                     </div>
                   </div>
                 )}
@@ -354,13 +401,15 @@ const ConversationDetailsModal = memo(({ conversation, onClose }) => {
           )}
 
           {/* Raw Metadata */}
-          <details className="group rounded-lg border border-neutral-700/50 overflow-hidden">
-            <summary className="cursor-pointer bg-neutral-800/30 p-4 text-sm font-medium text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50 transition-colors flex items-center justify-between">
+          <details className='group overflow-hidden rounded-lg border border-neutral-700/50'>
+            <summary className='flex cursor-pointer items-center justify-between bg-neutral-800/30 p-4 text-sm font-medium text-neutral-400 transition-colors hover:bg-neutral-800/50 hover:text-neutral-200'>
               <span>View Raw Metadata</span>
-              <span className="text-neutral-600 group-open:rotate-180 transition-transform">▼</span>
+              <span className='text-neutral-600 transition-transform group-open:rotate-180'>
+                ▼
+              </span>
             </summary>
-            <div className="border-t border-neutral-700/50 bg-neutral-950/50 p-4">
-              <pre className="overflow-x-auto text-xs text-neutral-300 font-mono leading-relaxed">
+            <div className='border-t border-neutral-700/50 bg-neutral-950/50 p-4'>
+              <pre className='overflow-x-auto font-mono text-xs leading-relaxed text-neutral-300'>
                 {JSON.stringify(conversation.metadata, null, 2)}
               </pre>
             </div>
@@ -380,21 +429,25 @@ export default function AgentConversations() {
   const router = useRouter()
   const { user, profile, loading: authLoading } = useAuth()
   const { logout } = useLogout()
-
+  const userProfile = {
+    name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
+    email: user?.email || 'guest@example.com',
+    avatar: profile?.avatar_url || null
+  }
   // React Query hooks
-  const { 
-    data: agent, 
-    isLoading: agentLoading, 
-    error: agentError 
+  const {
+    data: agent,
+    isLoading: agentLoading,
+    error: agentError
   } = useAgent(id)
 
-  const { 
-    data: conversations = [], 
+  const {
+    data: conversations = [],
     isLoading: conversationsLoading,
-    refetch: refetchConversations 
+    refetch: refetchConversations
   } = useConversations(id)
 
-  const { 
+  const {
     data: stats = {
       totalConversations: 0,
       totalSessions: 0,
@@ -402,7 +455,7 @@ export default function AgentConversations() {
       avgResponseTime: 0,
       totalTokens: 0
     },
-    isLoading: statsLoading 
+    isLoading: statsLoading
   } = useConversationStats(id)
 
   const uniqueSessions = useUniqueSessions(id)
@@ -413,7 +466,7 @@ export default function AgentConversations() {
   const [dateFilter, setDateFilter] = useState('all')
   const [sessionFilter, setSessionFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
-  
+
   // Modal state
   const [selectedConversation, setSelectedConversation] = useState(null)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
@@ -442,21 +495,22 @@ export default function AgentConversations() {
       // Search filter
       if (searchTerm) {
         const term = searchTerm.toLowerCase()
-        
+
         const userMsgLower = (conv.user_message || '').toLowerCase()
         const agentRespLower = (conv.agent_response || '').toLowerCase()
         const sessionLower = (conv.session_id || '').toLowerCase()
-        
+
         // Fuzzy character matching
         let searchIndex = 0
-        const combined = userMsgLower + ' ' + agentRespLower + ' ' + sessionLower
-        
+        const combined =
+          userMsgLower + ' ' + agentRespLower + ' ' + sessionLower
+
         for (let i = 0; i < combined.length && searchIndex < term.length; i++) {
           if (combined[i] === term[searchIndex]) {
             searchIndex++
           }
         }
-        
+
         if (searchIndex < term.length) return false
       }
 
@@ -465,7 +519,7 @@ export default function AgentConversations() {
         const convDate = new Date(conv.created_at)
         const daysMap = { today: 1, week: 7, month: 30 }
         const days = daysMap[dateFilter] || 0
-        
+
         if (days > 0) {
           const ago = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
           if (convDate < ago) return false
@@ -502,7 +556,15 @@ export default function AgentConversations() {
     }
 
     const csvContent = [
-      ['Date', 'Session ID', 'User Message', 'Agent Response', 'Tokens Used', 'Response Time (ms)', 'Model'],
+      [
+        'Date',
+        'Session ID',
+        'User Message',
+        'Agent Response',
+        'Tokens Used',
+        'Response Time (ms)',
+        'Model'
+      ],
       ...filteredConversations.map((conv) => [
         format(new Date(conv.created_at), 'yyyy-MM-dd HH:mm:ss'),
         conv.session_id,
@@ -525,14 +587,15 @@ export default function AgentConversations() {
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
-    
+
     toast.success(`Exported ${filteredConversations.length} conversations!`)
   }, [filteredConversations, agent])
 
   // Delete conversation
   const handleDeleteConversation = useCallback(
     async (conversationId) => {
-      if (!confirm('Delete this conversation? This action cannot be undone.')) return
+      if (!confirm('Delete this conversation? This action cannot be undone.'))
+        return
       deleteConversationMutation.mutate(conversationId)
     },
     [deleteConversationMutation]
@@ -559,7 +622,9 @@ export default function AgentConversations() {
   // Handle page change
   const handlePageChange = useCallback((page) => {
     setCurrentPage(page)
-    document.getElementById('conversations-section')?.scrollIntoView({ behavior: 'smooth' })
+    document
+      .getElementById('conversations-section')
+      ?.scrollIntoView({ behavior: 'smooth' })
   }, [])
 
   // Handle manual refresh
@@ -573,25 +638,28 @@ export default function AgentConversations() {
     return (
       <LoadingState
         message={authLoading ? 'Authenticating...' : 'Loading conversations...'}
-        className="min-h-screen"
+        className='min-h-screen'
       />
     )
   }
 
   if (!agent) {
-    return <LoadingState message="Agent not found..." className="min-h-screen" />
+    return (
+      <LoadingState message='Agent not found...' className='min-h-screen' />
+    )
   }
 
-  const hasFilters = searchTerm || dateFilter !== 'all' || sessionFilter !== 'all'
+  const hasFilters =
+    searchTerm || dateFilter !== 'all' || sessionFilter !== 'all'
   const isLoading = conversationsLoading || statsLoading
 
   return (
     <>
       <NeonBackground />
-      <SideBarLayout>
-        <div className="flex h-screen w-full flex-col font-mono text-neutral-100">
+      <SideBarLayout userProfile={userProfile}>
+        <div className='flex h-screen w-full flex-col font-mono text-neutral-100'>
           {/* Header */}
-          <div className="sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl">
+          <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>
             <NavigationBar
               profile={profile}
               title={`${agent.name} - Conversations`}
@@ -600,97 +668,99 @@ export default function AgentConversations() {
           </div>
 
           {/* Main Content */}
-          <div className="custom-scrollbar flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className='custom-scrollbar flex-1 overflow-y-auto'>
+            <div className='mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8'>
               {/* Stats Cards */}
-              <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className='mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
                 <StatCard
                   icon={MessageSquare}
-                  label="Total Conversations"
+                  label='Total Conversations'
                   value={stats.totalConversations}
                   subValue={`${stats.totalSessions} sessions`}
-                  colorClass="text-orange-400"
-                  bgClass="border-orange-600/20 bg-gradient-to-br from-orange-900/20 to-neutral-950/50"
+                  colorClass='text-orange-400'
+                  bgClass='border-orange-600/20 bg-gradient-to-br from-orange-900/20 to-neutral-950/50'
                   trend
                   isLoading={statsLoading}
                 />
 
                 <StatCard
                   icon={User}
-                  label="Avg Messages/Session"
+                  label='Avg Messages/Session'
                   value={stats.avgMessagesPerSession}
-                  subValue="per conversation"
-                  colorClass="text-blue-400"
-                  bgClass="border-blue-600/20 bg-gradient-to-br from-blue-900/20 to-neutral-950/50"
+                  subValue='per conversation'
+                  colorClass='text-blue-400'
+                  bgClass='border-blue-600/20 bg-gradient-to-br from-blue-900/20 to-neutral-950/50'
                   isLoading={statsLoading}
                 />
 
                 <StatCard
                   icon={Clock}
-                  label="Avg Response Time"
+                  label='Avg Response Time'
                   value={`${stats.avgResponseTime}ms`}
-                  subValue="processing time"
-                  colorClass="text-purple-400"
-                  bgClass="border-purple-600/20 bg-gradient-to-br from-purple-900/20 to-neutral-950/50"
+                  subValue='processing time'
+                  colorClass='text-purple-400'
+                  bgClass='border-purple-600/20 bg-gradient-to-br from-purple-900/20 to-neutral-950/50'
                   isLoading={statsLoading}
                 />
-                
+
                 <StatCard
                   icon={BarChart3}
-                  label="Total Tokens"
+                  label='Total Tokens'
                   value={stats.totalTokens.toLocaleString()}
-                  subValue="tokens used"
-                  colorClass="text-green-400"
-                  bgClass="border-green-600/20 bg-gradient-to-br from-green-900/20 to-neutral-950/50"
+                  subValue='tokens used'
+                  colorClass='text-green-400'
+                  bgClass='border-green-600/20 bg-gradient-to-br from-green-900/20 to-neutral-950/50'
                   isLoading={statsLoading}
                 />
               </div>
 
               {/* Filters */}
-              <Card className="mb-6 border-neutral-700/50">
-                <div className="space-y-4 p-5">
+              <Card className='mb-6 border-neutral-700/50'>
+                <div className='space-y-4 p-5'>
                   {/* Top Row: Search and Export */}
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex-1 max-w-2xl">
+                  <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+                    <div className='max-w-2xl flex-1'>
                       <SearchBar
                         value={searchTerm}
                         onChange={handleSearch}
-                        placeholder="Search messages, sessions..."
-                        variant="orange"
+                        placeholder='Search messages, sessions...'
+                        variant='orange'
                         debounceMs={300}
                       />
                     </div>
-                    <div className="flex gap-2">
-                      <Button 
-                        onClick={handleRefresh} 
-                        variant="outline" 
-                        size="sm"
-                        className="flex items-center gap-2"
+                    <div className='flex gap-2'>
+                      <Button
+                        onClick={handleRefresh}
+                        variant='outline'
+                        size='sm'
+                        className='flex items-center gap-2'
                         disabled={conversationsLoading}
                       >
-                        <RefreshCw className={`h-4 w-4 ${conversationsLoading ? 'animate-spin' : ''}`} />
+                        <RefreshCw
+                          className={`h-4 w-4 ${conversationsLoading ? 'animate-spin' : ''}`}
+                        />
                         Refresh
                       </Button>
-                      <Button 
-                        onClick={exportConversations} 
-                        variant="secondary" 
-                        size="sm"
-                        className="flex items-center gap-2"
+                      <Button
+                        onClick={exportConversations}
+                        variant='secondary'
+                        size='sm'
+                        className='flex items-center gap-2'
                         disabled={!filteredConversations.length}
                       >
-                        <Download className="h-4 w-4" />
+                        <Download className='h-4 w-4' />
                         Export CSV
                       </Button>
                     </div>
                   </div>
 
                   {/* Filter Buttons */}
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Filter className="h-4 w-4 text-neutral-400" />
-                    
+                  <div className='flex flex-wrap items-center gap-3'>
+                    <Filter className='h-4 w-4 text-neutral-400' />
+
                     {/* Date Filters */}
-                    <div className="flex flex-wrap gap-2">
-                      <span className="text-xs text-neutral-500">Date:</span>
+                    <div className='flex flex-wrap gap-2'>
+                      <span className='text-xs text-neutral-500'>Date:</span>
                       {[
                         { value: 'all', label: 'All Time' },
                         { value: 'today', label: 'Today' },
@@ -713,17 +783,21 @@ export default function AgentConversations() {
 
                     {uniqueSessions.length > 1 && (
                       <>
-                        <span className="text-neutral-700">|</span>
-                        
+                        <span className='text-neutral-700'>|</span>
+
                         {/* Session Filter */}
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-neutral-500">Session:</span>
+                        <div className='flex items-center gap-2'>
+                          <span className='text-xs text-neutral-500'>
+                            Session:
+                          </span>
                           <select
                             value={sessionFilter}
                             onChange={(e) => setSessionFilter(e.target.value)}
-                            className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-xs text-neutral-200 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                            className='rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-xs text-neutral-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none'
                           >
-                            <option value="all">All Sessions ({uniqueSessions.length})</option>
+                            <option value='all'>
+                              All Sessions ({uniqueSessions.length})
+                            </option>
                             {uniqueSessions.map((session) => (
                               <option key={session} value={session}>
                                 {session.slice(0, 20)}...
@@ -736,27 +810,28 @@ export default function AgentConversations() {
 
                     {hasFilters && (
                       <Button
-                        variant="ghost"
-                        size="sm"
+                        variant='ghost'
+                        size='sm'
                         onClick={handleClearFilters}
-                        className="ml-auto text-xs flex items-center gap-1"
+                        className='ml-auto flex items-center gap-1 text-xs'
                       >
-                        <XCircle className="h-3 w-3" />
+                        <XCircle className='h-3 w-3' />
                         Clear Filters
                       </Button>
                     )}
                   </div>
 
                   {/* Results Count */}
-                  <p className="text-sm text-neutral-400">
+                  <p className='text-sm text-neutral-400'>
                     {conversationsLoading ? (
-                      <span className="flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className='flex items-center gap-2'>
+                        <Loader2 className='h-4 w-4 animate-spin' />
                         Loading conversations...
                       </span>
                     ) : (
                       <>
-                        Showing {paginatedConversations.length} of {filteredConversations.length} conversations
+                        Showing {paginatedConversations.length} of{' '}
+                        {filteredConversations.length} conversations
                         {hasFilters && ' matching your filters'}
                       </>
                     )}
@@ -765,30 +840,34 @@ export default function AgentConversations() {
               </Card>
 
               {/* Conversations List */}
-              <div id="conversations-section">
+              <div id='conversations-section'>
                 {conversationsLoading ? (
-                  <Card className="border-neutral-700/50">
-                    <div className="flex flex-col items-center py-16 text-center">
-                      <Loader2 className="h-12 w-12 animate-spin text-orange-500 mb-4" />
-                      <p className="text-neutral-400">Loading conversations...</p>
+                  <Card className='border-neutral-700/50'>
+                    <div className='flex flex-col items-center py-16 text-center'>
+                      <Loader2 className='mb-4 h-12 w-12 animate-spin text-orange-500' />
+                      <p className='text-neutral-400'>
+                        Loading conversations...
+                      </p>
                     </div>
                   </Card>
                 ) : filteredConversations.length === 0 ? (
-                  <Card className="border-neutral-700/50">
-                    <div className="flex flex-col items-center py-16 text-center">
-                      <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-orange-900/40 to-orange-950/20 ring-1 ring-orange-500/50">
-                        <MessageSquare className="h-10 w-10 text-orange-400" />
+                  <Card className='border-neutral-700/50'>
+                    <div className='flex flex-col items-center py-16 text-center'>
+                      <div className='mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-orange-900/40 to-orange-950/20 ring-1 ring-orange-500/50'>
+                        <MessageSquare className='h-10 w-10 text-orange-400' />
                       </div>
-                      <h3 className="mb-3 text-xl font-bold text-neutral-200">
-                        {conversations.length === 0 ? 'No conversations yet' : 'No matching conversations'}
+                      <h3 className='mb-3 text-xl font-bold text-neutral-200'>
+                        {conversations.length === 0
+                          ? 'No conversations yet'
+                          : 'No matching conversations'}
                       </h3>
-                      <p className="mb-6 max-w-md text-sm text-neutral-400">
+                      <p className='mb-6 max-w-md text-sm text-neutral-400'>
                         {conversations.length === 0
                           ? 'Start conversations with your agent to see them here'
                           : 'Try adjusting your filters or search terms'}
                       </p>
                       {hasFilters && (
-                        <Button onClick={handleClearFilters} variant="outline">
+                        <Button onClick={handleClearFilters} variant='outline'>
                           Clear Filters
                         </Button>
                       )}
@@ -796,27 +875,29 @@ export default function AgentConversations() {
                   </Card>
                 ) : (
                   <>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className='grid grid-cols-1 gap-4 lg:grid-cols-2'>
                       {paginatedConversations.map((conversation) => (
                         <ConversationCard
                           key={conversation.id}
                           conversation={conversation}
                           searchTerm={searchTerm}
                           onView={() => handleViewConversation(conversation)}
-                          onDelete={() => handleDeleteConversation(conversation.id)}
+                          onDelete={() =>
+                            handleDeleteConversation(conversation.id)
+                          }
                         />
                       ))}
                     </div>
 
                     {/* Pagination */}
                     {totalPages > 1 && (
-                      <div className="mt-8">
+                      <div className='mt-8'>
                         <Pagination
                           currentPage={currentPage}
                           totalPages={totalPages}
                           onPageChange={handlePageChange}
                           maxVisible={5}
-                          variant="orange"
+                          variant='orange'
                         />
                       </div>
                     )}

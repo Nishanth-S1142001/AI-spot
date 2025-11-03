@@ -64,13 +64,9 @@ export const menuItems = [
   },
   { divider: true },
   {
-    name: 'Profile',
+    name: 'Upgrade Plan',
     icon: <User className='text-orange-500' size={20} />,
-    key: 'profile', // ✅ ADDED - For active state management
-    submenu: [
-      { name: 'View Profile', href: '/profile/view' },
-      { name: 'Edit Profile', href: '/profile/edit' }
-    ]
+    key: 'plan' // ✅ ADDED - For active state management
   },
   {
     name: 'Settings',
@@ -79,15 +75,22 @@ export const menuItems = [
     key: 'settings'
   },
   {
-    name: 'Help',
+    name: 'Get Help',
     icon: <BadgeQuestionMark className='text-orange-500' size={20} />,
     href: '/help'
   },
   {
-    name: 'Info',
-    icon: <BadgeInfo className='text-orange-500' size={20} />,
-    href: '/info' // ✅ FIXED - Changed from '/help' to '/info'
+    name: 'Learn more',
+    icon: <BadgeQuestionMark className='text-orange-500' size={20} />,
+    href: '/learn_more',
+    submenu: [
+      { name: 'About Agency', href: '/learn_more/about' },
+      { name: 'Usage policy', href: '/learn_more/usage' },
+      { name: 'Privacy policy', href: '/learn_more/privacy' },
+      
+    ]
   },
+
   {
     name: 'Submit feedback',
     icon: <MessagesSquare className='text-orange-500' size={20} />,

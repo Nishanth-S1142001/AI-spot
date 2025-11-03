@@ -263,6 +263,11 @@ export default function CreateAgentNLP() {
   const { logout } = useLogout()
   const { user, profile, loading: authLoading } = useAuth()
 
+  const userProfile = {
+  name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
+  email: user?.email || 'guest@example.com',
+  avatar: profile?.avatar_url || null
+}
   // State
   const [collapsed, setCollapsed] = useState(true)
   const [selectedPrompt, setSelectedPrompt] = useState('')
@@ -340,7 +345,7 @@ export default function CreateAgentNLP() {
   return (
     <>
       <NeonBackground />
-      <SideBarLayout>
+      <SideBarLayout userProfile={userProfile}>
         <div className='relative flex h-screen w-full flex-col font-mono text-neutral-100'>
           {/* Header */}
           <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>

@@ -249,7 +249,11 @@ export default function WorkflowBuilderPage() {
   const { id } = useParams()
   const router = useRouter()
   const { logout } = useLogout()
-
+const userProfile = {
+  name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
+  email: user?.email || 'guest@example.com',
+  avatar: profile?.avatar_url || null
+}
   const reactFlowWrapper = useRef(null)
   const saveTimeoutRef = useRef(null)
 
@@ -695,7 +699,7 @@ export default function WorkflowBuilderPage() {
   return (
     <>
       <NeonBackground />
-      <SideBarLayout>
+      <SideBarLayout userProfile={userProfile}>
         <div
           className={`relative w-full flex-1 font-mono text-neutral-100 transition-all ${isFullscreen ? 'fixed inset-0 z-50' : ''}`}
         >

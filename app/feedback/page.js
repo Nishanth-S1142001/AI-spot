@@ -169,7 +169,11 @@ export default function FeedbackPage() {
   const { user, profile, loading: authLoading } = useAuth()
   const router = useRouter()
   const { logout } = useLogout()
-  
+  const userProfile = {
+  name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
+  email: user?.email || 'guest@example.com',
+  avatar: profile?.avatar_url || null
+}
   // React Query mutation
   const submitFeedbackMutation = useSubmitFeedback()
 
@@ -364,7 +368,7 @@ export default function FeedbackPage() {
   return (
     <>
       <NeonBackground />
-      <SideBarLayout>
+      <SideBarLayout userProfile={userProfile}>
         <div className='custom-scrollbar relative w-full flex-1 font-mono text-neutral-100'>
           {/* Header */}
           <div className='sticky top-0 z-10 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>

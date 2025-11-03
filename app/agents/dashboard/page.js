@@ -312,7 +312,11 @@ export default function AgentsDashboard() {
   const { user, profile, loading: authLoading } = useAuth()
   const { logout } = useLogout()
   const router = useRouter()
-
+const userProfile = {
+  name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
+  email: user?.email || 'guest@example.com',
+  avatar: profile?.avatar_url || null
+}
   // UI State - must be declared before any conditional returns
   const [isAgentCardOpen, setIsAgentCardOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -442,7 +446,7 @@ export default function AgentsDashboard() {
   return (
     <>
       <NeonBackground />
-      <SideBarLayout>
+      <SideBarLayout userProfile={userProfile}>
         <div className='flex h-screen w-full flex-col font-mono text-neutral-100'>
           {/* Header */}
           <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>

@@ -1,3 +1,9 @@
+/**
+ * SIDEBAR LAYOUT - FINAL VERSION
+ * Integrates the unified sidebar with existing SubSidebar functionality
+ * Automatically shows sub-sidebar based on active menu key
+ */
+
 'use client'
 
 import { usePathname } from 'next/navigation'
@@ -10,26 +16,20 @@ import Sidebar from './sideBar.js'
 import SubSidebar from './subSideBar.js'
 
 /**
- * Improved SideBarLayout Component
- * Features:
- * - Clean layout structure
- * - Automatic menu detection based on route
- * - Smooth transitions
- * - Better state management
- */
-
-/**
  * Determine which menu should be active based on current pathname
  */
 const getActiveMenuKey = (pathname) => {
   // Agent routes
   if (pathname.startsWith('/agents')) return 'agents'
   
-  // Workflow routes
-  if (pathname.startsWith('/workflows')) return 'workflows'
+  // Integrations routes
+  if (pathname.startsWith('/integrations')) return 'integrations'
   
   // Settings routes
   if (pathname.startsWith('/settings')) return 'settings'
+  
+  // Workflow routes
+  if (pathname.startsWith('/workflows')) return 'workflows'
   
   // Webhook routes
   if (pathname.startsWith('/webhooks')) return 'webhooks'
@@ -47,10 +47,10 @@ const getActiveMenuKey = (pathname) => {
   if (pathname === '/' || pathname.startsWith('/dashboard')) return 'home'
   
   // Default fallback
-  return 'home'
+  return null
 }
 
-export default function SideBarLayout({ children }) {
+export default function SideBarLayout({ children, userProfile }) {
   const pathname = usePathname()
   const [activeMenu, setActiveMenu] = useState(() => getActiveMenuKey(pathname))
 
@@ -62,18 +62,19 @@ export default function SideBarLayout({ children }) {
     }
   }, [pathname, activeMenu])
 
-  // Get current submenu items
-  const currentSubMenu = subMenus[activeMenu] || []
+  // Get current submenu items based on active menu
+  const currentSubMenu = activeMenu && subMenus[activeMenu] ? subMenus[activeMenu] : []
 
   return (
-    <div className='flex h-screen w-full overflow-hidden'>
+    <div className='flex h-screen w-full overflow-hidden bg-neutral-950'>
       {/* Sidebar Container */}
-      <aside className='flex h-full bg-neutral-950'>
-        {/* Main Sidebar */}
+      <aside className='flex h-full'>
+        {/* Main Unified Sidebar */}
         <Sidebar
           menuItems={mainMenu}
           activeMenu={activeMenu}
           onSelect={setActiveMenu}
+          userProfile={userProfile}
         />
         
         {/* Sub Sidebar (only show if there are submenu items) */}
@@ -83,7 +84,7 @@ export default function SideBarLayout({ children }) {
       </aside>
 
       {/* Main Content Area */}
-      <main className='custom-scrollbar flex-1 overflow-y-auto bg-neutral-950'>
+      <main className='custom-scrollbar flex-1 overflow-y-auto'>
         {children}
       </main>
     </div>

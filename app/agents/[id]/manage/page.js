@@ -8,7 +8,8 @@ import {
   Calendar,
   Settings,
   FileText,
-  Loader2
+  Loader2,
+  Phone
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useParams, useRouter } from 'next/navigation'
@@ -20,6 +21,7 @@ import { useAuth } from '../../../../components/providers/AuthProvider'
 import SideBarLayout from '../../../../components/sideBarLayout'
 import NeonBackground from '../../../../components/ui/background'
 import { useLogout } from '../../../../lib/supabase/auth'
+
 import {
   useAgent,
   useConversation,
@@ -63,6 +65,10 @@ const KnowledgeTab = dynamic(
   () => import('../../../../components/agentTabs/KnowledgeTab'),
   { loading: () => <TabLoadingSkeleton />, ssr: false }
 )
+const SmsTab = dynamic(
+  () => import('../../../../components/agentTabs/SmsTab'),
+  { loading: () => <TabLoadingSkeleton />, ssr: false }
+)
 
 function TabLoadingSkeleton() {
   return (
@@ -83,7 +89,8 @@ const TABS = [
   { id: 'workflows', name: 'Workflows', icon: Zap, description: 'Automation & integrations' },
   { id: 'bookings', name: 'Bookings', icon: Calendar, description: 'Appointment management' },
   { id: 'calendar-settings', name: 'Calendar Setup', icon: Settings, description: 'Configure booking settings' },
-  { id: 'embed', name: 'Deploy', icon: Code, description: 'Embed & share your agent' }
+  { id: 'embed', name: 'Deploy', icon: Code, description: 'Embed & share your agent' },
+  { id: 'sms', label: 'SMS Bot', icon: Phone },
 ]
 
 export default function AgentManagement() {
@@ -92,7 +99,11 @@ export default function AgentManagement() {
   const { user, profile, loading: authLoading } = useAuth()
   const { logout } = useLogout()
   const [activeTab, setActiveTab] = useState('overview')
-
+const userProfile = {
+  name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
+  email: user?.email || 'guest@example.com',
+  avatar: profile?.avatar_url || null
+}
   // React Query hooks
   const { 
     data: agent, 
@@ -194,7 +205,7 @@ export default function AgentManagement() {
   return (
     <>
       <NeonBackground />
-      <SideBarLayout>
+      <SideBarLayout userProfile={userProfile}>
         <div className='flex h-screen w-full flex-col font-mono text-neutral-100'>
           {/* Header */}
           <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>
@@ -327,6 +338,7 @@ export default function AgentManagement() {
                 {activeTab === 'calendar-settings' && (
                   <CalendarSettings agent={agent} id={id} />
                 )}
+                {activeTab === 'sms' && <SmsTab agentId={agent?.id} userId={user?.id} />}
 
                 {activeTab === 'embed' && (
                   <EmbedTab id={id} copyEmbedCode={copyEmbedCode} />
