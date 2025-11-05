@@ -43,12 +43,13 @@ export async function POST(request) {
     let tokensUsed = 0
 
     // Try AI parsing first if enabled and API key available
-    if (useAI && process.env.ANTHROPIC_API_KEY) {
+    // UPDATED: Use OpenAI API key instead of Anthropic
+    if (useAI && process.env.OPENAI_API_KEY) {
       await updateNlpRequest(nlpRequest.id, { status: 'processing' })
 
       const aiResult = await parseWithAI(
         description,
-        process.env.ANTHROPIC_API_KEY
+        process.env.OPENAI_API_KEY
       )
 
       if (aiResult.success) {
@@ -103,6 +104,7 @@ export async function POST(request) {
     }
 
     // Update request with results
+    // UPDATED: Use actual OpenAI model name from parsing
     await updateNlpRequest(nlpRequest.id, {
       status: 'completed',
       parsed_intent: {
@@ -112,7 +114,7 @@ export async function POST(request) {
       },
       extracted_config: validation.sanitizedConfig,
       processed_at: new Date().toISOString(),
-      model_used: parsingMethod === 'ai' ? 'claude-sonnet-4-5' : 'rule-based'
+      model_used: parsingMethod === 'ai' ? validation.sanitizedConfig.model : 'rule-based'
     })
 
     return NextResponse.json({

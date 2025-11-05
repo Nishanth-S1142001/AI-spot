@@ -10,7 +10,9 @@ import NavigationBar from '../components/navigationBar/navigationBar.js'
 
 // Dynamic imports for non-critical components
 const Modal = dynamic(() => import('../components/ui/modal'), { ssr: false })
-const HomeSidebar = dynamic(() => import('../components/homeSidebar'), { ssr: false })
+const HomeSidebar = dynamic(() => import('../components/homeSidebar'), {
+  ssr: false
+})
 
 // Lazy load all sections for code splitting
 const AuthForms = lazy(() => import('./AuthForms'))
@@ -49,23 +51,45 @@ function authReducer(state, action) {
     case 'TOGGLE_SIDEBAR':
       return { ...state, isSidebarOpen: !state.isSidebarOpen }
     case 'OPEN_MODAL':
-      return { ...state, isOpen: true, modalView: action.view, errors: {}, successMessage: '' }
+      return {
+        ...state,
+        isOpen: true,
+        modalView: action.view,
+        errors: {},
+        successMessage: ''
+      }
     case 'CLOSE_MODAL':
       return { ...state, isOpen: false, errors: {}, successMessage: '' }
     case 'SET_LOADING':
       return { ...state, isLoading: action.value }
     case 'UPDATE_FIELD':
-      return { ...state, [action.form]: { ...state[action.form], [action.field]: action.value } }
+      return {
+        ...state,
+        [action.form]: { ...state[action.form], [action.field]: action.value }
+      }
     case 'TOGGLE_PASSWORD':
-      return { ...state, [action.form]: { ...state[action.form], [action.field]: !state[action.form][action.field] } }
+      return {
+        ...state,
+        [action.form]: {
+          ...state[action.form],
+          [action.field]: !state[action.form][action.field]
+        }
+      }
     case 'SET_ERROR':
-      return { ...state, errors: { ...state.errors, [action.field]: action.message } }
+      return {
+        ...state,
+        errors: { ...state.errors, [action.field]: action.message }
+      }
     case 'CLEAR_ERRORS':
       return { ...state, errors: {} }
     case 'SET_SUCCESS':
       return { ...state, successMessage: action.message, errors: {} }
     case 'RESET_FORM':
-      return { ...initialState, isSidebarOpen: state.isSidebarOpen, isOpen: state.isOpen }
+      return {
+        ...initialState,
+        isSidebarOpen: state.isSidebarOpen,
+        isOpen: state.isOpen
+      }
     default:
       return state
   }
@@ -92,47 +116,35 @@ export default function Home() {
     <div className='relative min-h-screen font-mono'>
       {/* Fixed Background */}
       <NeonBackground />
-      
+
       {/* Main Content */}
       <div className='relative z-10'>
         {/* Navigation Bar */}
         <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>
-          <NavigationBar 
-            onLoginClick={() => handleOpenModal('login')} 
+          <NavigationBar
+            onLoginClick={() => handleOpenModal('login')}
             title='AI Agency'
           />
         </div>
-        
-        {/* Sidebar */}
-        <Suspense fallback={null}>
-          <HomeSidebar 
-            isOpen={state.isSidebarOpen}
-            onToggle={handleToggleSidebar}
-          />
-        </Suspense>
-        
-        {/* Page Sections */}
-        <main className={`transition-all duration-300 ${state.isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
-          <Suspense fallback={<PageLoadingSkeleton />}>
-            {/* Hero Section with Glow Effect */}
-            <div className='relative'>
-              {/* Central Glow */}
-              <div className='absolute inset-0 flex items-center justify-center'>
-                <div className='h-[800px] w-[800px] rounded-full bg-orange-500/20 blur-[150px]' />
-              </div>
-              
-              <HeroSection onGetStarted={() => handleOpenModal('register')} />
+        ={/* Page Sections */}
+        <Suspense fallback={<PageLoadingSkeleton />}>
+          {/* Hero Section with Glow Effect */}
+          <div className='relative'>
+            {/* Central Glow */}
+            <div className='absolute inset-0 flex items-center justify-center'>
+              <div className='h-[800px] w-[800px] rounded-full bg-orange-500/20 blur-[150px]' />
             </div>
 
-            <AboutSection />
-            <StatsSection />
-            <FeaturesSection />
-            <TestimonialsSection />
-            <PricingSection onSelectPlan={() => handleOpenModal('register')} />
-            <FooterSection />
-          </Suspense>
-        </main>
-        
+            <HeroSection onGetStarted={() => handleOpenModal('register')} />
+          </div>
+
+          <AboutSection />
+          <StatsSection />
+          <FeaturesSection />
+          <TestimonialsSection />
+          <PricingSection onSelectPlan={() => handleOpenModal('register')} />
+          <FooterSection />
+        </Suspense>
         {/* Authentication Modal */}
         {state.isOpen && (
           <Modal isOpen={state.isOpen} onClose={handleCloseModal}>
@@ -165,7 +177,7 @@ function PageLoadingSkeleton() {
     <div className='animate-pulse space-y-8 p-8'>
       <div className='h-96 rounded-lg bg-neutral-800/50' />
       <div className='grid gap-6 sm:grid-cols-2 lg:grid-cols-3'>
-        {[1, 2, 3].map(i => (
+        {[1, 2, 3].map((i) => (
           <div key={i} className='h-64 rounded-lg bg-neutral-800/50' />
         ))}
       </div>

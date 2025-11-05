@@ -2,6 +2,7 @@
 
 import { dbServer } from '../lib/supabase/dbServer.js'
 import { subAccountsDb } from '../lib/supabase/dbServer.js'
+
 // ─────────────────────────────
 // PROFILES
 // ─────────────────────────────
@@ -17,6 +18,10 @@ export async function getUserAgents(userId) {
 // AGENTS
 // ─────────────────────────────
 export async function createAgent(userId, agentData) {
+  // agentData now supports new fields:
+  // - services: text[] - array of service IDs like ['calendar', 'mail']
+  // - interface: text - single interface like 'website', 'sms', or 'instagram'
+  // - service_config: jsonb - configuration for each service
   const fullAgentData = { ...agentData, user_id: userId }
   return await dbServer.createAgent(userId, fullAgentData)
 }
@@ -26,15 +31,13 @@ export async function getAgent(agentId, userId) {
 }
 
 export async function updateAgent(agentId, updates) {
+  // updates can now include services, interface, and service_config
   return await dbServer.updateAgent(agentId, updates)
 }
 
 export async function deleteAgent(agentId) {
   return await dbServer.deleteAgent(agentId)
 }
-
-
-
 
 // ─────────────────────────────
 // CONVERSATIONS
@@ -482,7 +485,6 @@ export async function checkConversationExists(agentId, sessionId) {
 
 // ============================================================================
 // SUB-ACCOUNTS SERVER ACTIONS
-// Add these to your existing actions/agents.js file
 // ============================================================================
 
 // ─────────────────────────────
@@ -612,7 +614,6 @@ export async function getAgentTestStats(agentId, userId) {
 // ─────────────────────────────
 // KNOWLEDGE SOURCES
 // ─────────────────────────────
-
 
 export async function verifyAgentOwnership(agentId, userId) {
   return await dbServer.verifyAgentOwnership(agentId, userId)

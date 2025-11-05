@@ -16,21 +16,26 @@ import {
   Smile,
   Check,
   Users,
-  FileText
+  FileText,
+  Thermometer,
+  Cpu,
+  Hash,
+  Globe,
+  Settings,
+  Layers
 } from 'lucide-react'
 import Link from 'next/link'
 import { format, isValid } from 'date-fns'
 import { useState } from 'react'
 
 /**
- * Modernized OverviewTab Component
+ * Modernized OverviewTab Component with Icon-Only Quick Actions
  * Features:
+ * - Icon-only quick actions with tooltips
+ * - Expanded agent details (model, temperature, tokens, etc.)
  * - Clean, organized layout
- * - Better visual hierarchy
- * - Separated sections for clarity
  * - Smooth animations
  * - Professional styling
- * - Responsive design
  */
 
 export default function OverviewTab({
@@ -54,6 +59,39 @@ export default function OverviewTab({
     copyEmbedCode()
     setEmbedCopied(true)
     setTimeout(() => setEmbedCopied(false), 2000)
+  }
+
+  // Helper to format model name
+  const formatModelName = (model) => {
+    if (!model) return 'Not specified'
+    const modelMap = {
+      'gpt-4o': 'GPT-4o',
+      'gpt-4o-mini': 'GPT-4o Mini',
+      'gpt-4-turbo': 'GPT-4 Turbo',
+      'gpt-3.5-turbo': 'GPT-3.5 Turbo'
+    }
+    return modelMap[model] || model
+  }
+
+  // Helper to format services
+  const formatServices = (services) => {
+    if (!services || services.length === 0) return 'None'
+    const serviceMap = {
+      calendar: 'Calendar',
+      mail: 'Mail'
+    }
+    return services.map(s => serviceMap[s] || s).join(', ')
+  }
+
+  // Helper to format interface
+  const formatInterface = (iface) => {
+    if (!iface) return 'Not specified'
+    const interfaceMap = {
+      website: 'Website Widget',
+      sms: 'SMS',
+      instagram: 'Instagram'
+    }
+    return interfaceMap[iface] || iface
   }
 
   return (
@@ -110,7 +148,7 @@ export default function OverviewTab({
       </div>
 
       <div className='grid gap-6 lg:grid-cols-3'>
-        {/* LEFT COLUMN - Quick Actions */}
+        {/* LEFT COLUMN - Quick Actions (Icon Only) */}
         <div className='space-y-6 lg:col-span-1'>
           {/* Quick Actions Card */}
           <Card className='border-orange-600/20'>
@@ -124,83 +162,91 @@ export default function OverviewTab({
                 </h3>
               </div>
 
-              {/* Primary Actions */}
-              <div className='space-y-3'>
-                <Button
+              {/* Primary Actions - Icon Grid */}
+              <div className='grid grid-cols-3 gap-3'>
+                {/* Activate/Deactivate */}
+                <button
                   onClick={toggleAgentStatus}
-                  className='w-full'
-                  variant={agent?.is_active ? 'destructive' : 'primary'}
+                  className={`group relative flex h-16 flex-col items-center justify-center gap-1 rounded-lg border transition-all hover:scale-105 ${
+                    agent?.is_active
+                      ? 'border-red-600/40 bg-red-950/20 hover:bg-red-950/30'
+                      : 'border-green-600/40 bg-green-950/20 hover:bg-green-950/30'
+                  }`}
+                  title={agent?.is_active ? 'Deactivate Agent' : 'Activate Agent'}
                 >
                   {agent?.is_active ? (
-                    <>
-                      <CirclePower className='mr-2 h-4 w-4' />
-                      Deactivate Agent
-                    </>
+                    <CirclePower className='h-6 w-6 text-red-400' />
                   ) : (
-                    <>
-                      <Play className='mr-2 h-4 w-4' />
-                      Activate Agent
-                    </>
+                    <Play className='h-6 w-6 text-green-400' />
                   )}
-                </Button>
+                  <span className='text-xs font-medium text-neutral-400 group-hover:text-neutral-300'>
+                    {agent?.is_active ? 'Deactivate' : 'Activate'}
+                  </span>
+                </button>
+
+                {/* Manage Knowledge */}
                 <Link
                   href={`/agents/${agent?.id}/knowledge`}
-                  className='block'
+                  className='group relative flex h-16 flex-col items-center justify-center gap-1 rounded-lg border border-orange-600/40 bg-orange-950/20 transition-all hover:scale-105 hover:bg-orange-950/30'
+                  title='Manage Knowledge'
                 >
-                  <Button variant='outline' className='w-full'>
-                    <FileText className='mr-2 h-4 w-4' />
-                    Manage Knowledge
-                  </Button>
+                  <FileText className='h-6 w-6 text-orange-400' />
+                  <span className='text-xs font-medium text-neutral-400 group-hover:text-neutral-300'>
+                    Knowledge
+                  </span>
                 </Link>
+
+                {/* Test Playground */}
                 <Link
                   href={`/agents/${agent?.id}/playground`}
-                  className='block'
+                  className='group relative flex h-16 flex-col items-center justify-center gap-1 rounded-lg border border-blue-600/40 bg-blue-950/20 transition-all hover:scale-105 hover:bg-blue-950/30'
+                  title='Test in Playground'
                 >
-                  <Button variant='outline' className='w-full'>
-                    <Play className='mr-2 h-4 w-4' />
-                    Test in Playground
-                  </Button>
+                  <Play className='h-6 w-6 text-blue-400' />
+                  <span className='text-xs font-medium text-neutral-400 group-hover:text-neutral-300'>
+                    Playground
+                  </span>
                 </Link>
 
+                {/* View Conversations */}
                 <Link
                   href={`/agents/${agent?.id}/conversations`}
-                  className='block'
+                  className='group relative flex h-16 flex-col items-center justify-center gap-1 rounded-lg border border-purple-600/40 bg-purple-950/20 transition-all hover:scale-105 hover:bg-purple-950/30'
+                  title='View Conversations'
                 >
-                  <Button variant='outline' className='w-full'>
-                    <MessageSquare className='mr-2 h-4 w-4' />
-                    View Conversations
-                  </Button>
+                  <MessageSquare className='h-6 w-6 text-purple-400' />
+                  <span className='text-xs font-medium text-neutral-400 group-hover:text-neutral-300'>
+                    Chats
+                  </span>
                 </Link>
+
+                {/* Test Accounts */}
                 <Link
                   href={`/agents/${agent?.id}/test-accounts`}
-                  className='block'
+                  className='group relative flex h-16 flex-col items-center justify-center gap-1 rounded-lg border border-indigo-600/40 bg-indigo-950/20 transition-all hover:scale-105 hover:bg-indigo-950/30'
+                  title='Test Accounts'
                 >
-                  <Button variant='outline' className='w-full'>
-                    <Users className='mr-2 h-4 w-4' />
-                    Test Accounts
-                  </Button>
+                  <Users className='h-6 w-6 text-indigo-400' />
+                  <span className='text-xs font-medium text-neutral-400 group-hover:text-neutral-300'>
+                    Accounts
+                  </span>
                 </Link>
-              </div>
 
-              {/* Deployment Actions */}
-              <div className='space-y-3 border-t border-neutral-800 pt-4'>
-                <Button
+                {/* Copy Embed */}
+                <button
                   onClick={handleCopyEmbed}
-                  variant='outline'
-                  className='w-full'
+                  className='group relative flex h-16 flex-col items-center justify-center gap-1 rounded-lg border border-teal-600/40 bg-teal-950/20 transition-all hover:scale-105 hover:bg-teal-950/30'
+                  title='Copy Embed Code'
                 >
                   {embedCopied ? (
-                    <>
-                      <Check className='mr-2 h-4 w-4 text-green-400' />
-                      Copied!
-                    </>
+                    <Check className='h-6 w-6 text-green-400' />
                   ) : (
-                    <>
-                      <Code className='mr-2 h-4 w-4' />
-                      Copy Embed Code
-                    </>
+                    <Code className='h-6 w-6 text-teal-400' />
                   )}
-                </Button>
+                  <span className='text-xs font-medium text-neutral-400 group-hover:text-neutral-300'>
+                    {embedCopied ? 'Copied!' : 'Embed'}
+                  </span>
+                </button>
               </div>
 
               {/* Danger Zone */}
@@ -303,15 +349,15 @@ export default function OverviewTab({
             </div>
           </Card>
 
-          {/* Agent Details Card */}
+          {/* Agent Details Card - EXPANDED */}
           <Card className='border-orange-600/20'>
             <div className='space-y-4'>
               <div className='flex items-center gap-2 border-b border-neutral-800 pb-4'>
                 <div className='flex h-8 w-8 items-center justify-center rounded-lg bg-orange-900/40'>
-                  <User className='h-4 w-4 text-orange-400' />
+                  <Settings className='h-4 w-4 text-orange-400' />
                 </div>
                 <h3 className='text-lg font-semibold text-neutral-100'>
-                  Agent Details
+                  Agent Configuration
                 </h3>
               </div>
 
@@ -329,16 +375,94 @@ export default function OverviewTab({
                   </p>
                 </div>
 
+                {/* Domain */}
+                <div className='space-y-2'>
+                  <div className='flex items-center gap-2'>
+                    <Layers className='h-4 w-4 text-blue-400' />
+                    <label className='text-sm font-medium text-neutral-400'>
+                      Domain
+                    </label>
+                  </div>
+                  <p className='rounded-lg bg-neutral-900/50 p-3 text-sm text-neutral-200 capitalize'>
+                    {agent?.domain || 'Not specified'}
+                  </p>
+                </div>
+
                 {/* Tone */}
                 <div className='space-y-2'>
                   <div className='flex items-center gap-2'>
-                    <Smile className='h-4 w-4 text-orange-400' />
+                    <Smile className='h-4 w-4 text-purple-400' />
                     <label className='text-sm font-medium text-neutral-400'>
                       Tone
                     </label>
                   </div>
                   <p className='rounded-lg bg-neutral-900/50 p-3 text-sm text-neutral-200 capitalize'>
                     {agent?.tone || 'Not specified'}
+                  </p>
+                </div>
+
+                {/* Model */}
+                <div className='space-y-2'>
+                  <div className='flex items-center gap-2'>
+                    <Cpu className='h-4 w-4 text-green-400' />
+                    <label className='text-sm font-medium text-neutral-400'>
+                      AI Model
+                    </label>
+                  </div>
+                  <p className='rounded-lg bg-neutral-900/50 p-3 text-sm text-neutral-200'>
+                    {formatModelName(agent?.model)}
+                  </p>
+                </div>
+
+                {/* Temperature */}
+                <div className='space-y-2'>
+                  <div className='flex items-center gap-2'>
+                    <Thermometer className='h-4 w-4 text-red-400' />
+                    <label className='text-sm font-medium text-neutral-400'>
+                      Temperature
+                    </label>
+                  </div>
+                  <p className='rounded-lg bg-neutral-900/50 p-3 text-sm text-neutral-200'>
+                    {agent?.temperature !== undefined ? agent.temperature : 'Not set'}
+                  </p>
+                </div>
+
+                {/* Max Tokens */}
+                <div className='space-y-2'>
+                  <div className='flex items-center gap-2'>
+                    <Hash className='h-4 w-4 text-yellow-400' />
+                    <label className='text-sm font-medium text-neutral-400'>
+                      Max Tokens
+                    </label>
+                  </div>
+                  <p className='rounded-lg bg-neutral-900/50 p-3 text-sm text-neutral-200'>
+                    {agent?.max_tokens ? agent.max_tokens.toLocaleString() : 'Not set'}
+                  </p>
+                </div>
+
+                {/* Interface */}
+                <div className='space-y-2'>
+                  <div className='flex items-center gap-2'>
+                    <Globe className='h-4 w-4 text-cyan-400' />
+                    <label className='text-sm font-medium text-neutral-400'>
+                      Interface
+                    </label>
+                  </div>
+                  <p className='rounded-lg bg-neutral-900/50 p-3 text-sm text-neutral-200'>
+                    {formatInterface(agent?.interface)}
+                  </p>
+                </div>
+
+                {/* Services */}
+                <div className='space-y-2'>
+                  <div className='flex items-center gap-2'>
+                    <Settings className='h-4 w-4 text-indigo-400' />
+                    <label className='text-sm font-medium text-neutral-400'>
+                      Services
+                    </label>
+                  </div>
+                  <p className='rounded-lg bg-neutral-900/50 p-3 text-sm text-neutral-200'>
+                    {formatServices(agent?.services)}
                   </p>
                 </div>
 
@@ -352,19 +476,6 @@ export default function OverviewTab({
                   </div>
                   <p className='rounded-lg bg-neutral-900/50 p-3 text-sm text-neutral-200'>
                     {agent?.description || 'No description provided'}
-                  </p>
-                </div>
-
-                {/* Personality (Full Width) */}
-                <div className='space-y-2 sm:col-span-2'>
-                  <div className='flex items-center gap-2'>
-                    <Smile className='h-4 w-4 text-orange-400' />
-                    <label className='text-sm font-medium text-neutral-400'>
-                      Personality
-                    </label>
-                  </div>
-                  <p className='rounded-lg bg-neutral-900/50 p-3 text-sm text-neutral-200'>
-                    {agent?.persona || 'No personality defined'}
                   </p>
                 </div>
 
@@ -390,6 +501,39 @@ export default function OverviewTab({
           </Card>
         </div>
       </div>
+
+      <style jsx>{`
+        button[title]:hover::before,
+        a[title]:hover::before {
+          content: attr(title);
+          position: absolute;
+          bottom: 100%;
+          left: 50%;
+          transform: translateX(-50%) translateY(-8px);
+          padding: 6px 12px;
+          background: rgba(0, 0, 0, 0.9);
+          color: white;
+          font-size: 12px;
+          border-radius: 6px;
+          white-space: nowrap;
+          z-index: 1000;
+          pointer-events: none;
+          border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        button[title]:hover::after,
+        a[title]:hover::after {
+          content: '';
+          position: absolute;
+          bottom: 100%;
+          left: 50%;
+          transform: translateX(-50%) translateY(-2px);
+          border: 6px solid transparent;
+          border-top-color: rgba(0, 0, 0, 0.9);
+          z-index: 999;
+          pointer-events: none;
+        }
+      `}</style>
     </div>
   )
 }

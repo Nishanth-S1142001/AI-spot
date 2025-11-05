@@ -9,7 +9,8 @@ import {
   Settings,
   FileText,
   Loader2,
-  Phone
+  Phone,
+  Instagram
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useParams, useRouter } from 'next/navigation'
@@ -81,16 +82,78 @@ function TabLoadingSkeleton() {
   )
 }
 
-const TABS = [
-  { id: 'overview', name: 'Overview', icon: Aperture, description: 'Agent details and quick actions' },
-  { id: 'knowledge', name: 'Knowledge', icon: FileText, description: 'Manage knowledge sources' },
-  { id: 'conversations', name: 'Conversations', icon: MessageSquare, description: 'View chat history' },
-  { id: 'analytics', name: 'Analytics', icon: BarChart3, description: 'Performance metrics' },
-  { id: 'workflows', name: 'Workflows', icon: Zap, description: 'Automation & integrations' },
-  { id: 'bookings', name: 'Bookings', icon: Calendar, description: 'Appointment management' },
-  { id: 'calendar-settings', name: 'Calendar Setup', icon: Settings, description: 'Configure booking settings' },
-  { id: 'embed', name: 'Deploy', icon: Code, description: 'Embed & share your agent' },
-  { id: 'sms', label: 'SMS Bot', icon: Phone },
+// All available tabs with conditions
+const ALL_TABS = [
+  { 
+    id: 'overview', 
+    name: 'Overview', 
+    icon: Aperture, 
+    description: 'Agent details and quick actions',
+    condition: () => true // Always show
+  },
+  { 
+    id: 'knowledge', 
+    name: 'Knowledge', 
+    icon: FileText, 
+    description: 'Manage knowledge sources',
+    condition: () => true // Always show
+  },
+  { 
+    id: 'conversations', 
+    name: 'Conversations', 
+    icon: MessageSquare, 
+    description: 'View chat history',
+    condition: () => true // Always show
+  },
+  { 
+    id: 'analytics', 
+    name: 'Analytics', 
+    icon: BarChart3, 
+    description: 'Performance metrics',
+    condition: () => true // Always show
+  },
+  { 
+    id: 'workflows', 
+    name: 'Workflows', 
+    icon: Zap, 
+    description: 'Automation & integrations',
+    condition: () => true // Always show
+  },
+  { 
+    id: 'bookings', 
+    name: 'Bookings', 
+    icon: Calendar, 
+    description: 'Appointment management',
+    condition: () => true // Always show
+  },
+  { 
+    id: 'calendar-settings', 
+    name: 'Calendar Setup', 
+    icon: Settings, 
+    description: 'Configure booking settings',
+    condition: () => true // Always show
+  },
+  { 
+    id: 'embed', 
+    name: 'Deploy', 
+    icon: Code, 
+    description: 'Embed & share your agent',
+    condition: (agent) => agent?.interface === 'website' // Show only for website interface
+  },
+  { 
+    id: 'sms', 
+    name: 'SMS Bot', 
+    icon: Phone, 
+    description: 'SMS configuration and management',
+    condition: (agent) => agent?.interface === 'sms' // Show only for SMS interface
+  },
+  { 
+    id: 'instagram', 
+    name: 'Instagram', 
+    icon: Instagram, 
+    description: 'Instagram DM configuration',
+    condition: (agent) => agent?.interface === 'instagram' // Show only for Instagram interface
+  },
 ]
 
 export default function AgentManagement() {
@@ -99,11 +162,13 @@ export default function AgentManagement() {
   const { user, profile, loading: authLoading } = useAuth()
   const { logout } = useLogout()
   const [activeTab, setActiveTab] = useState('overview')
-const userProfile = {
-  name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
-  email: user?.email || 'guest@example.com',
-  avatar: profile?.avatar_url || null
-}
+  
+  const userProfile = {
+    name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
+    email: user?.email || 'guest@example.com',
+    avatar: profile?.avatar_url || null
+  }
+  
   // React Query hooks
   const { 
     data: agent, 
@@ -135,6 +200,12 @@ const userProfile = {
     [agent, id]
   )
 
+  // Filter tabs based on agent configuration
+  const visibleTabs = useMemo(() => {
+    if (!agent) return []
+    return ALL_TABS.filter(tab => tab.condition(agent))
+  }, [agent])
+
   // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
@@ -149,6 +220,16 @@ const userProfile = {
       router.push('/agents')
     }
   }, [agentError, agentLoading, router])
+
+  // Ensure active tab is visible, otherwise switch to overview
+  useEffect(() => {
+    if (agent && visibleTabs.length > 0) {
+      const isActiveTabVisible = visibleTabs.some(tab => tab.id === activeTab)
+      if (!isActiveTabVisible) {
+        setActiveTab('overview')
+      }
+    }
+  }, [agent, visibleTabs, activeTab])
 
   // Actions
   const toggleAgentStatus = useCallback(() => {
@@ -227,10 +308,17 @@ const userProfile = {
                     <h1 className='text-3xl font-bold text-neutral-100'>
                       {agent.name}
                     </h1>
-                    <p className='text-sm text-neutral-400'>
-                      {agent.purpose ? `${agent.purpose} Agent` : 'AI Agent'} • 
-                      <span className='ml-2'>{agent.model || 'GPT-4'}</span>
-                    </p>
+                    <div className='flex items-center gap-2 text-sm text-neutral-400'>
+                      <span>{agent.description || 'AI Agent'}</span>
+                      <span>•</span>
+                      <span className='capitalize'>{agent.model || 'GPT-4o'}</span>
+                      {agent.interface && (
+                        <>
+                          <span>•</span>
+                          <span className='capitalize'>{agent.interface}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
                   
                   {/* Status Badge */}
@@ -253,11 +341,11 @@ const userProfile = {
                 </div>
               </div>
 
-              {/* Tab Navigation */}
+              {/* Tab Navigation - Only show visible tabs */}
               <div className='mb-6'>
                 <div className='rounded-xl border border-neutral-800/50 bg-neutral-950/50 p-1 backdrop-blur-sm'>
                   <nav className='flex flex-wrap gap-1'>
-                    {TABS.map((tab) => {
+                    {visibleTabs.map((tab) => {
                       const Icon = tab.icon
                       const isActive = activeTab === tab.id
                       
@@ -338,10 +426,26 @@ const userProfile = {
                 {activeTab === 'calendar-settings' && (
                   <CalendarSettings agent={agent} id={id} />
                 )}
-                {activeTab === 'sms' && <SmsTab agentId={agent?.id} userId={user?.id} />}
+
+                {activeTab === 'sms' && (
+                  <SmsTab agentId={agent?.id} userId={user?.id} />
+                )}
 
                 {activeTab === 'embed' && (
                   <EmbedTab id={id} copyEmbedCode={copyEmbedCode} />
+                )}
+
+                {/* Instagram tab - placeholder for now */}
+                {activeTab === 'instagram' && (
+                  <div className='rounded-xl border border-purple-600/20 bg-gradient-to-br from-purple-950/10 to-neutral-950/50 p-8 text-center'>
+                    <Instagram className='mx-auto h-16 w-16 text-purple-400 mb-4' />
+                    <h3 className='text-2xl font-bold text-neutral-100 mb-2'>
+                      Instagram Integration
+                    </h3>
+                    <p className='text-neutral-400'>
+                      Instagram DM integration coming soon. Connect your Instagram account to manage conversations.
+                    </p>
+                  </div>
                 )}
               </div>
             </div>

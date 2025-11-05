@@ -66,7 +66,8 @@ export const menuItems = [
   {
     name: 'Upgrade Plan',
     icon: <User className='text-orange-500' size={20} />,
-    key: 'plan' // ✅ ADDED - For active state management
+    key: 'plan', // ✅ ADDED - For active state management,
+    href: '/plan'
   },
   {
     name: 'Settings',
@@ -84,10 +85,9 @@ export const menuItems = [
     icon: <BadgeQuestionMark className='text-orange-500' size={20} />,
     href: '/learn_more',
     submenu: [
-      { name: 'About Agency', href: '/learn_more/about' },
-      { name: 'Usage policy', href: '/learn_more/usage' },
-      { name: 'Privacy policy', href: '/learn_more/privacy' },
-      
+      { name: 'About Agency', href: '/about' },
+      { name: 'Usage policy', href: '/usage-policy' },
+      { name: 'Privacy policy', href: '/privacy-policy' }
     ]
   },
 
