@@ -151,7 +151,11 @@ export default function SettingsPage() {
   const router = useRouter()
   const { user, profile, loading: authLoading } = useAuth()
   const { logout } = useLogout()
-
+ const userProfile = {
+    name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
+    email: user?.email || 'guest@example.com',
+    avatar: profile?.avatar_url || null
+  }
   // Memoize settings sections to prevent recreation on every render
   const settingsSections = useMemo(() => [
     {
@@ -205,7 +209,7 @@ export default function SettingsPage() {
   return (
     <>
       <NeonBackground />
-      <SideBarLayout>
+      <SideBarLayout userProfile={userProfile}>
         <div className='flex h-screen w-full flex-col font-mono text-neutral-100'>
           {/* Header */}
           <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>

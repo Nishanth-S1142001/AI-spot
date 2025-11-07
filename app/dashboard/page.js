@@ -10,7 +10,8 @@ import {
   Zap,
   Plus,
   ArrowRight,
-  BarChart3
+  BarChart3,
+  Phone
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -26,71 +27,69 @@ import { useAgents, useDashboardAnalytics } from '../../lib/hooks/useAgentData'
 import { useLogout } from '../../lib/supabase/auth'
 
 /**
- * FULLY OPTIMIZED Dashboard Component
- * 
- * React Query Integration:
- * - Automatic data fetching with caching
- * - No manual state management
- * - Consistent with all other pages
- * - Auto-refresh on data changes
- * 
- * Performance:
- * - Memoized components
- * - Smart caching prevents re-fetching
- * - Parallel data loading
- * - Optimized rendering
- */
-
-/**
- * Memoized Agent Card Component
+ * Memoized Agent Card Component - Uses Interface field
  */
 const AgentCard = memo(({ agent, onClick }) => {
-  const getPurposeIcon = () => {
+  const getInterfaceIcon = () => {
+    const iconProps = 'h-5 w-5'
     const icons = {
-      instagram: <Instagram className='h-5 w-5' />,
-      messenger: <MessageSquare className='h-5 w-5' />,
-      calendar: <Calendar className='h-5 w-5' />,
-      website: <Globe className='h-5 w-5' />,
-      default: <Bot className='h-5 w-5' />
+      instagram: <Instagram className={iconProps} />,
+      sms: <Phone className={iconProps} />,
+      website: <Globe className={iconProps} />,
+      default: <Bot className={iconProps} />
     }
-    return icons[agent.purpose] || icons.default
+    return icons[agent.interface] || icons.default
   }
 
-  const getPurposeColors = () => {
-    const colors = {
-      instagram:
-        'from-pink-900/40 to-pink-950/20 border-pink-600/30 text-pink-300',
-      messenger:
-        'from-blue-900/40 to-blue-950/20 border-blue-600/30 text-blue-300',
-      calendar:
-        'from-green-900/40 to-green-950/20 border-green-600/30 text-green-300',
-      website:
-        'from-purple-900/40 to-purple-950/20 border-purple-600/30 text-purple-300',
-      default:
-        'from-neutral-900/40 to-neutral-950/20 border-neutral-600/30 text-neutral-300'
+const getInterfaceColors = () => {
+  const colors = {
+    instagram:
+      'from-pink-900/40 to-pink-950/20 border-pink-600/30 text-pink-300',
+    sms: 'from-sky-900/40 to-sky-950/20 border-sky-600/30 text-sky-300',
+    website:
+      'from-purple-900/40 to-purple-950/20 border-purple-600/30 text-purple-300',
+    default:
+      'from-orange-900/40 to-orange-950/20 border-orange-600/30 text-orange-300'
+  }
+  return colors[agent.interface] || colors.default
+}
+
+const getIconBgColor = () => {
+  const colors = {
+    instagram: 'bg-pink-900/50',
+    sms: 'bg-sky-900/30',
+    website: 'bg-purple-900/50',
+    default: 'bg-orange-900/50'
+  }
+  return colors[agent.interface] || colors.default
+}
+  const getInterfaceLabel = () => {
+    const labels = {
+      instagram: 'Instagram DM',
+      sms: 'SMS Bot',
+      website: 'Website Widget',
+      default: 'AI Agent'
     }
-    return colors[agent.purpose] || colors.default
+    return labels[agent.interface] || labels.default
   }
 
   return (
     <Card
-      className={`group cursor-pointer border bg-gradient-to-br transition-all hover:scale-105 hover:shadow-lg ${getPurposeColors()}`}
+      className={`group cursor-pointer border bg-gradient-to-br transition-all hover:scale-105 hover:shadow-lg ${getInterfaceColors()}`}
       onClick={onClick}
     >
       <div className='space-y-4'>
         {/* Header */}
         <div className='flex items-start justify-between'>
           <div className='flex items-center gap-3'>
-            <div className='flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-900/50'>
-              {getPurposeIcon()}
+            <div
+              className={`flex h-10 w-10 items-center justify-center rounded-lg ${getIconBgColor()}`}
+            >
+              {getInterfaceIcon()}
             </div>
             <div>
-              <h4 className='font-semibold text-neutral-100'>
-                {agent.name}
-              </h4>
-              <p className='text-xs text-neutral-400 capitalize'>
-                {agent.purpose || 'General'}
-              </p>
+              <h4 className='font-semibold text-neutral-100'>{agent.name}</h4>
+              <p className='text-xs text-neutral-400'>{getInterfaceLabel()}</p>
             </div>
           </div>
           <div
@@ -108,6 +107,22 @@ const AgentCard = memo(({ agent, onClick }) => {
         <p className='line-clamp-2 text-sm text-neutral-400'>
           {agent.description || 'No description provided'}
         </p>
+
+        {/* Domain & Model Pills */}
+        {(agent.domain || agent.model) && (
+          <div className='flex flex-wrap gap-2'>
+            {agent.domain && (
+              <span className='rounded-full bg-neutral-900/50 px-2 py-1 text-xs text-neutral-400 capitalize'>
+                {agent.domain}
+              </span>
+            )}
+            {agent.model && (
+              <span className='rounded-full bg-neutral-900/50 px-2 py-1 text-xs text-neutral-400'>
+                {agent.model}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Footer */}
         <div className='flex items-center justify-between border-t border-neutral-800/50 pt-4'>
@@ -130,23 +145,65 @@ const AgentCard = memo(({ agent, onClick }) => {
 AgentCard.displayName = 'AgentCard'
 
 /**
- * Memoized Quick Action Card Component
+ * Memoized Quick Action Card Component - FIXED with proper Tailwind classes
  */
-const QuickActionCard = memo(({ href, icon: Icon, iconColor, borderColor, hoverColor, title, subtitle }) => (
-  <Link href={href}>
-    <Card className={`group cursor-pointer border-${borderColor}/20 transition-all hover:border-${borderColor}/50 hover:bg-${hoverColor}/10`}>
-      <div className='flex items-center gap-3'>
-        <div className={`flex h-10 w-10 items-center justify-center rounded-lg bg-${iconColor}/40`}>
-          <Icon className={`h-5 w-5 text-${iconColor}`} />
+const QuickActionCard = memo(({ href, icon: Icon, variant = 'orange' }) => {
+  // Predefined complete class strings for each variant
+  const variantStyles = {
+    orange: {
+      card: 'group cursor-pointer border-orange-600/20 transition-all hover:border-orange-600/50 hover:bg-orange-950/10',
+      iconBg:
+        'flex h-10 w-10 items-center justify-center rounded-lg bg-orange-900/40',
+      icon: 'h-5 w-5 text-orange-400'
+    },
+    blue: {
+      card: 'group cursor-pointer border-blue-600/20 transition-all hover:border-blue-600/50 hover:bg-blue-950/10',
+      iconBg:
+        'flex h-10 w-10 items-center justify-center rounded-lg bg-blue-900/40',
+      icon: 'h-5 w-5 text-blue-400'
+    },
+    green: {
+      card: 'group cursor-pointer border-green-600/20 transition-all hover:border-green-600/50 hover:bg-green-950/10',
+      iconBg:
+        'flex h-10 w-10 items-center justify-center rounded-lg bg-green-900/40',
+      icon: 'h-5 w-5 text-green-400'
+    },
+    purple: {
+      card: 'group cursor-pointer border-purple-600/20 transition-all hover:border-purple-600/50 hover:bg-purple-950/10',
+      iconBg:
+        'flex h-10 w-10 items-center justify-center rounded-lg bg-purple-900/40',
+      icon: 'h-5 w-5 text-purple-400'
+    }
+  }
+
+  const styles = variantStyles[variant] || variantStyles.orange
+
+  // Labels for each quick action
+  const labels = {
+    orange: { title: 'View All Agents', subtitle: 'Manage agents' },
+    blue: { title: 'Workflows', subtitle: 'Automation' },
+    green: { title: 'Analytics', subtitle: 'View insights' },
+    purple: { title: 'Settings', subtitle: 'Configure' }
+  }
+
+  const label = labels[variant] || labels.orange
+
+  return (
+    <Link href={href}>
+      <Card className={styles.card}>
+        <div className='flex items-center gap-3'>
+          <div className={styles.iconBg}>
+            <Icon className={styles.icon} />
+          </div>
+          <div>
+            <p className='font-semibold text-neutral-200'>{label.title}</p>
+            <p className='text-xs text-neutral-400'>{label.subtitle}</p>
+          </div>
         </div>
-        <div>
-          <p className='font-semibold text-neutral-200'>{title}</p>
-          <p className='text-xs text-neutral-400'>{subtitle}</p>
-        </div>
-      </div>
-    </Card>
-  </Link>
-))
+      </Card>
+    </Link>
+  )
+})
 QuickActionCard.displayName = 'QuickActionCard'
 
 /**
@@ -156,12 +213,12 @@ export default function Dashboard() {
   const router = useRouter()
   const { user, profile, loading: authLoading } = useAuth()
   const { logout } = useLogout()
-const userProfile = {
-  name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
-  email: user?.email || 'guest@example.com',
-  avatar: profile?.avatar_url || null
-}
-  // React Query hooks - MUST be called before any conditional returns
+  const userProfile = {
+    name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
+    email: user?.email || 'guest@example.com',
+    avatar: profile?.avatar_url || null
+  }
+
   // React Query hooks - MUST be called before any conditional returns
   const {
     data: agents = [],
@@ -169,18 +226,18 @@ const userProfile = {
     error: agentsError
   } = useAgents(user?.id)
 
-  const {
-    data: analytics,
-    isLoading: analyticsLoading
-  } = useDashboardAnalytics(agents)
+  const { data: analytics, isLoading: analyticsLoading } =
+    useDashboardAnalytics(agents)
 
-  // Handle agent click - MUST be declared before conditional returns
-  const handleAgentClick = useCallback((agentId) => {
-    router.push(`/agents/${agentId}/manage`)
-  }, [router])
+  // Handle agent click
+  const handleAgentClick = useCallback(
+    (agentId) => {
+      router.push(`/agents/${agentId}/manage`)
+    },
+    [router]
+  )
 
-  // NOW we can do conditional logic - after all hooks are called
-  // Redirect if not authenticated using useEffect
+  // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/')
@@ -217,7 +274,6 @@ const userProfile = {
     )
   }
 
-  // Don't render if not authenticated
   if (!user) {
     return null
   }
@@ -306,7 +362,7 @@ const userProfile = {
                 )}
               </div>
 
-              {/* Quick Actions */}
+              {/* Quick Actions - FIXED with proper variant prop */}
               {agents.length > 0 && (
                 <div className='mb-8'>
                   <h3 className='mb-4 text-xl font-bold text-neutral-100'>
@@ -316,38 +372,22 @@ const userProfile = {
                     <QuickActionCard
                       href='/agents/dashboard'
                       icon={Bot}
-                      iconColor='orange-400'
-                      borderColor='orange-600'
-                      hoverColor='orange-950'
-                      title='View All Agents'
-                      subtitle='Manage agents'
+                      variant='orange'
                     />
                     <QuickActionCard
                       href='/workflows'
                       icon={Zap}
-                      iconColor='blue-400'
-                      borderColor='blue-600'
-                      hoverColor='blue-950'
-                      title='Workflows'
-                      subtitle='Automation'
+                      variant='blue'
                     />
                     <QuickActionCard
                       href='/analytics'
                       icon={BarChart3}
-                      iconColor='green-400'
-                      borderColor='green-600'
-                      hoverColor='green-950'
-                      title='Analytics'
-                      subtitle='View insights'
+                      variant='green'
                     />
                     <QuickActionCard
                       href='/settings'
                       icon={Users}
-                      iconColor='purple-400'
-                      borderColor='purple-600'
-                      hoverColor='purple-950'
-                      title='Settings'
-                      subtitle='Configure'
+                      variant='purple'
                     />
                   </div>
                 </div>

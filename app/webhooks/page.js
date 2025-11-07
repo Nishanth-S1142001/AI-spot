@@ -36,7 +36,7 @@ import BottomModal from '../../components/ui/modal'
 import { useLogout } from '../../lib/supabase/auth'
 import {
   useAgents,
-  useWebhooks,
+  useAllWebhooks,
   useWebhookStats,
   useDeleteWebhook,
   useRegenerateWebhookKey,
@@ -57,6 +57,8 @@ import {
  * - Smart caching prevents re-fetching
  * - Parallel data loading
  * - Optimized rendering
+ *
+ * FIX: Properly passes userId to useAgents hook
  */
 
 /**
@@ -410,13 +412,18 @@ export default function WebhooksDashboard() {
   const { user, profile, loading: authLoading } = useAuth()
   const { logout } = useLogout()
   const router = useRouter()
-const userProfile = {
-  name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
-  email: user?.email || 'guest@example.com',
-  avatar: profile?.avatar_url || null
-}
-  // React Query hooks - fully optimized data fetching
-  const { data: agents = [], isLoading: agentsLoading } = useAgents()
+  
+  const userProfile = {
+    name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
+    email: user?.email || 'guest@example.com',
+    avatar: profile?.avatar_url || null
+  }
+
+  // ✅ FIX: Pass userId to useAgents hook
+  const { data: agents = [], isLoading: agentsLoading } = useAgents(user?.id)
+
+  // ✅ FIX: Use single hook to fetch all webhooks instead of calling useWebhooks in a loop
+  const { data: webhooksByAgent = {}, isLoading: webhooksLoading } = useAllWebhooks(agents)
 
   // Local UI state only
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -426,22 +433,6 @@ const userProfile = {
   const deleteWebhook = useDeleteWebhook()
   const regenerateKey = useRegenerateWebhookKey()
   const copyWebhookUrl = useCopyWebhookUrl()
-
-  // Fetch webhooks for all agents using React Query
-  const webhookQueries = agents.map((agent) => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const query = useWebhooks(agent.id)
-    return query
-  })
-
-  // Memoized webhooks by agent
-  const webhooksByAgent = useMemo(() => {
-    const map = {}
-    agents.forEach((agent, index) => {
-      map[agent.id] = webhookQueries[index]?.data || []
-    })
-    return map
-  }, [agents, webhookQueries])
 
   // Calculate overall analytics - memoized
   const analytics = useMemo(() => {
@@ -547,10 +538,16 @@ const userProfile = {
   }, [authLoading, user, router])
 
   // Loading state
-  if (authLoading || agentsLoading) {
+  if (authLoading || agentsLoading || webhooksLoading) {
     return (
       <LoadingState
-        message={authLoading ? 'Authenticating...' : 'Loading your webhooks...'}
+        message={
+          authLoading 
+            ? 'Authenticating...' 
+            : webhooksLoading 
+              ? 'Loading webhooks...'
+              : 'Loading your webhooks...'
+        }
         className='min-h-screen'
       />
     )

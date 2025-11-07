@@ -443,6 +443,7 @@ PlansSection.displayName = 'PlansSection'
 export default function SubscriptionsPage() {
   const { user, profile, loading: authLoading, refreshProfile } = useAuth()
   const { logout } = useLogout()
+  
 
   // React Query hooks - MUST be called before any conditional returns
   const {

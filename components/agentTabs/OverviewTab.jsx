@@ -27,6 +27,7 @@ import {
 import Link from 'next/link'
 import { format, isValid } from 'date-fns'
 import { useState } from 'react'
+import { useCallback } from 'react'
 
 /**
  * Modernized OverviewTab Component with Icon-Only Quick Actions
@@ -48,7 +49,7 @@ export default function OverviewTab({
 }) {
   const [linkCopied, setLinkCopied] = useState(false)
   const [embedCopied, setEmbedCopied] = useState(false)
-
+  const [isDeleting, setIsDeleting] = useState(false)
   const handleCopyLink = () => {
     copyShareLink()
     setLinkCopied(true)
@@ -93,6 +94,126 @@ export default function OverviewTab({
     }
     return interfaceMap[iface] || iface
   }
+
+    const handleDeleteAgent = useCallback(async () => {
+    if (isDeleting) return // Prevent double-click
+
+    try {
+      setIsDeleting(true)
+
+      // Fetch dependencies first
+      const response = await fetch(`/api/agents/${agent?.id}/dependencies`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch agent dependencies')
+      }
+
+      const dependencies = await response.json()
+
+      // Build detailed warning message
+      let warningMessage = '⚠️ DELETE AGENT WARNING\n\n'
+      warningMessage += `Agent: "${agent.name}"\n\n`
+
+      if (dependencies.hasActiveDependencies) {
+        warningMessage += '🗑️ This will permanently delete:\n\n'
+
+        if (dependencies.webhooks?.length > 0) {
+          warningMessage += `• ${dependencies.webhooks.length} Webhook(s)\n`
+          dependencies.webhooks.slice(0, 3).forEach((w) => {
+            warningMessage += `  - ${w.name}\n`
+          })
+          if (dependencies.webhooks.length > 3) {
+            warningMessage += `  ... and ${dependencies.webhooks.length - 3} more\n`
+          }
+          warningMessage += '\n'
+        }
+
+        if (dependencies.workflows?.length > 0) {
+          const activeWorkflows = dependencies.workflows.filter(
+            (w) => w.is_active
+          )
+          warningMessage += `• ${dependencies.workflows.length} Workflow(s)`
+          if (activeWorkflows.length > 0) {
+            warningMessage += ` (${activeWorkflows.length} active)`
+          }
+          warningMessage += '\n'
+          dependencies.workflows.slice(0, 3).forEach((w) => {
+            warningMessage += `  - ${w.name}${w.is_active ? ' (ACTIVE)' : ''}\n`
+          })
+          if (dependencies.workflows.length > 3) {
+            warningMessage += `  ... and ${dependencies.workflows.length - 3} more\n`
+          }
+          warningMessage += '\n'
+        }
+
+        if (dependencies.knowledgeSources?.length > 0) {
+          warningMessage += `• ${dependencies.knowledgeSources.length} Knowledge Source(s)\n\n`
+        }
+
+        if (dependencies.testAccounts?.length > 0) {
+          warningMessage += `• ${dependencies.testAccounts.length} Test Account(s)\n`
+          dependencies.testAccounts.slice(0, 3).forEach((acc) => {
+            warningMessage += `  - ${acc.name} (${acc.email})\n`
+          })
+          if (dependencies.testAccounts.length > 3) {
+            warningMessage += `  ... and ${dependencies.testAccounts.length - 3} more\n`
+          }
+          warningMessage += '\n'
+        }
+
+        if (dependencies.bookings?.length > 0) {
+          warningMessage += `• ${dependencies.bookings.length} Active Booking(s) (will be cancelled)\n\n`
+        }
+
+        if (dependencies.smsConfig) {
+          warningMessage += `• SMS Configuration (${dependencies.smsConfig.provider})\n\n`
+        }
+
+        if (dependencies.calendar) {
+          warningMessage += `• Calendar Configuration\n\n`
+        }
+
+        if (dependencies.conversationsCount > 0) {
+          warningMessage += `📦 Will archive (not delete):\n`
+          warningMessage += `• ${dependencies.conversationsCount} Conversation(s)\n`
+          warningMessage += `• ${dependencies.analyticsCount} Analytics Record(s)\n\n`
+        }
+
+        warningMessage += '🚨 THIS ACTION CANNOT BE UNDONE!\n\n'
+        warningMessage += 'Type the agent name to confirm deletion:\n'
+        warningMessage += `"${agent.name}"`
+
+        // Require typing agent name for confirmation
+        const userInput = prompt(warningMessage)
+
+        if (userInput !== agent.name) {
+          if (userInput !== null) {
+            toast.error('Agent name does not match. Deletion cancelled.')
+          }
+          setIsDeleting(false)
+          return
+        }
+      } else {
+        // Simple confirmation for agents without dependencies
+        warningMessage += 'This agent has no active dependencies.\n\n'
+        warningMessage += 'Are you sure you want to delete it?\n'
+        warningMessage += 'This action cannot be undone.'
+
+        if (!confirm(warningMessage)) {
+          setIsDeleting(false)
+          return
+        }
+      }
+
+      // Call the delete function from parent
+      await delete_Agent()
+      
+    } catch (error) {
+      console.error('Delete preparation failed:', error)
+      toast.error('Failed to check agent dependencies. Please try again.')
+      setIsDeleting(false)
+    }
+  }, [agent, delete_Agent, isDeleting])
 
   return (
     <div className='space-y-6'>
@@ -255,9 +376,10 @@ export default function OverviewTab({
                   Danger Zone
                 </p>
                 <Button
-                  onClick={delete_Agent}
+                  onClick={handleDeleteAgent}
                   variant='destructive'
                   className='w-full'
+                   disabled={isDeleting}
                 >
                   <Trash2 className='mr-2 h-4 w-4' />
                   Delete Agent

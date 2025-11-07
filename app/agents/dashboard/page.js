@@ -17,7 +17,8 @@ import {
   MessageSquare,
   Instagram,
   Calendar,
-  Globe
+  Globe,
+  Phone
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -99,17 +100,16 @@ const highlightText = (text, searchQuery) => {
 
 /**
  * Memoized Agent Card Component with Search Highlighting
+ * Uses interface field to differentiate cards
  */
 const AgentCardWithInfo = memo(({ agent, searchQuery }) => {
-  const getPurposeIcon = () => {
+  const getInterfaceIcon = () => {
     const iconProps = 'h-6 w-6'
-    switch (agent?.purpose) {
+    switch (agent?.interface) {
       case 'instagram':
         return <Instagram className={iconProps} />
-      case 'messenger':
-        return <MessageSquare className={iconProps} />
-      case 'calendar':
-        return <Calendar className={iconProps} />
+      case 'sms':
+        return <Phone className={iconProps} />
       case 'website':
         return <Globe className={iconProps} />
       default:
@@ -117,31 +117,42 @@ const AgentCardWithInfo = memo(({ agent, searchQuery }) => {
     }
   }
 
-  const getPurposeColors = () => {
-    const baseColors = {
-      instagram: 'from-pink-900/40 to-pink-950/20 border-pink-600/30',
-      messenger: 'from-blue-900/40 to-blue-950/20 border-blue-600/30',
-      calendar: 'from-green-900/40 to-green-950/20 border-green-600/30',
-      website: 'from-purple-900/40 to-purple-950/20 border-purple-600/30',
-      default: 'from-orange-900/40 to-orange-950/20 border-orange-600/30'
+  const getInterfaceColors = () => {
+    const colors = {
+      instagram:
+        'from-pink-900/40 to-pink-950/20 border-pink-600/30 text-pink-300',
+      sms: 'from-sky-900/40 to-sky-950/20 border-sky-600/30 text-sky-300',
+      website:
+        'from-purple-900/40 to-purple-950/20 border-purple-600/30 text-purple-300',
+      default:
+        'from-orange-900/40 to-orange-950/20 border-orange-600/30 text-orange-300'
     }
-    return baseColors[agent?.purpose] || baseColors.default
+    return colors[agent.interface] || colors.default
   }
 
   const getIconBgColor = () => {
     const colors = {
-      instagram: 'bg-pink-900/40',
-      messenger: 'bg-blue-900/40',
-      calendar: 'bg-green-900/40',
-      website: 'bg-purple-900/40',
-      default: 'bg-orange-900/40'
+      instagram: 'bg-pink-900/50',
+      sms: 'bg-sky-900/30',
+      website: 'bg-purple-900/50',
+      default: 'bg-orange-900/50'
     }
-    return colors[agent?.purpose] || colors.default
+    return colors[agent.interface] || colors.default
+  }
+
+  const getInterfaceLabel = () => {
+    const labels = {
+      instagram: 'Instagram DM',
+      sms: 'SMS Bot',
+      website: 'Website Widget',
+      default: 'AI Agent'
+    }
+    return labels[agent?.interface] || labels.default
   }
 
   return (
     <Card
-      className={`group cursor-pointer border bg-gradient-to-br transition-all hover:scale-[1.02] hover:shadow-2xl ${getPurposeColors()}`}
+      className={`group cursor-pointer border bg-gradient-to-br transition-all hover:scale-[1.02] hover:shadow-2xl ${getInterfaceColors()}`}
     >
       <div className='space-y-6'>
         {/* Header Section */}
@@ -155,7 +166,7 @@ const AgentCardWithInfo = memo(({ agent, searchQuery }) => {
               <div
                 className={`relative flex h-14 w-14 items-center justify-center rounded-lg ${getIconBgColor()} border border-neutral-800/50`}
               >
-                {getPurposeIcon()}
+                {getInterfaceIcon()}
               </div>
             </div>
 
@@ -163,8 +174,8 @@ const AgentCardWithInfo = memo(({ agent, searchQuery }) => {
               <h3 className='text-xl font-bold text-neutral-100'>
                 {highlightText(agent?.name || 'Untitled Agent', searchQuery)}
               </h3>
-              <p className='mt-1 text-sm text-neutral-400 capitalize'>
-                {agent?.purpose || 'General Purpose'}
+              <p className='mt-1 text-sm text-neutral-400'>
+                {getInterfaceLabel()}
               </p>
             </div>
           </div>
@@ -185,6 +196,22 @@ const AgentCardWithInfo = memo(({ agent, searchQuery }) => {
         <p className='line-clamp-2 text-sm text-neutral-400'>
           {agent?.description || 'No description provided'}
         </p>
+
+        {/* Domain & Model Info */}
+        {(agent?.domain || agent?.model) && (
+          <div className='flex items-center gap-3 text-xs text-neutral-500'>
+            {agent?.domain && (
+              <span className='rounded-full bg-neutral-900/50 px-2 py-1 capitalize'>
+                {agent.domain}
+              </span>
+            )}
+            {agent?.model && (
+              <span className='rounded-full bg-neutral-900/50 px-2 py-1'>
+                {agent.model}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Quick Actions Grid */}
         <div className='grid grid-cols-3 gap-2'>
@@ -304,7 +331,6 @@ const AnalyticsCard = memo(({ icon: Icon, label, value, subtext, color }) => {
   )
 })
 AnalyticsCard.displayName = 'AnalyticsCard'
-
 /**
  * Main Dashboard Component
  */
@@ -312,18 +338,19 @@ export default function AgentsDashboard() {
   const { user, profile, loading: authLoading } = useAuth()
   const { logout } = useLogout()
   const router = useRouter()
-const userProfile = {
-  name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
-  email: user?.email || 'guest@example.com',
-  avatar: profile?.avatar_url || null
-}
-  // UI State - must be declared before any conditional returns
+  const userProfile = {
+    name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
+    email: user?.email || 'guest@example.com',
+    avatar: profile?.avatar_url || null
+  }
+
+  // UI State
   const [isAgentCardOpen, setIsAgentCardOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 6
 
-  // React Query hooks - must be called before any conditional returns
+  // React Query hooks
   const {
     data: agents = [],
     isLoading: agentsLoading,
@@ -379,7 +406,7 @@ const userProfile = {
     [filteredAgents.length, itemsPerPage]
   )
 
-  // Reset to first page when search changes - use useEffect instead of useMemo
+  // Reset to first page when search changes
   useEffect(() => {
     setCurrentPage(1)
   }, [searchQuery])
@@ -400,7 +427,6 @@ const userProfile = {
       ?.scrollIntoView({ behavior: 'smooth' })
   }, [])
 
-  // NOW we can do conditional returns - after all hooks are called
   // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
@@ -438,7 +464,6 @@ const userProfile = {
     )
   }
 
-  // Don't render if not authenticated
   if (!user) {
     return null
   }
@@ -460,7 +485,7 @@ const userProfile = {
           {/* Main Content */}
           <div className='custom-scrollbar flex-1 overflow-y-auto'>
             <div className='mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8'>
-              {/* Hero Section with Create Agent Button */}
+              {/* Hero Section */}
               <div className='relative mb-12 flex min-h-[40vh] flex-col items-center justify-center'>
                 <div className='absolute inset-0 flex items-center justify-center'>
                   <div className='h-[500px] w-[500px] rounded-full bg-orange-500/20 blur-[100px]' />

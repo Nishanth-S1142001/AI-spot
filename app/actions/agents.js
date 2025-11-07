@@ -2,7 +2,7 @@
 
 import { dbServer } from '../lib/supabase/dbServer.js'
 import { subAccountsDb } from '../lib/supabase/dbServer.js'
-
+import { supabaseAdmin } from '../lib/supabase/dbServer.js'
 // ─────────────────────────────
 // PROFILES
 // ─────────────────────────────
@@ -30,13 +30,242 @@ export async function getAgent(agentId, userId) {
   return await dbServer.getAgent(agentId, userId)
 }
 
+import { revalidatePath } from 'next/cache'
+
 export async function updateAgent(agentId, updates) {
-  // updates can now include services, interface, and service_config
-  return await dbServer.updateAgent(agentId, updates)
+  try {
+    console.log('🔄 Server Action - updateAgent:', { agentId, updates })
+
+    // ⚠️ IMPORTANT: Await the database call
+    const updatedAgent = await dbServer.updateAgent(agentId, updates)
+
+    console.log('✅ Agent updated in DB:', updatedAgent)
+
+    // ⚠️ CRITICAL: Revalidate the cache paths
+    revalidatePath(`/agents/${agentId}`)
+    revalidatePath('/agents')
+
+    // ⚠️ CRITICAL: Return the ACTUAL updated agent data
+    return updatedAgent
+  } catch (error) {
+    console.error('❌ updateAgent server action failed:', error)
+    // Re-throw the error so React Query catches it
+    throw new Error(error.message || 'Failed to update agent')
+  }
 }
 
-export async function deleteAgent(agentId) {
-  return await dbServer.deleteAgent(agentId)
+// app/actions/agents.js
+
+// UPDATED: deleteAgent with ALL agent dependencies
+// Replace in app/actions/agents.js
+
+export async function deleteAgent(agentId, userId) {
+  try {
+    console.log('Starting agent deletion:', agentId)
+
+    // 1. Verify ownership
+    const agent = await dbServer.verifyAgentOwnership(agentId, userId)
+    if (!agent) {
+      throw new Error('Agent not found or access denied')
+    }
+
+    // 2. Get all dependencies
+    const dependencies = await dbServer.getAgentDependencies(agentId)
+    console.log('📊 Agent dependencies:', {
+      webhooks: dependencies.webhooks.length,
+      workflows: dependencies.workflows.length,
+      knowledgeSources: dependencies.knowledgeSources.length,
+      testAccounts: dependencies.testAccounts.length,
+      bookings: dependencies.bookings.length,
+      conversations: dependencies.conversationsCount,
+      analytics: dependencies.analyticsCount
+    })
+
+    // 3. Delete dependencies in the correct order
+
+    // ========== NEW: Delete SMS conversations ==========
+    console.log('🗑️ Deleting SMS conversations...')
+    const { error: smsConvError } = await supabaseAdmin
+      .from('sms_conversations')
+      .delete()
+      .eq('agent_id', agentId)
+
+    if (smsConvError && smsConvError.code !== 'PGRST116') {
+      console.error('Failed to delete SMS conversations:', smsConvError)
+    }
+
+    // ========== NEW: Delete NLP feedback (optional) ==========
+    console.log('🗑️ Deleting NLP feedback...')
+    const { error: nlpFeedbackError } = await supabaseAdmin
+      .from('nlp_feedback')
+      .delete()
+      .eq('agent_id', agentId)
+
+    if (nlpFeedbackError && nlpFeedbackError.code !== 'PGRST116') {
+      console.error('Failed to delete NLP feedback:', nlpFeedbackError)
+    }
+
+    // ========== NEW: Delete/Update NLP agent requests (optional) ==========
+    // Option A: Delete them
+    console.log('🗑️ Deleting NLP agent requests...')
+    const { error: nlpRequestError } = await supabaseAdmin
+      .from('nlp_agent_requests')
+      .delete()
+      .eq('agent_id', agentId)
+
+    // Option B: Set agent_id to null to keep history
+    // const { error: nlpRequestError } = await supabaseAdmin
+    //   .from('nlp_agent_requests')
+    //   .update({ agent_id: null })
+    //   .eq('agent_id', agentId)
+
+    if (nlpRequestError && nlpRequestError.code !== 'PGRST116') {
+      console.error('Failed to handle NLP requests:', nlpRequestError)
+    }
+
+    // Delete analytics FIRST (this was causing the foreign key error)
+    if (dependencies.analyticsCount > 0) {
+      console.log('🗑️ Deleting analytics records...')
+      const { error: analyticsError } = await supabaseAdmin
+        .from('analytics')
+        .delete()
+        .eq('agent_id', agentId)
+
+      if (analyticsError) throw analyticsError
+    }
+
+    // Delete conversations
+    if (dependencies.conversationsCount > 0) {
+      console.log('🗑️ Deleting conversations...')
+      const { error: conversationsError } = await supabaseAdmin
+        .from('conversations')
+        .delete()
+        .eq('agent_id', agentId)
+
+      if (conversationsError) throw conversationsError
+    }
+
+    // Delete webhook invocations
+    const { error: invocationsError } = await supabaseAdmin
+      .from('webhook_invocations')
+      .delete()
+      .eq('agent_id', agentId)
+
+    // Delete webhooks
+    if (dependencies.webhooks.length > 0) {
+      console.log('🗑️ Deleting webhooks...')
+      for (const webhook of dependencies.webhooks) {
+        await dbServer.deleteWebhook(webhook.id)
+      }
+    }
+
+    // ========== NEW: Delete knowledge vectors BEFORE knowledge sources ==========
+    console.log('🗑️ Deleting knowledge vectors...')
+    const { error: vectorsError } = await supabaseAdmin
+      .from('knowledge_vectors')
+      .delete()
+      .eq('agent_id', agentId)
+
+    if (vectorsError && vectorsError.code !== 'PGRST116') {
+      console.error('Failed to delete knowledge vectors:', vectorsError)
+    }
+
+    // Delete knowledge sources
+    if (dependencies.knowledgeSources.length > 0) {
+      console.log('🗑️ Deleting knowledge sources...')
+      for (const source of dependencies.knowledgeSources) {
+        await dbServer.deleteKnowledgeSource(source.id, agentId)
+      }
+    }
+
+    // Handle test accounts
+    if (dependencies.testAccounts.length > 0) {
+      console.log('🗑️ Deleting test accounts...')
+      for (const testAccount of dependencies.testAccounts) {
+        // Delete test sessions
+        await supabaseAdmin
+          .from('test_sessions')
+          .delete()
+          .eq('test_account_id', testAccount.id)
+
+        // Delete test analytics
+        await supabaseAdmin
+          .from('test_analytics')
+          .delete()
+          .eq('test_account_id', testAccount.id)
+
+        // Delete test invitations
+        await supabaseAdmin
+          .from('test_invitations')
+          .delete()
+          .eq('test_account_id', testAccount.id)
+
+        // Delete the test account
+        await subAccountsDb.deleteTestAccount(testAccount.id)
+      }
+    }
+
+    // Delete bookings
+    if (dependencies.bookings.length > 0) {
+      console.log('🗑️ Deleting bookings...')
+      for (const booking of dependencies.bookings) {
+        // Delete booking conversations first
+        await supabaseAdmin
+          .from('booking_conversations')
+          .delete()
+          .eq('booking_id', booking.id)
+
+        // Then delete the booking
+        await supabaseAdmin.from('bookings').delete().eq('id', booking.id)
+      }
+    }
+
+    // Delete booking slots
+    if (dependencies.calendar) {
+      console.log('🗑️ Deleting booking slots...')
+      await supabaseAdmin
+        .from('booking_slots')
+        .delete()
+        .eq('agent_calendar_id', dependencies.calendar.id)
+    }
+
+    // Delete calendar
+    if (dependencies.calendar) {
+      console.log('🗑️ Deleting calendar...')
+      await supabaseAdmin
+        .from('agent_calendars')
+        .delete()
+        .eq('id', dependencies.calendar.id)
+    }
+
+    // Delete SMS config
+    if (dependencies.smsConfig) {
+      console.log('🗑️ Deleting SMS config...')
+      await supabaseAdmin
+        .from('agent_sms_config')
+        .delete()
+        .eq('id', dependencies.smsConfig.id)
+    }
+
+    // Update workflows to remove agent reference
+    if (dependencies.workflows.length > 0) {
+      console.log('🔗 Updating workflows (removing agent reference)...')
+      await supabaseAdmin
+        .from('workflows')
+        .update({ agent_id: null, updated_at: new Date().toISOString() })
+        .eq('agent_id', agentId)
+    }
+
+    // 4. Finally, delete the agent
+    console.log('🗑️ Deleting agent...')
+    await dbServer.deleteAgent(agentId)
+
+    console.log('✅ Agent deleted successfully')
+    return { success: true }
+  } catch (error) {
+    console.error('❌ deleteAgent server action failed:', error)
+    throw new Error(error.message || 'Failed to delete agent')
+  }
 }
 
 // ─────────────────────────────

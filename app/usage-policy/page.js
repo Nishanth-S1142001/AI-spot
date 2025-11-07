@@ -406,7 +406,11 @@ export default function UsagePolicyPage() {
   const router = useRouter()
   const { user, profile, loading: authLoading } = useAuth()
   const { logout } = useLogout()
-
+ const userProfile = {
+    name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
+    email: user?.email || 'guest@example.com',
+    avatar: profile?.avatar_url || null
+  }
   // Memoize quick tips and sections to prevent recreation
   const quickTips = useMemo(() => QUICK_TIPS, [])
   const sections = useMemo(() => POLICY_SECTIONS, [])
@@ -436,7 +440,7 @@ export default function UsagePolicyPage() {
   return (
     <>
       <NeonBackground />
-      <SideBarLayout>
+      <SideBarLayout userProfile={userProfile}>
         <div className='flex h-screen w-full flex-col font-mono text-neutral-100'>
           {/* Header */}
           <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>

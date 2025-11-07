@@ -1,7 +1,5 @@
 import dotenv from 'dotenv'
 import { createClient } from '@supabase/supabase-js'
-
-import { getUserAgents } from '../../actions/agents.js'
 dotenv.config({ path: '.env.local' })
 const supabaseUrl = process.env.SUPABASE_URL
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -53,13 +51,27 @@ export const dbServer = {
   },
 
   async updateAgent(agentId, updates) {
+    console.log('💾 Database - updateAgent:', { agentId, updates })
+
+    // Add updated_at timestamp
+    const updateData = {
+      ...updates,
+      updated_at: new Date().toISOString()
+    }
+
     const { data, error } = await supabaseAdmin
       .from('agents')
-      .update(updates)
+      .update(updateData)
       .eq('id', agentId)
       .select()
       .single()
-    if (error) throw error
+
+    if (error) {
+      console.error('❌ Database update failed:', error)
+      throw error
+    }
+
+    console.log('✅ Database updated successfully:', data)
     return data
   },
 
@@ -70,7 +82,6 @@ export const dbServer = {
       .eq('id', agentId)
     if (error) throw error
   },
-
 
   // Conversations
   async saveConversation(
@@ -175,7 +186,7 @@ export const dbServer = {
       .from('profiles')
       .update({ api_credits: newCredits })
       .eq('id', userId)
-      .select() 
+      .select()
       .single()
     if (error) throw error
     return data
@@ -1386,6 +1397,100 @@ export const dbServer = {
       throw error
     }
     return true
+  },
+    async getAgentDependencies(agentId) {
+    try {
+      const [
+        webhooks,
+        workflows,
+        knowledgeSources,
+        testAccounts,
+        bookings,
+        conversations,
+        analytics,
+        calendar,
+        smsConfig
+      ] = await Promise.all([
+        // Webhooks (CASCADE DELETE)
+        supabaseAdmin
+          .from('agent_webhooks')
+          .select('id, name')
+          .eq('agent_id', agentId),
+
+        // Workflows (SET NULL - will be orphaned but kept)
+        supabaseAdmin
+          .from('workflows')
+          .select('id, name, is_active')
+          .eq('agent_id', agentId),
+
+        // Knowledge Sources (CASCADE DELETE)
+        supabaseAdmin
+          .from('knowledge_sources')
+          .select('id, source_type, file_name')
+          .eq('agent_id', agentId),
+
+        // Test Accounts (CASCADE DELETE)
+        supabaseAdmin
+          .from('test_accounts')
+          .select('id, name, email, status')
+          .eq('agent_id', agentId),
+
+        // Bookings (CASCADE DELETE)
+        supabaseAdmin
+          .from('bookings')
+          .select('id, status, booking_date')
+          .eq('agent_id', agentId)
+          .in('status', ['pending', 'confirmed']),
+
+        // Conversations
+        supabaseAdmin
+          .from('conversations')
+          .select('id', { count: 'exact', head: true })
+          .eq('agent_id', agentId)
+          .is('deleted_at', null),
+
+        // Analytics
+        supabaseAdmin
+          .from('analytics')
+          .select('id', { count: 'exact', head: true })
+          .eq('agent_id', agentId),
+
+        // Calendar
+        supabaseAdmin
+          .from('agent_calendars')
+          .select('id, booking_duration')
+          .eq('agent_id', agentId)
+          .maybeSingle(),
+
+        // SMS Config
+        supabaseAdmin
+          .from('agent_sms_config')
+          .select('id, provider, is_active')
+          .eq('agent_id', agentId)
+          .maybeSingle()
+      ])
+
+      return {
+        webhooks: webhooks.data || [],
+        workflows: workflows.data || [],
+        knowledgeSources: knowledgeSources.data || [],
+        testAccounts: testAccounts.data || [],
+        bookings: bookings.data || [],
+        conversationsCount: conversations.count || 0,
+        analyticsCount: analytics.count || 0,
+        calendar: calendar.data,
+        smsConfig: smsConfig.data,
+        
+        hasActiveDependencies:
+          (webhooks.data?.length || 0) > 0 ||
+          (workflows.data?.filter(w => w.is_active).length || 0) > 0 ||
+          (bookings.data?.length || 0) > 0 ||
+          (testAccounts.data?.length || 0) > 0
+      }
+    } catch (error) {
+      console.error('Error fetching agent dependencies:', error)
+      throw error
+    }
   }
 }
 // ============================================================================
@@ -1999,7 +2104,8 @@ export const subAccountsDb = {
       totalTokens,
       avgRating: Math.round(avgRating * 10) / 10
     }
-  }
+  },
+ 
 }
 
 // ============================================================================

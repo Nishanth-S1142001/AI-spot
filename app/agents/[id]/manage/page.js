@@ -30,7 +30,7 @@ import {
   useToggleAgentStatus,
   useDeleteAgent,
   usePrefetchConversations,
-  usePrefetchAnalytics,
+  usePrefetchAnalytics
 } from '../../../../lib/hooks/useAgentData'
 
 // Dynamic imports
@@ -84,76 +84,76 @@ function TabLoadingSkeleton() {
 
 // All available tabs with conditions
 const ALL_TABS = [
-  { 
-    id: 'overview', 
-    name: 'Overview', 
-    icon: Aperture, 
+  {
+    id: 'overview',
+    name: 'Overview',
+    icon: Aperture,
     description: 'Agent details and quick actions',
     condition: () => true // Always show
   },
-  { 
-    id: 'knowledge', 
-    name: 'Knowledge', 
-    icon: FileText, 
+  {
+    id: 'knowledge',
+    name: 'Knowledge',
+    icon: FileText,
     description: 'Manage knowledge sources',
     condition: () => true // Always show
   },
-  { 
-    id: 'conversations', 
-    name: 'Conversations', 
-    icon: MessageSquare, 
+  {
+    id: 'conversations',
+    name: 'Conversations',
+    icon: MessageSquare,
     description: 'View chat history',
     condition: () => true // Always show
   },
-  { 
-    id: 'analytics', 
-    name: 'Analytics', 
-    icon: BarChart3, 
+  {
+    id: 'analytics',
+    name: 'Analytics',
+    icon: BarChart3,
     description: 'Performance metrics',
     condition: () => true // Always show
   },
-  { 
-    id: 'workflows', 
-    name: 'Workflows', 
-    icon: Zap, 
+  {
+    id: 'workflows',
+    name: 'Workflows',
+    icon: Zap,
     description: 'Automation & integrations',
     condition: () => true // Always show
   },
-  { 
-    id: 'bookings', 
-    name: 'Bookings', 
-    icon: Calendar, 
+  {
+    id: 'bookings',
+    name: 'Bookings',
+    icon: Calendar,
     description: 'Appointment management',
     condition: () => true // Always show
   },
-  { 
-    id: 'calendar-settings', 
-    name: 'Calendar Setup', 
-    icon: Settings, 
+  {
+    id: 'calendar-settings',
+    name: 'Calendar Setup',
+    icon: Settings,
     description: 'Configure booking settings',
     condition: () => true // Always show
   },
-  { 
-    id: 'embed', 
-    name: 'Deploy', 
-    icon: Code, 
+  {
+    id: 'embed',
+    name: 'Deploy',
+    icon: Code,
     description: 'Embed & share your agent',
     condition: (agent) => agent?.interface === 'website' // Show only for website interface
   },
-  { 
-    id: 'sms', 
-    name: 'SMS Bot', 
-    icon: Phone, 
+  {
+    id: 'sms',
+    name: 'SMS Bot',
+    icon: Phone,
     description: 'SMS configuration and management',
     condition: (agent) => agent?.interface === 'sms' // Show only for SMS interface
   },
-  { 
-    id: 'instagram', 
-    name: 'Instagram', 
-    icon: Instagram, 
+  {
+    id: 'instagram',
+    name: 'Instagram',
+    icon: Instagram,
     description: 'Instagram DM configuration',
     condition: (agent) => agent?.interface === 'instagram' // Show only for Instagram interface
-  },
+  }
 ]
 
 export default function AgentManagement() {
@@ -162,33 +162,27 @@ export default function AgentManagement() {
   const { user, profile, loading: authLoading } = useAuth()
   const { logout } = useLogout()
   const [activeTab, setActiveTab] = useState('overview')
-  
+  const [isDeleting, setIsDeleting] = useState(false)
   const userProfile = {
     name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
     email: user?.email || 'guest@example.com',
     avatar: profile?.avatar_url || null
   }
-  
+
   // React Query hooks
-  const { 
-    data: agent, 
-    isLoading: agentLoading, 
-    error: agentError 
+  const {
+    data: agent,
+    isLoading: agentLoading,
+    error: agentError
   } = useAgent(id)
 
-  const { 
-    data: conversations, 
-    isLoading: conversationsLoading 
-  } = useConversation(id)
+  const { data: conversations, isLoading: conversationsLoading } =
+    useConversation(id)
 
-  const { 
-    data: analytics, 
-    isLoading: analyticsLoading 
-  } = useAnalytics(id)
+  const { data: analytics, isLoading: analyticsLoading } = useAnalytics(id)
 
   // Mutations
   const toggleStatusMutation = useToggleAgentStatus(id)
-  const deleteAgentMutation = useDeleteAgent()
 
   // Prefetch functions
   const prefetchConversations = usePrefetchConversations(id)
@@ -196,14 +190,14 @@ export default function AgentManagement() {
 
   // Memoized share link
   const shareLink = useMemo(
-    () => agent ? `${process.env.NEXT_PUBLIC_APP_URL}/sandbox/${id}` : null,
+    () => (agent ? `${process.env.NEXT_PUBLIC_APP_URL}/sandbox/${id}` : null),
     [agent, id]
   )
 
   // Filter tabs based on agent configuration
   const visibleTabs = useMemo(() => {
     if (!agent) return []
-    return ALL_TABS.filter(tab => tab.condition(agent))
+    return ALL_TABS.filter((tab) => tab.condition(agent))
   }, [agent])
 
   // Redirect if not authenticated
@@ -215,16 +209,16 @@ export default function AgentManagement() {
 
   // Handle agent not found
   useEffect(() => {
-    if (agentError && !agentLoading) {
+    if (agentError && !agentLoading && !isDeleting) {
       toast.error('Agent not found')
-      router.push('/agents')
+      router.push('/agents/dashboard')
     }
   }, [agentError, agentLoading, router])
 
   // Ensure active tab is visible, otherwise switch to overview
   useEffect(() => {
     if (agent && visibleTabs.length > 0) {
-      const isActiveTabVisible = visibleTabs.some(tab => tab.id === activeTab)
+      const isActiveTabVisible = visibleTabs.some((tab) => tab.id === activeTab)
       if (!isActiveTabVisible) {
         setActiveTab('overview')
       }
@@ -236,12 +230,25 @@ export default function AgentManagement() {
     toggleStatusMutation.mutate()
   }, [toggleStatusMutation])
 
-  const delete_Agent = useCallback(() => {
-    if (!confirm('Are you sure you want to delete this agent? This action cannot be undone.')) {
-      return
+  // ✅ NEW CODE
+  const deleteAgentMutation = useDeleteAgent(id, user?.id, () => {
+    // This callback will be called after successful deletion
+    console.log('🎯 Navigation callback triggered')
+
+    router.push('/agents/dashboard')
+  })
+
+  const delete_Agent = useCallback(async () => {
+    try {
+      setIsDeleting(true) // ← SET FLAG FIRST
+      const loadingToast = toast.loading('Deleting agent...')
+      await deleteAgentMutation.mutateAsync()
+      toast.dismiss(loadingToast)
+    } catch (error) {
+      console.error('Delete failed:', error)
+      setIsDeleting(false)
     }
-    deleteAgentMutation.mutate(id)
-  }, [deleteAgentMutation, id])
+  }, [deleteAgentMutation])
 
   const copyEmbedCode = useCallback(() => {
     if (!agent) return
@@ -257,16 +264,19 @@ export default function AgentManagement() {
   }, [shareLink])
 
   // Tab change handler with prefetching
-  const handleTabChange = useCallback((tabId) => {
-    setActiveTab(tabId)
-    
-    // Prefetch data for adjacent tabs
-    if (tabId === 'overview' || tabId === 'knowledge') {
-      prefetchConversations()
-    } else if (tabId === 'conversations') {
-      prefetchAnalytics()
-    }
-  }, [prefetchConversations, prefetchAnalytics])
+  const handleTabChange = useCallback(
+    (tabId) => {
+      setActiveTab(tabId)
+
+      // Prefetch data for adjacent tabs
+      if (tabId === 'overview' || tabId === 'knowledge') {
+        prefetchConversations()
+      } else if (tabId === 'conversations') {
+        prefetchAnalytics()
+      }
+    },
+    [prefetchConversations, prefetchAnalytics]
+  )
 
   // Loading state
   if (authLoading || agentLoading) {
@@ -311,7 +321,9 @@ export default function AgentManagement() {
                     <div className='flex items-center gap-2 text-sm text-neutral-400'>
                       <span>{agent.description || 'AI Agent'}</span>
                       <span>•</span>
-                      <span className='capitalize'>{agent.model || 'GPT-4o'}</span>
+                      <span className='capitalize'>
+                        {agent.model || 'GPT-4o'}
+                      </span>
                       {agent.interface && (
                         <>
                           <span>•</span>
@@ -320,7 +332,7 @@ export default function AgentManagement() {
                       )}
                     </div>
                   </div>
-                  
+
                   {/* Status Badge */}
                   <div className='flex items-center gap-3'>
                     <div
@@ -348,14 +360,15 @@ export default function AgentManagement() {
                     {visibleTabs.map((tab) => {
                       const Icon = tab.icon
                       const isActive = activeTab === tab.id
-                      
+
                       return (
                         <button
                           key={tab.id}
                           onClick={() => handleTabChange(tab.id)}
                           onMouseEnter={() => {
                             // Prefetch on hover
-                            if (tab.id === 'conversations') prefetchConversations()
+                            if (tab.id === 'conversations')
+                              prefetchConversations()
                             if (tab.id === 'analytics') prefetchAnalytics()
                           }}
                           className={`group relative flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200 ${
@@ -364,11 +377,13 @@ export default function AgentManagement() {
                               : 'text-neutral-400 hover:bg-neutral-900/50 hover:text-neutral-200'
                           }`}
                         >
-                          <Icon className={`h-4 w-4 ${isActive ? '' : 'group-hover:scale-110 transition-transform'}`} />
+                          <Icon
+                            className={`h-4 w-4 ${isActive ? '' : 'transition-transform group-hover:scale-110'}`}
+                          />
                           <span className='hidden sm:inline'>{tab.name}</span>
-                          
+
                           {/* Hover tooltip for mobile */}
-                          <div className='pointer-events-none absolute -top-12 left-1/2 z-50 hidden -translate-x-1/2 whitespace-nowrap rounded-lg bg-neutral-900 px-3 py-1.5 text-xs text-neutral-300 opacity-0 shadow-xl ring-1 ring-neutral-700 transition-opacity group-hover:opacity-100 sm:hidden'>
+                          <div className='pointer-events-none absolute -top-12 left-1/2 z-50 hidden -translate-x-1/2 rounded-lg bg-neutral-900 px-3 py-1.5 text-xs whitespace-nowrap text-neutral-300 opacity-0 shadow-xl ring-1 ring-neutral-700 transition-opacity group-hover:opacity-100 sm:hidden'>
                             {tab.name}
                             <div className='absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-neutral-900' />
                           </div>
@@ -396,24 +411,25 @@ export default function AgentManagement() {
                   <KnowledgeTab agent={agent} agentId={id} userId={user?.id} />
                 )}
 
-                {activeTab === 'conversations' && (
-                  conversationsLoading ? (
+                {activeTab === 'conversations' &&
+                  (conversationsLoading ? (
                     <TabLoadingSkeleton />
                   ) : (
-                    <ConversationsTab conversations={conversations} agentId={id} />
-                  )
-                )}
+                    <ConversationsTab
+                      conversations={conversations}
+                      agentId={id}
+                    />
+                  ))}
 
-                {activeTab === 'analytics' && (
-                  analyticsLoading ? (
+                {activeTab === 'analytics' &&
+                  (analyticsLoading ? (
                     <TabLoadingSkeleton />
                   ) : (
                     <AnalyticsTab
                       conversations={conversations}
                       analytics={analytics}
                     />
-                  )
-                )}
+                  ))}
 
                 {activeTab === 'workflows' && (
                   <WorkflowsTab agent={agent} id={id} />
@@ -438,12 +454,13 @@ export default function AgentManagement() {
                 {/* Instagram tab - placeholder for now */}
                 {activeTab === 'instagram' && (
                   <div className='rounded-xl border border-purple-600/20 bg-gradient-to-br from-purple-950/10 to-neutral-950/50 p-8 text-center'>
-                    <Instagram className='mx-auto h-16 w-16 text-purple-400 mb-4' />
-                    <h3 className='text-2xl font-bold text-neutral-100 mb-2'>
+                    <Instagram className='mx-auto mb-4 h-16 w-16 text-purple-400' />
+                    <h3 className='mb-2 text-2xl font-bold text-neutral-100'>
                       Instagram Integration
                     </h3>
                     <p className='text-neutral-400'>
-                      Instagram DM integration coming soon. Connect your Instagram account to manage conversations.
+                      Instagram DM integration coming soon. Connect your
+                      Instagram account to manage conversations.
                     </p>
                   </div>
                 )}
