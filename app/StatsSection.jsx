@@ -2,7 +2,7 @@
 
 import { memo } from 'react'
 import { TrendingUp, Users, Zap, Globe } from 'lucide-react'
-
+import Button from '../components/ui/button'
 const stats = [
   {
     icon: Users,

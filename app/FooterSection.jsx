@@ -2,7 +2,7 @@
 
 import { memo } from 'react'
 import { Twitter, Linkedin, Github, Mail, MapPin, Phone } from 'lucide-react'
-
+import Button from '../components/ui/button'
 const FooterSection = memo(() => {
   const currentYear = new Date().getFullYear()
 

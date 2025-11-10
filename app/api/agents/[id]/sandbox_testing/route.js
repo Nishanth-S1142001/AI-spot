@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server'
-import OpenAI from 'openai'
+import { getOpenAIClient } from '../chat-helpers' // ✅ NEW IMPORT
 import { getAgent } from '../../../../actions/agents'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-})
+// ❌ REMOVE MODULE-LEVEL OPENAI
+// const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
 // ------------------ POST: Sandbox Chat ------------------
 export async function POST(request, context) {
@@ -41,6 +40,28 @@ export async function POST(request, context) {
       return NextResponse.json({ error: 'Agent is inactive' }, { status: 400 })
     }
 
+    // ============================================================
+    // ✅ GET OPENAI CLIENT WITH USER/PLATFORM KEY
+    // ============================================================
+    
+    let openaiClient, apiKeySource
+    
+    try {
+      const result = await getOpenAIClient(id, userId)
+      openaiClient = result.client
+      apiKeySource = result.source
+      
+      console.log(`🔑 Sandbox using ${apiKeySource} API key`)
+    } catch (keyError) {
+      return NextResponse.json(
+        { 
+          error: 'Failed to initialize AI service. Please configure your API key in settings.',
+          errorCode: 'API_KEY_ERROR'
+        },
+        { status: 500 }
+      )
+    }
+
     // 2. Build system prompt
     const knowledgeContext = (agent.knowledge_base || '').slice(0, 2000) // safety limit
     const systemPrompt =
@@ -60,16 +81,28 @@ export async function POST(request, context) {
     let completion
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
-        completion = await openai.chat.completions.create({
-          model: 'gpt-4o-mini',
+        // ✅ USE DYNAMIC CLIENT
+        completion = await openaiClient.chat.completions.create({
+          model: agent.model || 'gpt-4o-mini',
           messages,
           max_tokens: 800,
-          temperature: 0.7,
-          // timeout: 15000 // 15s timeout
+          temperature: agent.temperature || 0.7,
         })
         break
       } catch (err) {
-        if (attempt === 3) throw err
+        if (attempt === 3) {
+          // Check for API key errors
+          if (err.status === 401 || err.code === 'invalid_api_key') {
+            return NextResponse.json(
+              { 
+                error: 'Invalid API key. Please check your API key configuration.',
+                errorCode: 'INVALID_API_KEY'
+              },
+              { status: 401 }
+            )
+          }
+          throw err
+        }
         console.warn(`Retrying OpenAI request (attempt ${attempt})...`)
         await new Promise((r) => setTimeout(r, 1000 * attempt))
       }
@@ -89,17 +122,30 @@ export async function POST(request, context) {
         agentId: id,
         tokensUsed,
         responseTimeMs: duration,
+        apiKeySource, // ✅ NEW: Track key source
         metadata
       },
       {
         headers: {
           'Cache-Control': 'no-store, max-age=0',
-          'X-Response-Time': `${duration}ms`
+          'X-Response-Time': `${duration}ms`,
+          'X-API-Key-Source': apiKeySource // ✅ NEW: Header
         }
       }
     )
   } catch (error) {
     console.error('Sandbox chat error:', error)
+    
+    if (error.status === 401 || error.code === 'invalid_api_key') {
+      return NextResponse.json(
+        { 
+          error: 'Invalid API key',
+          errorCode: 'INVALID_API_KEY'
+        },
+        { status: 401 }
+      )
+    }
+    
     return NextResponse.json(
       {
         error: 'An unexpected error occurred',

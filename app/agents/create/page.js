@@ -5,9 +5,11 @@ import {
   Bot,
   Calendar,
   Check,
+  Coins,
   FileText,
   Globe,
   Instagram,
+  Key,
   Link as LinkIcon,
   Loader2,
   Mail,
@@ -15,23 +17,23 @@ import {
   Settings
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
+import ApiKeyInput from '../../../components/ApiKeyInput'
 import LoadingState from '../../../components/common/loading-state'
+import KnowledgeUploadSection from '../../../components/KnowledgeUploadSection'
 import NavigationBar from '../../../components/navigationBar/navigationBar'
 import { useAuth } from '../../../components/providers/AuthProvider'
 import NeonBackground from '../../../components/ui/background'
 import Button from '../../../components/ui/button'
-import Card from '../../../components/ui/card'
 import FormInput from '../../../components/ui/formInputField'
-import { useLogout } from '../../../lib/supabase/auth'
-import KnowledgeUploadSection from '../../../components/KnowledgeUploadSection'
 import RightSlideModal from '../../../components/ui/right-slide-modal'
 import {
   useCreateAgent,
   useFinalizeAgent,
   useKnowledgeSources
 } from '../../../lib/hooks/useAgentData'
+import { useLogout } from '../../../lib/supabase/auth'
 
 // ==================== CONSTANTS ====================
 const MODELS = [
@@ -802,6 +804,71 @@ export default function CreateAgent() {
             </div>
           </div>
 
+          {/* API Key Configuration */}
+          <div>
+            <label className='mb-3 block text-sm font-medium text-neutral-200'>
+              API Key Configuration
+            </label>
+
+            <div className='space-y-4'>
+              {/* Option 1: Use User's Own Key */}
+              <button
+                onClick={() => updateForm('useOwnKey', true)}
+                className={`w-full rounded-lg border p-4 text-left transition-all ${
+                  formData.useOwnKey
+                    ? 'border-orange-600/40 bg-gradient-to-br from-orange-900/40 to-orange-950/20 ring-2 ring-orange-500/30'
+                    : 'border-neutral-700/50 bg-neutral-900/30 hover:border-neutral-600/50'
+                }`}
+              >
+                <div className='flex items-center gap-3'>
+                  <Key className='h-5 w-5 text-orange-400' />
+                  <div className='flex-1'>
+                    <div className='font-semibold text-neutral-100'>
+                      Use My Own API Key
+                    </div>
+                    <div className='text-xs text-neutral-400'>
+                      You control costs and usage with your own{' '}
+                      {formData.model.includes('gpt') ? 'OpenAI' : 'provider'}{' '}
+                      key
+                    </div>
+                  </div>
+                </div>
+              </button>
+
+              {/* Show API Key Input if "Use Own Key" selected */}
+              {formData.useOwnKey && (
+                <ApiKeyInput
+                  provider={
+                    formData.model.includes('gpt') ? 'openai' : 'anthropic'
+                  }
+                  onKeySaved={(keyId) => updateForm('apiKeyId', keyId)}
+                />
+              )}
+
+              {/* Option 2: Use Platform Credits */}
+              <button
+                onClick={() => updateForm('useOwnKey', false)}
+                className={`w-full rounded-lg border p-4 text-left transition-all ${
+                  !formData.useOwnKey
+                    ? 'border-blue-600/40 bg-gradient-to-br from-blue-900/40 to-blue-950/20 ring-2 ring-blue-500/30'
+                    : 'border-neutral-700/50 bg-neutral-900/30 hover:border-neutral-600/50'
+                }`}
+              >
+                <div className='flex items-center gap-3'>
+                  <Coins className='h-5 w-5 text-blue-400' />
+                  <div className='flex-1'>
+                    <div className='font-semibold text-neutral-100'>
+                      Use Platform Credits
+                    </div>
+                    <div className='text-xs text-neutral-400'>
+                      Pay-as-you-go using your account credits (
+                      {profile?.api_credits || 0} remaining)
+                    </div>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
           {/* Temperature & Max Tokens */}
           <div className='grid gap-6'>
             <div>

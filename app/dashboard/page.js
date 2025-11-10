@@ -3,6 +3,7 @@
 import {
   Bot,
   Calendar,
+  Settings,
   Globe,
   Instagram,
   MessageSquare,
@@ -15,7 +16,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { memo, useCallback, useEffect } from 'react'
+import { memo, useCallback, useEffect, useState } from 'react'
 import LoadingState from '../../components/common/loading-state'
 import NavigationBar from '../../components/navigationBar/navigationBar'
 import { useAuth } from '../../components/providers/AuthProvider'
@@ -25,6 +26,7 @@ import Button from '../../components/ui/button'
 import Card from '../../components/ui/card'
 import { useAgents, useDashboardAnalytics } from '../../lib/hooks/useAgentData'
 import { useLogout } from '../../lib/supabase/auth'
+import BottomModal from '../../components/ui/modal'
 
 /**
  * Memoized Agent Card Component - Uses Interface field
@@ -41,28 +43,28 @@ const AgentCard = memo(({ agent, onClick }) => {
     return icons[agent.interface] || icons.default
   }
 
-const getInterfaceColors = () => {
-  const colors = {
-    instagram:
-      'from-pink-900/40 to-pink-950/20 border-pink-600/30 text-pink-300',
-    sms: 'from-sky-900/40 to-sky-950/20 border-sky-600/30 text-sky-300',
-    website:
-      'from-purple-900/40 to-purple-950/20 border-purple-600/30 text-purple-300',
-    default:
-      'from-orange-900/40 to-orange-950/20 border-orange-600/30 text-orange-300'
+  const getInterfaceColors = () => {
+    const colors = {
+      instagram:
+        'from-pink-900/40 to-pink-950/20 border-pink-600/30 text-pink-300',
+      sms: 'from-sky-900/40 to-sky-950/20 border-sky-600/30 text-sky-300',
+      website:
+        'from-purple-900/40 to-purple-950/20 border-purple-600/30 text-purple-300',
+      default:
+        'from-orange-900/40 to-orange-950/20 border-orange-600/30 text-orange-300'
+    }
+    return colors[agent.interface] || colors.default
   }
-  return colors[agent.interface] || colors.default
-}
 
-const getIconBgColor = () => {
-  const colors = {
-    instagram: 'bg-pink-900/50',
-    sms: 'bg-sky-900/30',
-    website: 'bg-purple-900/50',
-    default: 'bg-orange-900/50'
+  const getIconBgColor = () => {
+    const colors = {
+      instagram: 'bg-pink-900/50',
+      sms: 'bg-sky-900/30',
+      website: 'bg-purple-900/50',
+      default: 'bg-orange-900/50'
+    }
+    return colors[agent.interface] || colors.default
   }
-  return colors[agent.interface] || colors.default
-}
   const getInterfaceLabel = () => {
     const labels = {
       instagram: 'Instagram DM',
@@ -218,6 +220,7 @@ export default function Dashboard() {
     email: user?.email || 'guest@example.com',
     avatar: profile?.avatar_url || null
   }
+  const [isAgentCardOpen, setIsAgentCardOpen] = useState(false)
 
   // React Query hooks - MUST be called before any conditional returns
   const {
@@ -243,6 +246,10 @@ export default function Dashboard() {
       router.push('/')
     }
   }, [authLoading, user, router])
+
+  const handleNewAgent = useCallback(() => {
+    setIsAgentCardOpen(false)
+  }, [])
 
   // Loading state
   if (authLoading || agentsLoading) {
@@ -319,12 +326,14 @@ export default function Dashboard() {
                       Manage and deploy your AI agents
                     </p>
                   </div>
-                  <Link href='/agents/create-nlp'>
-                    <Button className='flex items-center gap-2'>
-                      <Plus className='h-4 w-4' />
-                      Create Agent
-                    </Button>
-                  </Link>
+
+                  <Button
+                    onClick={() => setIsAgentCardOpen(true)}
+                    className='flex items-center gap-2'
+                  >
+                    <Plus className='h-4 w-4' />
+                    Create Agent
+                  </Button>
                 </div>
 
                 {agents.length === 0 ? (
@@ -340,12 +349,11 @@ export default function Dashboard() {
                       <p className='mb-6 text-sm text-neutral-400'>
                         Create your first AI agent to get started
                       </p>
-                      <Link href='/agents/create-nlp'>
-                        <Button>
-                          <Plus className='mr-2 h-4 w-4' />
-                          Create Your First Agent
-                        </Button>
-                      </Link>
+
+                      <Button onClick={() => setIsAgentCardOpen(true)}>
+                        <Plus className='mr-2 h-4 w-4' />
+                        Create Your First Agent
+                      </Button>
                     </div>
                   </Card>
                 ) : (
@@ -397,6 +405,48 @@ export default function Dashboard() {
         </div>
       </SideBarLayout>
 
+      <BottomModal isOpen={isAgentCardOpen} onClose={handleNewAgent}>
+        <div className='space-y-6'>
+          <div className='text-center'>
+            <h3 className='mb-2 text-2xl font-bold text-neutral-100'>
+              Create New Agent
+            </h3>
+            <p className='text-sm text-neutral-400'>
+              Choose how you want to build your agent
+            </p>
+          </div>
+
+          <div className='grid gap-4 sm:grid-cols-2'>
+            <Link href='/agents/create-nlp'>
+              <button className='group w-full rounded-lg border-2 border-blue-600/30 bg-gradient-to-br from-blue-900/20 to-blue-950/10 p-6 text-left transition-all hover:scale-105 hover:border-blue-500/50 hover:from-blue-900/30 hover:to-blue-950/20'>
+                <div className='mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-blue-900/40'>
+                  <Zap className='h-6 w-6 text-blue-400' />
+                </div>
+                <h4 className='mb-2 text-lg font-bold text-neutral-100'>
+                  AI Build
+                </h4>
+                <p className='text-sm text-neutral-400'>
+                  Let AI help you build your agent with natural language
+                </p>
+              </button>
+            </Link>
+
+            <Link href='/agents/create'>
+              <button className='group w-full rounded-lg border-2 border-purple-600/30 bg-gradient-to-br from-purple-900/20 to-purple-950/10 p-6 text-left transition-all hover:scale-105 hover:border-purple-500/50 hover:from-purple-900/30 hover:to-purple-950/20'>
+                <div className='mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-purple-900/40'>
+                  <Settings className='h-6 w-6 text-purple-400' />
+                </div>
+                <h4 className='mb-2 text-lg font-bold text-neutral-100'>
+                  Custom Build
+                </h4>
+                <p className='text-sm text-neutral-400'>
+                  Build your agent from scratch with full customization
+                </p>
+              </button>
+            </Link>
+          </div>
+        </div>
+      </BottomModal>
       <style jsx global>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 8px;

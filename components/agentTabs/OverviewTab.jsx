@@ -1,6 +1,8 @@
 'use client'
 import Card from '../ui/card'
 import Button from '../ui/button'
+import ApiKeyInput from '../ApiKeyInput'
+import ApiKeySection from './ApiKeySection'
 import {
   CirclePower,
   Play,
@@ -81,7 +83,7 @@ export default function OverviewTab({
       calendar: 'Calendar',
       mail: 'Mail'
     }
-    return services.map(s => serviceMap[s] || s).join(', ')
+    return services.map((s) => serviceMap[s] || s).join(', ')
   }
 
   // Helper to format interface
@@ -95,7 +97,7 @@ export default function OverviewTab({
     return interfaceMap[iface] || iface
   }
 
-    const handleDeleteAgent = useCallback(async () => {
+  const handleDeleteAgent = useCallback(async () => {
     if (isDeleting) return // Prevent double-click
 
     try {
@@ -103,7 +105,7 @@ export default function OverviewTab({
 
       // Fetch dependencies first
       const response = await fetch(`/api/agents/${agent?.id}/dependencies`)
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch agent dependencies')
       }
@@ -207,7 +209,6 @@ export default function OverviewTab({
 
       // Call the delete function from parent
       await delete_Agent()
-      
     } catch (error) {
       console.error('Delete preparation failed:', error)
       toast.error('Failed to check agent dependencies. Please try again.')
@@ -293,7 +294,9 @@ export default function OverviewTab({
                       ? 'border-red-600/40 bg-red-950/20 hover:bg-red-950/30'
                       : 'border-green-600/40 bg-green-950/20 hover:bg-green-950/30'
                   }`}
-                  title={agent?.is_active ? 'Deactivate Agent' : 'Activate Agent'}
+                  title={
+                    agent?.is_active ? 'Deactivate Agent' : 'Activate Agent'
+                  }
                 >
                   {agent?.is_active ? (
                     <CirclePower className='h-6 w-6 text-red-400' />
@@ -379,7 +382,7 @@ export default function OverviewTab({
                   onClick={handleDeleteAgent}
                   variant='destructive'
                   className='w-full'
-                   disabled={isDeleting}
+                  disabled={isDeleting}
                 >
                   <Trash2 className='mr-2 h-4 w-4' />
                   Delete Agent
@@ -536,6 +539,7 @@ export default function OverviewTab({
                   </p>
                 </div>
 
+         
                 {/* Temperature */}
                 <div className='space-y-2'>
                   <div className='flex items-center gap-2'>
@@ -545,7 +549,9 @@ export default function OverviewTab({
                     </label>
                   </div>
                   <p className='rounded-lg bg-neutral-900/50 p-3 text-sm text-neutral-200'>
-                    {agent?.temperature !== undefined ? agent.temperature : 'Not set'}
+                    {agent?.temperature !== undefined
+                      ? agent.temperature
+                      : 'Not set'}
                   </p>
                 </div>
 
@@ -558,7 +564,9 @@ export default function OverviewTab({
                     </label>
                   </div>
                   <p className='rounded-lg bg-neutral-900/50 p-3 text-sm text-neutral-200'>
-                    {agent?.max_tokens ? agent.max_tokens.toLocaleString() : 'Not set'}
+                    {agent?.max_tokens
+                      ? agent.max_tokens.toLocaleString()
+                      : 'Not set'}
                   </p>
                 </div>
 

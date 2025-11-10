@@ -1,15 +1,6 @@
 'use client'
 import {
   ArrowLeft,
-  ChevronDown,
-  ChevronUp,
-  Download,
-  MessageSquare,
-  Play,
-  RefreshCw,
-  Save,
-  Settings,
-  Workflow,
   Menu,
   X
 } from 'lucide-react'
@@ -20,14 +11,11 @@ import { navMenus } from '../../config/navmenuconfig'
 import Button from '../ui/button'
 
 /**
- * Modernized NavigationBar Component
+ * NavigationBar Component with Smooth Scroll Support
  * Features:
- * - Clean, organized layout
- * - Better visual hierarchy
- * - Smooth animations
- * - Mobile responsive with hamburger menu
- * - Consistent styling
- * - Better component structure
+ * - Smooth scrolling for anchor links
+ * - Mobile responsive hamburger menu
+ * - Orange theme matching dashboard
  */
 
 export default function NavigationBar({
@@ -79,11 +67,19 @@ export default function NavigationBar({
   const isDashboard = pathname === '/dashboard'
   const isAgentsPage = pathname.startsWith('/agents')
   const isWorkflowsPage = pathname.startsWith('/workflows')
-  const isWorkflowBuilder =
-    pathname.includes('/workflows') && pathname.includes('/builder')
-  const isWorkflowExecutions = pathname.includes('/executions')
-  const isConversations = pathname.includes('/conversations')
-  const isWebhooks = pathname === '/webhooks'
+
+  // Handle smooth scroll for anchor links
+  const handleAnchorClick = (e, href) => {
+    e.preventDefault()
+    const target = document.querySelector(href)
+    if (target) {
+      target.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      })
+      setMobileMenuOpen(false)
+    }
+  }
 
   return (
     <header className='sticky top-0 z-50 w-full border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>
@@ -125,43 +121,9 @@ export default function NavigationBar({
             </Link>
           )}
 
-          {/* Workflows Title */}
-          {isWorkflowBuilder && (
-            <Link href='/workflows' className='group'>
-              <h1 className='text-lg font-bold text-white transition-colors group-hover:text-orange-400 sm:text-xl'>
-                Workflow: {title}
-              </h1>
-            </Link>
-          )}
-
-          {isWorkflowExecutions && (
-            <Link href='/workflows' className='group'>
-              <h1 className='text-lg font-bold text-white transition-colors group-hover:text-orange-400 sm:text-xl'>
-                {title}
-              </h1>
-            </Link>
-          )}
-
-          {pathname === '/workflows' && title && (
-            <h1 className='text-lg font-bold text-white sm:text-xl'>{title}</h1>
-          )}
-
-          {isWebhooks && title && (
-            <Link href='/webhooks' className='group'>
-              <h1 className='text-lg font-bold text-white transition-colors group-hover:text-orange-400 sm:text-xl'>
-                {title}
-              </h1>
-            </Link>
-          )}
-
-          {/* Quick Prompts Toggle (Create Agent) */}
-
           {/* Message (Status/Section Name) */}
           {message && (isAgentsPage || isWorkflowsPage) && (
             <div className='flex items-center gap-2 rounded-lg bg-neutral-900/50 px-3 py-1.5 ring-1 ring-neutral-800'>
-              {isConversations && (
-                <MessageSquare className='h-4 w-4 text-orange-400' />
-              )}
               <span className='text-sm font-medium text-neutral-200'>
                 {message}
               </span>
@@ -176,12 +138,24 @@ export default function NavigationBar({
               {currentMenu.map((item, index) => (
                 <li key={index}>
                   {item.href ? (
-                    <Link
-                      href={item.href}
-                      className='rounded-lg px-4 py-2 text-sm font-medium text-neutral-300 transition-all hover:bg-neutral-900/50 hover:text-white'
-                    >
-                      {item.name}
-                    </Link>
+                    item.href.startsWith('#') ? (
+                      // Anchor link with smooth scroll
+                      <a
+                        href={item.href}
+                        onClick={(e) => handleAnchorClick(e, item.href)}
+                        className='cursor-pointer rounded-lg px-4 py-2 text-sm font-medium text-neutral-300 transition-all hover:bg-neutral-900/50 hover:text-orange-400'
+                      >
+                        {item.name}
+                      </a>
+                    ) : (
+                      // Regular link
+                      <Link
+                        href={item.href}
+                        className='rounded-lg px-4 py-2 text-sm font-medium text-neutral-300 transition-all hover:bg-neutral-900/50 hover:text-orange-400'
+                      >
+                        {item.name}
+                      </Link>
+                    )
                   ) : (
                     <span className='px-4 py-2 text-sm font-medium text-neutral-500'>
                       {item.name}
@@ -195,8 +169,6 @@ export default function NavigationBar({
 
         {/* ========== RIGHT SECTION (Actions) ========== */}
         <div className='flex items-center gap-2'>
-          {/* Workflow Actions */}
-
           {/* Credits Display */}
           {profile && !isHomePage && (
             <div className='hidden items-center gap-2 rounded-lg bg-gradient-to-r from-orange-950/20 to-neutral-900/20 px-3 py-1.5 ring-1 ring-orange-600/20 sm:flex'>
@@ -212,7 +184,7 @@ export default function NavigationBar({
           {/* Auth Buttons */}
           {isHomePage ? (
             <Button onClick={onLoginClick} size='sm' className='hidden sm:flex'>
-              Log In
+              Sign In
             </Button>
           ) : (
             <Button
@@ -251,13 +223,24 @@ export default function NavigationBar({
               {currentMenu.map((item, index) => (
                 <li key={index}>
                   {item.href ? (
-                    <Link
-                      href={item.href}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className='block rounded-lg px-4 py-2 text-sm font-medium text-neutral-300 transition-all hover:bg-neutral-900/50 hover:text-white'
-                    >
-                      {item.name}
-                    </Link>
+                    item.href.startsWith('#') ? (
+                      // Anchor link with smooth scroll
+                      <a
+                        href={item.href}
+                        onClick={(e) => handleAnchorClick(e, item.href)}
+                        className='block cursor-pointer rounded-lg px-4 py-2 text-sm font-medium text-neutral-300 transition-all hover:bg-neutral-900/50 hover:text-orange-400'
+                      >
+                        {item.name}
+                      </a>
+                    ) : (
+                      <Link
+                        href={item.href}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className='block rounded-lg px-4 py-2 text-sm font-medium text-neutral-300 transition-all hover:bg-neutral-900/50 hover:text-orange-400'
+                      >
+                        {item.name}
+                      </Link>
+                    )
                   ) : (
                     <span className='block px-4 py-2 text-sm font-medium text-neutral-500'>
                       {item.name}
@@ -286,7 +269,7 @@ export default function NavigationBar({
                   size='sm'
                   className='w-full sm:hidden'
                 >
-                  Log In
+                  Sign In
                 </Button>
               ) : (
                 <Button

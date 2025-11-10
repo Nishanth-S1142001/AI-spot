@@ -1,6 +1,7 @@
 /**
- * COMPLETE CHAT ROUTE WITH VECTOR SEARCH AND BOOKING INTEGRATION
+ * COMPLETE CHAT ROUTE WITH USER API KEY SUPPORT
  * Features:
+ * - User-provided API keys OR platform keys
  * - Vector-based knowledge retrieval
  * - Booking flow handling
  * - Rate limiting, caching, credits
@@ -8,10 +9,10 @@
  */
 
 import { NextResponse } from 'next/server'
-import OpenAI from 'openai'
 import { checkRateLimit } from '../../../../../lib/api/rate-limiter'
 import { BookingParser } from '../../../../../lib/booking/booking-utils'
 import { VectorDB } from '../../../../../lib/vector/vectordb'
+import { getOpenAIClient } from '../chat-helpers' // ✅ NEW IMPORT
 import {
   deductCredits,
   getAgent,
@@ -24,13 +25,10 @@ import {
   getAgentCalendar
 } from '../../../../actions/agents'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  timeout: 30000,
-  maxRetries: 2
-})
+// ❌ REMOVE MODULE-LEVEL OPENAI INITIALIZATION
+// const openai = new OpenAI({ ... })
 
-// Cache and rate limiting
+// Cache for agent data
 const agentCache = new Map()
 const AGENT_CACHE_TTL = 5 * 60 * 1000
 
@@ -140,25 +138,41 @@ export async function POST(request, context) {
       )
     }
 
-    if (userId && !creditCheck) {
+    // ✅ NEW: Only check credits if using platform key
+    if (userId && agent.use_platform_key && !creditCheck) {
       return NextResponse.json(
-        { error: 'Insufficient credits' },
+        { error: 'Insufficient credits. Please top up your account or configure your own API key.' },
         { status: 402 }
       )
     }
 
     // ============================================================
+    // ✅ NEW: GET OPENAI CLIENT WITH USER/PLATFORM KEY
+    // ============================================================
+    
+    let openaiClient, apiKeySource, apiProvider
+    
+    try {
+      const result = await getOpenAIClient(agentId, userId)
+      openaiClient = result.client
+      apiKeySource = result.source // 'user' or 'platform'
+      apiProvider = result.provider // 'openai'
+      
+      console.log(`🔑 Using ${apiKeySource} API key (${apiProvider})`)
+    } catch (keyError) {
+      console.error('❌ Failed to get API key:', keyError)
+      
+      return NextResponse.json(
+        { 
+          error: keyError.message || 'Failed to initialize AI service. Please check your API key configuration.',
+          errorCode: 'API_KEY_ERROR'
+        },
+        { status: 500 }
+      )
+    }
+
+    // ============================================================
     // 5. VECTOR KNOWLEDGE BASE SEARCH
-    // ============================================================
-
-    // In your POST handler, update the vector search section:
-
-    // ============================================================
-    // 5. VECTOR KNOWLEDGE BASE SEARCH - IMPROVED
-    // ============================================================
-
-    // ============================================================
-    // 5. VECTOR KNOWLEDGE BASE SEARCH - WITH FALLBACK
     // ============================================================
 
     let knowledgeContext = ''
@@ -179,7 +193,6 @@ export async function POST(request, context) {
         if (searchResults && searchResults.length > 0) {
           vectorSearchPerformed = true
 
-          // Build context from search results
           knowledgeContext = '\n\n=== KNOWLEDGE BASE CONTEXT ===\n'
           knowledgeContext +=
             'The following information is from documents the user has provided. This is THE SOURCE OF TRUTH - prioritize this information over your general knowledge:\n\n'
@@ -202,42 +215,24 @@ export async function POST(request, context) {
           })
 
           knowledgeContext += '=== END KNOWLEDGE BASE CONTEXT ===\n\n'
-          knowledgeContext += 'CRITICAL INSTRUCTIONS:\n'
-          knowledgeContext +=
-            '1. ALWAYS reference the specific content from the documents above when answering\n'
-          knowledgeContext +=
-            '2. If the user asks about "the document", "the cover letter", "the file", etc., they mean the documents provided above\n'
-          knowledgeContext +=
-            '3. Extract and cite specific information from these documents\n'
-          knowledgeContext +=
-            '4. If the answer is in the documents, use that information - do NOT give generic advice\n'
-          knowledgeContext +=
-            '5. If you cannot find the answer in the documents, say so explicitly\n\n'
-
           console.log(
             `✅ Found ${searchResults.length} relevant knowledge sources`
           )
         } else {
-          // ✅ CRITICAL FIX: FALLBACK - Load ALL documents when vector search fails
-          console.log(
-            '⚠️ Vector search found nothing - using fallback: loading all documents'
-          )
+          // Fallback: Load all documents
+          console.log('⚠️ Vector search found nothing - using fallback')
 
-          // Get the actual document content from knowledge_sources
           if (knowledgeSources.length > 0) {
-            vectorSearchPerformed = true // Mark as performed even though using fallback
+            vectorSearchPerformed = true
 
             knowledgeContext =
               '\n\n=== KNOWLEDGE BASE CONTEXT (FULL DOCUMENTS) ===\n'
-            knowledgeContext +=
-              'The user has uploaded the following document(s). Since your question was general, here is the COMPLETE content:\n\n'
 
             knowledgeSources.forEach((source, index) => {
               const fileName =
                 source.file_name || source.source_url || 'Uploaded Document'
               const content = source.content || ''
 
-              // Limit to reasonable size (e.g., 3000 chars per document)
               const truncatedContent =
                 content.length > 3000
                   ? content.substring(0, 3000) +
@@ -250,23 +245,13 @@ export async function POST(request, context) {
               retrievedSources.push({
                 sourceId: source.id,
                 sourceName: fileName,
-                similarity: 1.0, // Full match since we're using entire doc
+                similarity: 1.0,
                 relevanceScore: '100.0',
                 content: content.substring(0, 200) + '...'
               })
             })
 
             knowledgeContext += '=== END KNOWLEDGE BASE CONTEXT ===\n\n'
-            knowledgeContext += 'CRITICAL INSTRUCTIONS:\n'
-            knowledgeContext +=
-              '1. The user is asking about THEIR uploaded documents - use the content above\n'
-            knowledgeContext +=
-              '2. Extract specific information from the documents to answer their question\n'
-            knowledgeContext +=
-              '3. DO NOT give generic advice - use the actual document content\n'
-            knowledgeContext +=
-              '4. If asked about "the cover letter", "the document", etc. - they mean the content above\n\n'
-
             console.log(
               `✅ Loaded ${knowledgeSources.length} full document(s) as fallback`
             )
@@ -274,9 +259,9 @@ export async function POST(request, context) {
         }
       } catch (searchError) {
         console.error('❌ Knowledge base search error:', searchError)
-        // Continue without knowledge base if search fails
       }
     }
+
     // ============================================================
     // 6. BOOKING SYSTEM INTEGRATION
     // ============================================================
@@ -306,13 +291,6 @@ export async function POST(request, context) {
 
     const currentMessageIsBooking = BookingParser.isBookingIntent(message)
 
-    console.log('=== BOOKING DEBUG ===')
-    console.log('Message:', message)
-    console.log('Agent Calendar:', agentCalendar ? 'EXISTS' : 'NULL')
-    console.log('Is Booking Intent:', currentMessageIsBooking)
-    console.log('Is Confirmation:', isConfirmation)
-    console.log('Was In Booking Flow:', wasInBookingFlow)
-
     if (
       agentCalendar?.is_active &&
       (currentMessageIsBooking ||
@@ -327,7 +305,7 @@ export async function POST(request, context) {
 
       let newDataCollected = false
 
-      // Merge new data with accumulated data
+      // Merge new data
       if (bookingData.date) {
         accumulatedData.date = bookingData.date
         newDataCollected = true
@@ -424,12 +402,10 @@ export async function POST(request, context) {
 
     let systemPrompt = generateSystemPrompt(agent, agentCalendar)
 
-    // Add vector knowledge context FIRST (higher priority)
     if (knowledgeContext) {
       systemPrompt += `\n${knowledgeContext}`
     }
 
-    // Add booking-specific instructions if in booking flow
     if (isBookingFlow) {
       systemPrompt += `\n\n=== BOOKING FLOW ACTIVE ===
 Current booking data extracted:
@@ -441,44 +417,23 @@ Confidence: ${(bookingContext.confidence * 100).toFixed(0)}%
 ${
   !bookingContext.isComplete
     ? `MISSING INFORMATION:
-${!bookingContext.extractedData.date ? '- Date (ask for specific date or day of week)\n' : ''}
-${!bookingContext.extractedData.time ? '- Time (ask for preferred time)\n' : ''}
-${!bookingContext.extractedData.name ? '- Full name\n' : ''}
-${!bookingContext.extractedData.email ? '- Email address\n' : ''}
-
-INSTRUCTIONS: Ask for the missing information naturally, one or two items at a time.`
+${!bookingContext.extractedData.date ? '- Date\n' : ''}
+${!bookingContext.extractedData.time ? '- Time\n' : ''}
+${!bookingContext.extractedData.name ? '- Name\n' : ''}
+${!bookingContext.extractedData.email ? '- Email\n' : ''}`
     : ''
 }
 
 ${
   bookingContext.isComplete && !bookingContext.bookingCreated
-    ? `ALL INFORMATION COLLECTED! Please confirm all details with the user.
-
-Details to confirm:
-- Date: ${bookingContext.extractedData.date}
-- Time: ${bookingContext.extractedData.time}
-- Name: ${bookingContext.extractedData.name}
-- Email: ${bookingContext.extractedData.email}
-${bookingContext.extractedData.phone ? `- Phone: ${bookingContext.extractedData.phone}\n` : ''}
-${bookingContext.extractedData.notes ? `- Notes: ${bookingContext.extractedData.notes}\n` : ''}`
+    ? `ALL INFORMATION COLLECTED! Please confirm.`
     : ''
 }
 
 ${
   bookingContext.bookingCreated
     ? `✅ BOOKING CONFIRMED!
-Booking ID: ${bookingContext.bookingId}
-${bookingContext.externalUrl ? `External URL: ${bookingContext.externalUrl}\n` : ''}
-
-INSTRUCTIONS: Confirm the booking and provide next steps.`
-    : ''
-}
-
-${
-  bookingContext.bookingError
-    ? `⚠️ BOOKING ERROR: ${bookingContext.bookingError}
-
-INSTRUCTIONS: Apologize and suggest alternatives.`
+Booking ID: ${bookingContext.bookingId}`
     : ''
 }
 `
@@ -496,10 +451,10 @@ INSTRUCTIONS: Apologize and suggest alternatives.`
       ])
 
     // ============================================================
-    // 9. CALL OPENAI
+    // 9. CALL OPENAI WITH USER/PLATFORM KEY
     // ============================================================
 
-    const completion = await openai.chat.completions.create({
+    const completion = await openaiClient.chat.completions.create({
       model: agent.model || 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
@@ -522,7 +477,7 @@ INSTRUCTIONS: Apologize and suggest alternatives.`
     const responseTime = Date.now() - startTime
 
     // ============================================================
-    // 10. SAVE CONVERSATION WITH ENHANCED METADATA
+    // 10. SAVE CONVERSATION
     // ============================================================
 
     const conversationMetadata = {
@@ -532,6 +487,7 @@ INSTRUCTIONS: Apologize and suggest alternatives.`
       tokens_usage_metadata: tokensUsage,
       response_time_ms: responseTime,
       user_id: userId,
+      api_key_source: apiKeySource, // ✅ NEW: Track which key was used
       vector_search_performed: vectorSearchPerformed,
       knowledge_sources_used: retrievedSources.length,
       knowledge_sources: retrievedSources
@@ -549,23 +505,12 @@ INSTRUCTIONS: Apologize and suggest alternatives.`
       conversationMetadata
     )
 
-    // Link booking to conversation if created
-    if (bookingContext?.bookingCreated && conversation?.id) {
-      try {
-        await linkBookingToConversation(
-          bookingContext.bookingId,
-          conversation.id,
-          bookingContext.extractedData,
-          bookingContext.confidence
-        )
-      } catch (linkError) {
-        console.error('Error linking booking:', linkError)
-      }
-    }
-
     // ============================================================
     // 11. ANALYTICS AND CREDITS
     // ============================================================
+
+    // ✅ CRITICAL: Only deduct credits if using PLATFORM key
+    const shouldDeductCredits = userId && apiKeySource === 'platform'
 
     Promise.all([
       logAnalytics(
@@ -577,6 +522,7 @@ INSTRUCTIONS: Apologize and suggest alternatives.`
           message_length: message.length,
           response_length: agentResponse.length,
           response_time_ms: responseTime,
+          api_key_source: apiKeySource, // ✅ NEW: Track in analytics
           booking_flow: isBookingFlow,
           booking_complete: bookingContext?.isComplete || false,
           booking_created: bookingContext?.bookingCreated || false,
@@ -586,7 +532,7 @@ INSTRUCTIONS: Apologize and suggest alternatives.`
         tokensUsed,
         true
       ),
-      userId ? deductCredits(userId, 1) : Promise.resolve()
+      shouldDeductCredits ? deductCredits(userId, 1) : Promise.resolve()
     ]).catch((err) => console.error('Background task error:', err))
 
     // ============================================================
@@ -601,6 +547,7 @@ INSTRUCTIONS: Apologize and suggest alternatives.`
         responseTimeMs: responseTime,
         agentId,
         timestamp: new Date().toISOString(),
+        apiKeySource, // ✅ NEW: Tell client which key was used
         knowledge: {
           searchPerformed: vectorSearchPerformed,
           sourcesFound: retrievedSources.length,
@@ -627,6 +574,7 @@ INSTRUCTIONS: Apologize and suggest alternatives.`
           'Cache-Control': 'no-store, max-age=0',
           'X-Response-Time': `${responseTime}ms`,
           'X-Tokens-Used': tokensUsed.toString(),
+          'X-API-Key-Source': apiKeySource, // ✅ NEW: Header for debugging
           'X-Knowledge-Used': vectorSearchPerformed.toString(),
           'X-Knowledge-Sources': retrievedSources.length.toString()
         }
@@ -662,8 +610,11 @@ INSTRUCTIONS: Apologize and suggest alternatives.`
 
     if (error.status === 401 || error.code === 'invalid_api_key') {
       return NextResponse.json(
-        { error: 'Service configuration error. Please contact support.' },
-        { status: 500 }
+        { 
+          error: 'Invalid API key. Please check your API key configuration.',
+          errorCode: 'INVALID_API_KEY'
+        },
+        { status: 401 }
       )
     }
 
@@ -678,7 +629,7 @@ INSTRUCTIONS: Apologize and suggest alternatives.`
   }
 }
 
-// GET handler
+// GET handler remains the same
 export async function GET(request, context) {
   try {
     const { id } = await context.params
@@ -764,22 +715,4 @@ Be conversational and confirm all details before finalizing.
   }
 
   return prompt
-}
-
-// Helper function to link booking to conversation
-async function linkBookingToConversation(
-  bookingId,
-  conversationId,
-  extractedData,
-  confidence
-) {
-  try {
-    console.log(
-      `Linking booking ${bookingId} to conversation ${conversationId}`
-    )
-    return true
-  } catch (error) {
-    console.error('Error in linkBookingToConversation:', error)
-    throw error
-  }
 }

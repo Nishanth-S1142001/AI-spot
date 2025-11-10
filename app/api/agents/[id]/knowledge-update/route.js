@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import OpenAI from 'openai'
+import { getOpenAIClient } from '../chat-helpers' // ✅ NEW IMPORT
 import { VectorDB } from '../../../../../lib/vector/vectordb'
 import {
   verifyAgentOwnership,
@@ -7,10 +7,11 @@ import {
   updateKnowledgeSource
 } from '../../../../actions/agents'
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+// ❌ REMOVE MODULE-LEVEL OPENAI
+// const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-export async function POST(req, { params }) {
-  const { id: agentId } = await params
+export async function POST(req, context) {
+  const { id: agentId } = await context.params
 
   try {
     const body = await req.json()
@@ -32,8 +33,31 @@ export async function POST(req, { params }) {
       )
     }
 
+    // ============================================================
+    // ✅ GET OPENAI CLIENT WITH USER/PLATFORM KEY
+    // ============================================================
+    
+    let openaiClient, apiKeySource
+    
+    try {
+      const result = await getOpenAIClient(agentId, userId)
+      openaiClient = result.client
+      apiKeySource = result.source
+      
+      console.log(`🔑 Knowledge update using ${apiKeySource} API key`)
+    } catch (keyError) {
+      return NextResponse.json(
+        { 
+          error: 'Failed to initialize AI service. Please configure your API key.',
+          errorCode: 'API_KEY_ERROR'
+        },
+        { status: 500 }
+      )
+    }
+
     // Convert to structured knowledge
-    const completion = await openai.chat.completions.create({
+    // ✅ USE DYNAMIC CLIENT
+    const completion = await openaiClient.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         {
@@ -66,7 +90,8 @@ export async function POST(req, { params }) {
       summary: JSON.stringify({
         type: 'user_instruction',
         instruction: instructions,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        api_key_source: apiKeySource // ✅ Track key source
       }),
       status: 'processing'
     })
@@ -79,7 +104,8 @@ export async function POST(req, { params }) {
       {
         type: 'user_instruction',
         instruction: instructions,
-        fileName: knowledgeSource.file_name
+        fileName: knowledgeSource.file_name,
+        api_key_source: apiKeySource // ✅ Track in metadata
       }
     )
 
@@ -90,12 +116,13 @@ export async function POST(req, { params }) {
       processed_at: new Date().toISOString()
     })
 
-    console.log(`✅ Created ${vectorResult.vectorCount} vectors`)
+    console.log(`✅ Created ${vectorResult.vectorCount} vectors using ${apiKeySource} key`)
 
     return NextResponse.json({
       success: true,
       agentId,
       userId,
+      apiKeySource, // ✅ Return key source
       knowledgeSource: {
         id: knowledgeSource.id,
         vectorCount: vectorResult.vectorCount,
@@ -105,6 +132,17 @@ export async function POST(req, { params }) {
     })
   } catch (error) {
     console.error(`❌ Error:`, error)
+    
+    if (error.status === 401 || error.code === 'invalid_api_key') {
+      return NextResponse.json(
+        { 
+          error: 'Invalid API key',
+          errorCode: 'INVALID_API_KEY'
+        },
+        { status: 401 }
+      )
+    }
+    
     return NextResponse.json(
       { error: error.message || 'Internal error' },
       { status: 500 }

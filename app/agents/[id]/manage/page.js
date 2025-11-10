@@ -22,7 +22,8 @@ import { useAuth } from '../../../../components/providers/AuthProvider'
 import SideBarLayout from '../../../../components/sideBarLayout'
 import NeonBackground from '../../../../components/ui/background'
 import { useLogout } from '../../../../lib/supabase/auth'
-
+import ApiKeySection from '../../../../components/agentTabs/ApiKeySection'
+import ApiKeyUsageStats from '../../../../components/agentTabs/ApiKeyUsageStats'
 import {
   useAgent,
   useConversation,
@@ -70,6 +71,14 @@ const SmsTab = dynamic(
   () => import('../../../../components/agentTabs/SmsTab'),
   { loading: () => <TabLoadingSkeleton />, ssr: false }
 )
+const ApiKeyUsageTab = dynamic(
+  () => import('../../../../components/agentTabs/ApiKeyUsageStats'),
+  { loading: () => <TabLoadingSkeleton />, ssr: false }
+)
+const ApiKeySectionTab = dynamic(
+  () => import('../../../../components/agentTabs/ApiKeySection'),
+  { loading: () => <TabLoadingSkeleton />, ssr: false }
+)
 
 function TabLoadingSkeleton() {
   return (
@@ -91,6 +100,14 @@ const ALL_TABS = [
     description: 'Agent details and quick actions',
     condition: () => true // Always show
   },
+  {
+    id: 'apiKeySection',
+    name: 'API Key',
+    icon: Aperture,
+    description: 'Api Key Setting',
+    condition: () => true // Always show
+  },
+ 
   {
     id: 'knowledge',
     name: 'Knowledge',
@@ -406,6 +423,14 @@ export default function AgentManagement() {
                     shareLink={shareLink}
                   />
                 )}
+
+                {activeTab === 'apiKeySection' && (
+                  <ApiKeySection agent={agent} agentId={id} />
+                )}
+
+                {/* {activeTab === 'apiKeyUsageStats' && (
+                  <ApiKeyUsageStats analytics={analytics} />
+                )} */}
 
                 {activeTab === 'knowledge' && (
                   <KnowledgeTab agent={agent} agentId={id} userId={user?.id} />

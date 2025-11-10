@@ -7,17 +7,14 @@
  */
 
 import { NextResponse } from 'next/server'
-import OpenAI from 'openai'
+import { getOpenAIClient } from '../../../agents/[id]/chat-helpers' // ✅ NEW IMPORT
 import { getSmsConfig, saveSmsConversation, getAgent } from '../../../../../lib/sms/sms-db'
 import { sendSms } from '../../../../../lib/sms/sms-providers'
 import { VectorDB } from '../../../../../lib/vector/vectordb'
 import { getKnowledgeSources } from '../../../../actions/agents'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  timeout: 30000,
-  maxRetries: 2
-})
+// ❌ REMOVE MODULE-LEVEL OPENAI
+// const openai = new OpenAI({ ... })
 
 // Rate limiting map (in production, use Redis)
 const rateLimitMap = new Map()
@@ -144,6 +141,46 @@ export async function POST(request, context) {
       throw new Error('Agent not found or inactive')
     }
     
+    // ============================================================
+    // ✅ GET OPENAI CLIENT WITH USER/PLATFORM KEY
+    // ============================================================
+    
+    let openaiClient, apiKeySource
+    
+    try {
+      const result = await getOpenAIClient(smsConfig.agent_id, smsConfig.user_id)
+      openaiClient = result.client
+      apiKeySource = result.source
+      
+      console.log(`🔑 SMS bot using ${apiKeySource} API key`)
+    } catch (keyError) {
+      console.error('❌ Failed to get API key:', keyError)
+      
+      // Send error message to user
+      await sendSms(
+        smsConfig, 
+        phoneNumber, 
+        'Sorry, the service is temporarily unavailable. Please try again later.'
+      )
+      
+      // Save error
+      await saveSmsConversation({
+        agent_id: smsConfig.agent_id,
+        sms_config_id: smsConfig.id,
+        phone_number: phoneNumber,
+        country_code: countryCode,
+        message_type: 'outgoing',
+        message_body: 'Service error',
+        status: 'failed',
+        error_message: keyError.message
+      })
+      
+      return NextResponse.json({ 
+        success: false,
+        error: 'API key error' 
+      }, { status: 500 })
+    }
+    
     // Get knowledge sources
     const knowledgeSources = await getKnowledgeSources(smsConfig.agent_id)
     
@@ -184,8 +221,9 @@ export async function POST(request, context) {
       { role: 'user', content: messageBody }
     ]
     
-    const completion = await openai.chat.completions.create({
-      model: agent.model || 'gpt-4',
+    // ✅ USE DYNAMIC CLIENT
+    const completion = await openaiClient.chat.completions.create({
+      model: agent.model || 'gpt-4o-mini',
       messages: messages,
       max_tokens: 300, // Keep responses concise for SMS
       temperature: agent.temperature || 0.7
@@ -219,20 +257,33 @@ export async function POST(request, context) {
       session_id: sessionId,
       conversation_context: {
         knowledge_used: vectorSearchPerformed,
-        incoming_message_id: incomingConversation.id
+        incoming_message_id: incomingConversation.id,
+        api_key_source: apiKeySource // ✅ Track key source
       }
     })
     
-    console.log(`✅ SMS sent to ${phoneNumber}`)
+    console.log(`✅ SMS sent to ${phoneNumber} using ${apiKeySource} key`)
     
     return NextResponse.json({
       success: true,
       message: 'SMS processed successfully',
-      responseTime: Date.now() - startTime
+      responseTime: Date.now() - startTime,
+      apiKeySource // ✅ Return key source
     })
     
   } catch (error) {
     console.error('❌ SMS webhook error:', error)
+    
+    // Handle API key errors specifically
+    if (error.status === 401 || error.code === 'invalid_api_key') {
+      return NextResponse.json(
+        {
+          error: 'Invalid API key configuration',
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        },
+        { status: 401 }
+      )
+    }
     
     return NextResponse.json(
       {

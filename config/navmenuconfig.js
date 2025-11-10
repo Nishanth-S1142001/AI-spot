@@ -1,10 +1,17 @@
-// app/config/navmenu.js
+// app/config/navmenuconfig.js
 
 export const navMenus = {
   home: [
-    { name: 'About Us', href: '/#about' },
-    { name: 'Services', href: '/#services' },
-    { name: 'Pricing', href: '/#pricing' },
-    { name: 'Contact', href: '/#contact' }
+    { name: 'Home', href: '#home' },
+    { name: 'Community', href: '#community' },
+    { name: 'Services', href: '#services' },
+    { name: 'Testimonials', href: '#testimonials' },
+    { name: 'Pricing', href: '#pricing' }
+  ],
+  dashboard: [
+    { name: 'Dashboard', href: '/dashboard' },
+    { name: 'Agents', href: '/agents/dashboard' },
+    { name: 'Workflows', href: '/workflows' },
+    { name: 'Analytics', href: '/analytics' }
   ]
 }

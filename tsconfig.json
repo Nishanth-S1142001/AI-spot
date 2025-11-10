@@ -28,7 +28,7 @@
     ".next/types/**/*.ts",
     "**/*.ts",
     "**/*.tsx"
-  ],
+, "supabase/functions/api-keys/index.js"  ],
   "exclude": [
     "node_modules"
   ]
