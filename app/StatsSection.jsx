@@ -1,108 +1,196 @@
 'use client'
 
-import { memo } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
+import { Monitor, Brain, Layers } from 'lucide-react'
 import { TrendingUp, Users, Zap, Globe } from 'lucide-react'
-import Button from '../components/ui/button'
+
 const stats = [
+  {
+    label: 'Frontend Features',
+    value: '60+',
+    icon: Monitor,
+    color: 'from-orange-500 to-orange-600'
+  },
+  {
+    label: 'Backend Capabilities',
+    value: '40+',
+    icon: Brain,
+    color: 'from-orange-400 to-orange-500'
+  },
+  {
+    label: 'Workflow Blueprints',
+    value: '100+',
+    icon: Layers,
+    color: 'from-orange-500 to-red-500'
+  },
   {
     icon: Users,
     value: '10,000+',
     label: 'Active Users',
-    color: 'orange',
+    color: 'from-orange-500 to-red-500',
     description: 'Businesses trust our platform'
   },
   {
     icon: Zap,
     value: '50,000+',
     label: 'AI Agents Created',
-    color: 'blue',
+    color: 'from-orange-500 to-red-500',
     description: 'Deployed and running'
   },
   {
     icon: TrendingUp,
     value: '99.9%',
     label: 'Uptime',
-    color: 'green',
+    color: 'from-orange-500 to-red-500',
     description: 'Reliable and always available'
   },
   {
     icon: Globe,
     value: '120+',
     label: 'Countries',
-    color: 'purple',
+    color: 'from-orange-500 to-red-500',
     description: 'Global reach and impact'
   }
 ]
 
-const colorClasses = {
-  orange: 'from-orange-500 to-orange-600',
-  blue: 'from-blue-500 to-blue-600',
-  green: 'from-green-500 to-green-600',
-  purple: 'from-purple-500 to-purple-600'
-}
-
-const StatsSection = memo(() => {
-  return (
-    <section className='relative bg-neutral-900 px-4 py-20 sm:py-24'>
-      <div className='mx-auto max-w-7xl'>
-        {/* Optional Heading */}
-        <div className='mb-12 text-center'>
-          <h2 className='text-3xl font-bold text-neutral-100 sm:text-4xl'>
-            Trusted by Thousands{' '}
-            <span className='bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent'>
-              Worldwide
-            </span>
-          </h2>
-        </div>
-
-        {/* Stats Grid */}
-        <div className='grid gap-8 sm:grid-cols-2 lg:grid-cols-4'>
-          {stats.map((stat, index) => (
-            <StatCard key={index} stat={stat} />
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-})
-
-StatsSection.displayName = 'StatsSection'
-
-// Stat Card Component
-const StatCard = memo(({ stat }) => {
+const StatCard = ({ stat, isCenter }) => {
   const Icon = stat.icon
-  const gradientClass = colorClasses[stat.color]
 
   return (
-    <div className='group relative overflow-hidden rounded-lg border border-neutral-800 bg-gradient-to-br from-neutral-800/50 to-neutral-900/50 p-8 text-center transition-all hover:border-orange-600/30 hover:scale-105'>
-      {/* Icon */}
-      <div className='mb-4 flex justify-center'>
-        <div className={`rounded-full bg-gradient-to-br ${gradientClass} p-3 shadow-lg`}>
-          <Icon className='h-6 w-6 text-white' />
-        </div>
+    <div
+      className={`w-64 flex-none rounded-2xl border border-neutral-800 bg-neutral-900/50 px-6 py-8 backdrop-blur-xl transition-all duration-500 ease-out ${
+        isCenter
+          ? 'scale-110 border-orange-600/40 shadow-[0_0_40px_rgba(249,115,22,0.4)]'
+          : 'scale-95 opacity-80 hover:shadow-[0_0_25px_rgba(249,115,22,0.2)]'
+      } `}
+    >
+      <div
+        className={`h-16 w-16 rounded-2xl bg-gradient-to-br ${stat.color} mb-4 flex items-center justify-center shadow-xl`}
+      >
+        <Icon className='h-8 w-8 text-white drop-shadow' />
       </div>
-
-      {/* Value */}
-      <div className={`mb-2 text-4xl font-bold bg-gradient-to-r ${gradientClass} bg-clip-text text-transparent`}>
+      <p className='mb-1 bg-gradient-to-r from-neutral-100 to-neutral-300 bg-clip-text text-4xl font-bold text-transparent'>
         {stat.value}
-      </div>
-
-      {/* Label */}
-      <div className='mb-1 text-lg font-semibold text-neutral-100'>
-        {stat.label}
-      </div>
-
-      {/* Description */}
-      <div className='text-sm text-neutral-400'>
-        {stat.description}
-      </div>
-
-      {/* Hover Glow Effect */}
-      <div className={`absolute inset-0 -z-10 bg-gradient-to-br ${gradientClass} opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-10`} />
+      </p>
+      <p className='text-neutral-400'>{stat.label}</p>
     </div>
   )
-})
+}
 
-StatCard.displayName = 'StatCard'
+export function WorkflowStats() {
+  const scrollRef = useRef(null)
+  const [centerIndex, setCenterIndex] = useState(0)
 
-export default StatsSection
+  const infiniteStats = [...stats, ...stats, ...stats]
+
+  useEffect(() => {
+    const scrollContainer = scrollRef.current
+    if (!scrollContainer) return
+
+    scrollContainer.style.scrollBehavior = 'auto'
+
+    let scrollSpeed = 0.6
+    let rafId = null
+    let isInitialized = false
+
+    const animate = () => {
+      // Initialize scroll position to middle set on first frame
+      if (!isInitialized && scrollContainer.scrollWidth > 0) {
+        const oneSetWidth = scrollContainer.scrollWidth / 3
+        scrollContainer.scrollLeft = oneSetWidth
+        isInitialized = true
+      }
+
+      scrollContainer.scrollLeft += scrollSpeed
+
+      // Calculate one set width
+      const oneSetWidth = scrollContainer.scrollWidth / 3
+      
+      // Reset scroll position for infinite loop (using middle set as anchor)
+      if (scrollContainer.scrollLeft >= oneSetWidth * 2) {
+        scrollContainer.scrollLeft = oneSetWidth
+      } else if (scrollContainer.scrollLeft <= 0) {
+        scrollContainer.scrollLeft = oneSetWidth
+      }
+
+      // Calculate center card index using real card width
+      const centerPos =
+        scrollContainer.scrollLeft + scrollContainer.offsetWidth / 2
+
+      const firstChild = scrollContainer.children[0]
+      const gap = parseFloat(getComputedStyle(scrollContainer).gap || 0)
+      const cardWidth = firstChild
+        ? firstChild.getBoundingClientRect().width + gap
+        : 280
+
+      // Calculate which card is currently centered
+      const rawIndex = Math.floor(centerPos / cardWidth)
+      const currentIndex = rawIndex % stats.length
+
+      setCenterIndex(currentIndex)
+
+      rafId = requestAnimationFrame(animate)
+    }
+
+    rafId = requestAnimationFrame(animate)
+
+    return () => rafId && cancelAnimationFrame(rafId)
+  }, [])
+
+  return (
+    <section className='relative bg-neutral-950 px-4 py-32 sm:px-6 lg:px-8'>
+      {/* Background Glow */}
+      <div className='absolute inset-0 flex items-center justify-center'>
+        <div className='h-[800px] w-[800px] rounded-full bg-orange-500/10 blur-[150px]' />
+      </div>
+
+      <div className='relative mx-auto mb-16 max-w-7xl text-center'>
+        <div className='mb-8 inline-flex items-center justify-center'>
+          <span className='rounded-full border border-neutral-700 bg-neutral-900/50 px-6 py-2 text-sm text-neutral-300 backdrop-blur-sm'>
+            Capabilities
+          </span>
+        </div>
+
+        <h2 className='mb-6 text-4xl font-bold text-neutral-300 sm:text-5xl lg:text-6xl'>
+          Your AI System{' '}
+          <span className='bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent'>
+            Power Stats
+          </span>
+        </h2>
+        <p className='mx-auto max-w-2xl text-xl text-neutral-400'>
+          A complete suite of AI-powered workflows designed to automate your
+          business at scale.
+        </p>
+      </div>
+
+      {/* Carousel Container */}
+      <div className='relative'>
+        {/* Gradient Overlays for fade effect */}
+        <div className='pointer-events-none absolute top-0 bottom-0 left-0 z-10 w-32 bg-gradient-to-r from-neutral-950 to-transparent' />
+        <div className='pointer-events-none absolute top-0 right-0 bottom-0 z-10 w-32 bg-gradient-to-l from-neutral-950 to-transparent' />
+
+        <div
+          ref={scrollRef}
+          className='flex w-full gap-8 overflow-x-hidden py-8 select-none'
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          {infiniteStats.map((stat, index) => {
+            const statIndex = index % stats.length
+            const isCenter = statIndex === centerIndex
+
+            return <StatCard key={index} stat={stat} isCenter={isCenter} />
+          })}
+        </div>
+      </div>
+
+      {/* Hide scrollbar */}
+      <style jsx>{`
+        div::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
+    </section>
+  )
+}
+
+export default WorkflowStats

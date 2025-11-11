@@ -216,8 +216,11 @@ export default function CommunitySection() {
             </p>
 
             {/* CTA Button */}
-            <Button className='inline-flex items-center gap-3 rounded-full border border-neutral-700 bg-neutral-900/50 px-8 py-4 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:border-orange-600/50 hover:bg-neutral-800/50'>
-              <span className='font-medium text-neutral-200'>Join Now</span>
+            <Button
+              disabled={true}
+              className='inline-flex items-center gap-3 rounded-full border border-neutral-700 bg-neutral-900/50 px-8 py-4 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:border-orange-600/50 hover:bg-neutral-800/50'
+            >
+              <span className='font-medium text-neutral-200'>Comming Soon</span>
             </Button>
           </div>
 

@@ -1,16 +1,14 @@
 'use client'
 
-import { memo, useCallback, useEffect, useState } from 'react'
-import { Mail, ArrowLeft, Check, Sparkles } from 'lucide-react'
+import { memo, useCallback, useState } from 'react'
+import { Mail, Check, Sparkles, ExternalLink } from 'lucide-react'
 import Button from '../components/ui/button'
 import FormInput from '../components/ui/formInputField'
-import HyperLinks from '../components/ui/hyperLinks'
 import { supabase } from '../lib/supabase/dbClient'
 
 // Validation utilities
 const validators = {
-  email: (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
-  otp: (otp) => /^\d{6}$/.test(otp)
+  email: (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 }
 
 const AuthForms = memo(({ state, dispatch, onClose, router }) => {
@@ -30,8 +28,8 @@ const AuthForms = memo(({ state, dispatch, onClose, router }) => {
     [dispatch]
   )
 
-  // Send OTP to email
-  const handleSendOTP = useCallback(
+  // Send Magic Link to email
+  const handleSendMagicLink = useCallback(
     async (e) => {
       e.preventDefault()
       dispatch({ type: 'CLEAR_ERRORS' })
@@ -59,16 +57,16 @@ const AuthForms = memo(({ state, dispatch, onClose, router }) => {
 
         if (error) throw error
 
-        dispatch({ type: 'SET_VIEW', view: 'verify' })
+        dispatch({ type: 'SET_VIEW', view: 'check-email' })
         dispatch({
           type: 'SET_SUCCESS',
-          message: `We sent a 6-digit code to ${auth.email}`
+          message: `Magic link sent to ${auth.email}`
         })
       } catch (err) {
         dispatch({
           type: 'SET_ERROR',
           field: 'email',
-          message: err.message || 'Failed to send verification code'
+          message: err.message || 'Failed to send magic link'
         })
       } finally {
         dispatch({ type: 'SET_LOADING', value: false })
@@ -77,50 +75,8 @@ const AuthForms = memo(({ state, dispatch, onClose, router }) => {
     [auth.email, dispatch]
   )
 
-  // Verify OTP
-  const handleVerifyOTP = useCallback(
-    async (e) => {
-      e.preventDefault()
-      dispatch({ type: 'CLEAR_ERRORS' })
-
-      // Validate OTP
-      if (!validators.otp(auth.otp)) {
-        dispatch({
-          type: 'SET_ERROR',
-          field: 'otp',
-          message: 'Please enter a valid 6-digit code'
-        })
-        return
-      }
-
-      dispatch({ type: 'SET_LOADING', value: true })
-
-      try {
-        const { error } = await supabase.auth.verifyOtp({
-          email: auth.email,
-          token: auth.otp,
-          type: 'email'
-        })
-
-        if (error) throw error
-
-        // Success - redirect to dashboard
-        router.push('/dashboard')
-      } catch (err) {
-        dispatch({
-          type: 'SET_ERROR',
-          field: 'otp',
-          message: err.message || 'Invalid or expired code. Please try again.'
-        })
-      } finally {
-        dispatch({ type: 'SET_LOADING', value: false })
-      }
-    },
-    [auth.email, auth.otp, dispatch, router]
-  )
-
-  // Resend OTP
-  const handleResendOTP = useCallback(async () => {
+  // Resend Magic Link
+  const handleResendMagicLink = useCallback(async () => {
     dispatch({ type: 'CLEAR_ERRORS' })
     dispatch({ type: 'SET_LOADING', value: true })
 
@@ -137,13 +93,13 @@ const AuthForms = memo(({ state, dispatch, onClose, router }) => {
 
       dispatch({
         type: 'SET_SUCCESS',
-        message: 'New code sent! Check your email.'
+        message: 'New magic link sent! Check your email.'
       })
     } catch (err) {
       dispatch({
         type: 'SET_ERROR',
-        field: 'otp',
-        message: err.message || 'Failed to resend code'
+        field: 'email',
+        message: err.message || 'Failed to resend magic link'
       })
     } finally {
       dispatch({ type: 'SET_LOADING', value: false })
@@ -178,7 +134,6 @@ const AuthForms = memo(({ state, dispatch, onClose, router }) => {
   const goBack = useCallback(() => {
     dispatch({ type: 'SET_VIEW', view: 'email' })
     dispatch({ type: 'CLEAR_ERRORS' })
-    dispatch({ type: 'UPDATE_FIELD', field: 'otp', value: '' })
   }, [dispatch])
 
   return (
@@ -190,22 +145,19 @@ const AuthForms = memo(({ state, dispatch, onClose, router }) => {
           isLoading={isLoading}
           errors={errors}
           onEmailChange={(e) => handleFieldChange('email', e.target.value)}
-          onSubmit={handleSendOTP}
+          onSubmit={handleSendMagicLink}
           onGoogleSignIn={handleGoogleSignIn}
         />
       )}
 
-      {/* OTP Verification Form */}
-      {modalView === 'verify' && (
-        <VerifyForm
+      {/* Check Email Screen */}
+      {modalView === 'check-email' && (
+        <CheckEmailScreen
           email={auth.email}
-          otp={auth.otp}
           isLoading={isLoading}
           errors={errors}
           successMessage={successMessage}
-          onOtpChange={(e) => handleFieldChange('otp', e.target.value)}
-          onSubmit={handleVerifyOTP}
-          onResend={handleResendOTP}
+          onResend={handleResendMagicLink}
           onGoBack={goBack}
         />
       )}
@@ -230,7 +182,7 @@ const EmailForm = memo(
         <div className='flex items-center justify-center gap-2'>
           <Sparkles className='h-5 w-5 text-orange-400' />
           <p className='text-sm text-neutral-400'>
-            Sign in with your email - no password needed
+            Sign in with a magic link - no password needed
           </p>
         </div>
       </div>
@@ -263,7 +215,7 @@ const EmailForm = memo(
         type='submit'
         disabled={isLoading}
         loading={isLoading}
-        text={isLoading ? 'Sending code...' : 'Continue with Email'}
+        text={isLoading ? 'Sending magic link...' : 'Continue with Email'}
         className='w-full'
         variant='primary'
       />
@@ -312,7 +264,7 @@ const EmailForm = memo(
           Terms of Service
         </a>{' '}
         and{' '}
-        <a href='#' className='text-orange-400 hover:underline'>
+        <a href='/privacy-policy' className='text-orange-400 hover:underline'>
           Privacy Policy
         </a>
       </p>
@@ -322,30 +274,33 @@ const EmailForm = memo(
 
 EmailForm.displayName = 'EmailForm'
 
-// OTP Verification Form Component
-const VerifyForm = memo(
+// Check Email Screen Component
+const CheckEmailScreen = memo(
   ({
     email,
-    otp,
     isLoading,
     errors,
     successMessage,
-    onOtpChange,
-    onSubmit,
     onResend,
     onGoBack
   }) => {
     const [countdown, setCountdown] = useState(60)
     const [canResend, setCanResend] = useState(false)
 
-    useEffect(() => {
-      if (countdown > 0) {
-        const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
-        return () => clearTimeout(timer)
-      } else {
-        setCanResend(true)
-      }
-    }, [countdown])
+    useState(() => {
+      const timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            setCanResend(true)
+            clearInterval(timer)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+
+      return () => clearInterval(timer)
+    }, [])
 
     const handleResendClick = () => {
       onResend()
@@ -354,25 +309,20 @@ const VerifyForm = memo(
     }
 
     return (
-      <form onSubmit={onSubmit} className='space-y-6'>
-        <button
-          type='button'
-          onClick={onGoBack}
-          className='flex items-center gap-2 text-sm text-neutral-400 transition-colors hover:text-orange-400'
-        >
-          <ArrowLeft className='h-4 w-4' />
-          <span>Change email</span>
-        </button>
-
-        <div className='space-y-2'>
+      <div className='space-y-6'>
+        <div className='space-y-4'>
           <div className='flex items-center justify-center'>
-            <div className='rounded-full bg-orange-500/10 p-3'>
-              <Mail className='h-8 w-8 text-orange-400' />
+            <div className='rounded-full bg-orange-500/10 p-4'>
+              <Mail className='h-12 w-12 text-orange-400' />
             </div>
           </div>
-          <div className='text-center'>
+
+          <div className='space-y-2 text-center'>
+            <h3 className='text-xl font-semibold text-neutral-100'>
+              Check your email
+            </h3>
             <p className='text-sm text-neutral-400'>
-              We sent a verification code to
+              We sent a magic link to
             </p>
             <p className='font-semibold text-neutral-200'>{email}</p>
           </div>
@@ -387,66 +337,66 @@ const VerifyForm = memo(
           </div>
         )}
 
-        {errors.otp && (
+        {errors.email && (
           <div className='rounded-lg border border-orange-600/30 bg-orange-900/20 p-3 text-sm text-orange-400'>
-            {errors.otp}
+            {errors.email}
           </div>
         )}
 
-        <div className='space-y-2'>
-          <FormInput
-            type='text'
-            value={otp}
-            onChange={onOtpChange}
-            placeholder='Enter 6-digit code'
-            className='w-full text-center text-2xl tracking-widest'
-            maxLength={6}
-            required
-            disabled={isLoading}
-            autoFocus
-          />
-          <p className='text-center text-xs text-neutral-500'>
-            Enter the code we sent to your email
-          </p>
+        <div className='space-y-4 rounded-lg border border-neutral-700/50 bg-neutral-800/30 p-4'>
+          <div className='flex items-start gap-3'>
+            <ExternalLink className='h-5 w-5 flex-shrink-0 text-orange-400' />
+            <div className='space-y-1'>
+              <p className='text-sm font-medium text-neutral-200'>
+                Click the link in your email to sign in
+              </p>
+              <p className='text-xs text-neutral-400'>
+                The link will automatically sign you in and redirect you to your dashboard.
+              </p>
+            </div>
+          </div>
         </div>
 
-        <Button
-          type='submit'
-          disabled={isLoading || otp.length !== 6}
-          loading={isLoading}
-          text={isLoading ? 'Verifying...' : 'Verify Code'}
-          className='w-full'
-          variant='primary'
-        />
+        <div className='space-y-3'>
+          <div className='text-center'>
+            {canResend ? (
+              <button
+                type='button'
+                onClick={handleResendClick}
+                disabled={isLoading}
+                className='text-sm text-orange-400 transition-colors hover:text-orange-300 hover:underline disabled:opacity-50'
+              >
+                Resend magic link
+              </button>
+            ) : (
+              <p className='text-sm text-neutral-500'>
+                Resend link in {countdown}s
+              </p>
+            )}
+          </div>
 
-        <div className='text-center'>
-          {canResend ? (
+          <div className='text-center'>
             <button
               type='button'
-              onClick={handleResendClick}
-              disabled={isLoading}
-              className='text-sm text-orange-400 transition-colors hover:text-orange-300 hover:underline disabled:opacity-50'
+              onClick={onGoBack}
+              className='text-sm text-neutral-400 transition-colors hover:text-neutral-300 hover:underline'
             >
-              Resend code
+              Use a different email
             </button>
-          ) : (
-            <p className='text-sm text-neutral-500'>
-              Resend code in {countdown}s
-            </p>
-          )}
+          </div>
         </div>
 
         <div className='rounded-lg border border-neutral-700/50 bg-neutral-800/30 p-4'>
           <p className='text-xs text-neutral-400'>
             <strong className='text-neutral-300'>Tip:</strong> Check your spam
-            folder if you don't see the email. The code expires in 10 minutes.
+            folder if you don't see the email. The magic link expires in 1 hour.
           </p>
         </div>
-      </form>
+      </div>
     )
   }
 )
 
-VerifyForm.displayName = 'VerifyForm'
+CheckEmailScreen.displayName = 'CheckEmailScreen'
 
 export default AuthForms

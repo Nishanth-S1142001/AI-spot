@@ -20,6 +20,7 @@ const CommunitySection = lazy(() => import('./CommunitySection'))
 const FeaturesSection = lazy(() => import('./FeaturesSection'))
 const TestimonialsSection = lazy(() => import('./TestimonialsSection'))
 const PricingSection = lazy(() => import('./PricingSection'))
+const StatSection = lazy(() => import('./StatsSection'))
 const FooterSection = lazy(() => import('./FooterSection'))
 
 // Consolidated state reducer for passwordless auth
@@ -36,7 +37,7 @@ const initialState = {
   successMessage: ''
 }
 
-function authReducer(state, action) {
+export function authReducer(state, action) {
   switch (action.type) {
     case 'TOGGLE_SIDEBAR':
       return { ...state, isSidebarOpen: !state.isSidebarOpen }
@@ -148,7 +149,7 @@ export default function Home() {
             </div>
 
             <div id='builder'>
-              <AgentBuilderSection />
+              <AgentBuilderSection  onLoginClick={handleOpenModal}/>
             </div>
             <HeroSection onGetStarted={handleOpenModal} />
           </div>
@@ -163,6 +164,9 @@ export default function Home() {
 
           <div id='testimonials'>
             <TestimonialsSection />
+          </div>
+          <div id='stats'>
+            <StatSection />
           </div>
 
           <div id='pricing'>

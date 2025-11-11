@@ -6,7 +6,8 @@ export const navMenus = {
     { name: 'Community', href: '#community' },
     { name: 'Services', href: '#services' },
     { name: 'Testimonials', href: '#testimonials' },
-    { name: 'Pricing', href: '#pricing' }
+    { name: 'Pricing', href: '#pricing' },
+    { name: 'Stats', href: '#stats' }
   ],
   dashboard: [
     { name: 'Dashboard', href: '/dashboard' },

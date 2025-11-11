@@ -127,7 +127,7 @@ export default function PricingSection({ onSelectPlan }) {
                 plan.popular
                   ? 'border-orange-600/30 bg-neutral-900/80'
                   : 'border-neutral-800 bg-neutral-900/50'
-              } backdrop-blur-sm p-8 hover:border-orange-600/50 transition-all duration-300`}
+              } backdrop-blur-sm p-8 hover:shadow-2xl hover:shadow-orange-500/20 transition-all duration-300`}
             >
               {/* Popular Badge */}
               {plan.popular && (

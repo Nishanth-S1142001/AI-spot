@@ -16,3 +16,4 @@ t5QmvHK+6qZc3M1Lw3YxsxtQnnY9qdgFhSWM/Vog0Ms=
 supabase functions deploy api-keys
 
 
+homepage hover effects and formatting

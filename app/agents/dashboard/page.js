@@ -470,7 +470,7 @@ export default function AgentsDashboard() {
 
   return (
     <>
-      <NeonBackground />
+      {/* <NeonBackground /> */}
       <SideBarLayout userProfile={userProfile}>
         <div className='flex h-screen w-full flex-col font-mono text-neutral-100'>
           {/* Header */}
@@ -660,7 +660,7 @@ export default function AgentsDashboard() {
                       <h3 className='text-xl font-bold text-neutral-100'>
                         <span className='text-orange-400'>Recent</span> Activity
                       </h3>
-                      <Link href='/analytics'>
+                      <Link href='/agents/dashboard'>
                         <Button variant='ghost' size='sm' className='group'>
                           View All
                           <ArrowRight className='ml-2 h-4 w-4 transition-transform group-hover:translate-x-1' />
