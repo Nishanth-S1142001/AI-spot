@@ -424,8 +424,9 @@ export default function HeroSection({ onGetStarted }) {
               <span className='text-neutral-300'>Build and Launch</span>
               <br />
               <span className='text-neutral-400'>AI Agents Today</span>
+              
             </h1>
-
+  
             {/* Subtitle */}
             <p className='mb-8 text-lg text-neutral-500 max-w-xl mx-auto lg:mx-0'>
               Create powerful AI automation with no code required. Deploy intelligent agents in minutes.
