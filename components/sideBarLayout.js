@@ -1,7 +1,6 @@
 /**
- * SIDEBAR LAYOUT - FINAL VERSION
- * Integrates the unified sidebar with existing SubSidebar functionality
- * Automatically shows sub-sidebar based on active menu key
+ * SIDEBAR LAYOUT - FIXED VERSION
+ * Transparent background to allow NeonBackground to show through
  */
 
 'use client'
@@ -66,7 +65,7 @@ export default function SideBarLayout({ children, userProfile }) {
   const currentSubMenu = activeMenu && subMenus[activeMenu] ? subMenus[activeMenu] : []
 
   return (
-    <div className='flex h-screen w-full overflow-hidden bg-neutral-950'>
+    <div className='flex h-screen w-full overflow-hidden '>
       {/* Sidebar Container */}
       <aside className='flex h-full'>
         {/* Main Unified Sidebar */}
@@ -83,7 +82,7 @@ export default function SideBarLayout({ children, userProfile }) {
         )}
       </aside>
 
-      {/* Main Content Area */}
+      {/* Main Content Area - TRANSPARENT BACKGROUND */}
       <main className='custom-scrollbar flex-1 overflow-y-auto'>
         {children}
       </main>

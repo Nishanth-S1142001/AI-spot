@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { updateIntegration } from '../../../../actions/agents'
-import { IntegrationManager } from '../../../../../lib/workflow/integrations'
 import { cookies } from 'next/headers'
-export async function POST(request, { params }) {
+import { getIntegrationManager } from '../../../../lib/integrations/IntegrationManager'
+
+export async function POST(request) {
   try {
     const cookieStore = await cookies()
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+
     const {
       data: { user },
       error: authError
@@ -16,44 +17,35 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
     const body = await request.json()
+    const { integrationType, credentials } = body
 
-    const integration = await dbServer.getIntegration(id)
-
-    if (!integration || integration.user_id !== user.id) {
+    if (!integrationType || !credentials) {
       return NextResponse.json(
-        { error: 'Integration not found' },
-        { status: 404 }
+        { error: 'Missing integration type or credentials' },
+        { status: 400 }
       )
     }
 
-    // Test integration
-    const integrationManager = new IntegrationManager()
-    const result = await integrationManager.execute(
-      integration.integration_type,
-      body.testAction || 'test_connection',
-      {
-        credentials: integration.credentials,
-        ...body.parameters
-      }
+    // Get integration manager
+    const integrationManager = getIntegrationManager()
+
+    // Test the connection
+    const result = await integrationManager.testConnection(
+      integrationType,
+      credentials
     )
 
-    // Update last tested timestamp
-    await  updateIntegration(id, {
-      last_tested_at: new Date().toISOString()
-    })
-
     return NextResponse.json({
-      success: true,
-      result
+      success: result.success,
+      message: result.message || (result.success ? 'Connection successful' : 'Connection failed')
     })
   } catch (error) {
     console.error('Integration test failed:', error)
     return NextResponse.json(
       {
         success: false,
-        error: error.message
+        message: error.message || 'Test failed'
       },
       { status: 500 }
     )

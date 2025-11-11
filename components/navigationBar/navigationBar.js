@@ -43,7 +43,8 @@ export default function NavigationBar({
       '/sandbox',
       '/workflows',
       '/executions',
-      '/webhook'
+      '/webhook',
+      '/integrations'
     ]
 
     if (hiddenMenuPaths.some((path) => pathname.includes(path))) {
@@ -67,6 +68,7 @@ export default function NavigationBar({
   const isDashboard = pathname === '/dashboard'
   const isAgentsPage = pathname.startsWith('/agents')
   const isWorkflowsPage = pathname.startsWith('/workflows')
+  const isIntegrationsPage = pathname.startsWith('/integrations')
 
   // Handle smooth scroll for anchor links
   const handleAnchorClick = (e, href) => {
@@ -99,6 +101,16 @@ export default function NavigationBar({
           )}
 
           {isWorkflowsPage && pathname !== '/workflows' && (
+            <Button
+              variant='ghost'
+              size='sm'
+              onClick={() => router.back()}
+              className='group'
+            >
+              <ArrowLeft className='h-4 w-4 transition-transform group-hover:-translate-x-1' />
+            </Button>
+          )}   
+          {isIntegrationsPage && pathname !== '/integrations' && (
             <Button
               variant='ghost'
               size='sm'

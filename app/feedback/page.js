@@ -330,8 +330,8 @@ export default function FeedbackPage() {
     return (
       <>
         <NeonBackground />
-        <div className='flex min-h-screen items-center justify-center bg-neutral-950/90 p-4'>
-          <Card className='w-full max-w-md border-green-600/30 bg-gradient-to-br from-green-900/10 to-neutral-950/50 p-8'>
+     <div className='flex h-screen w-full flex-col font-mono text-neutral-100 bg-neutral-900/10 backdrop-blur-sm'>
+             <Card className='w-full max-w-md border-green-600/30 bg-gradient-to-br from-green-900/10 to-neutral-950/50 p-8'>
             <div className='relative mx-auto mb-6 flex h-20 w-20 items-center justify-center'>
               <div className='absolute inset-0 animate-ping rounded-full bg-green-500/20' />
               <div className='relative flex h-16 w-16 items-center justify-center rounded-full bg-green-900/40 ring-2 ring-green-500/50'>

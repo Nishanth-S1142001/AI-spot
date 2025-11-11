@@ -555,8 +555,8 @@ export default function SubscriptionsPage() {
     <>
       <NeonBackground />
       <SideBarLayout userProfile={userProfile}>
-        <div className='flex h-screen w-full flex-col font-mono text-neutral-100'>
-          {/* Header */}
+   <div className='flex h-screen w-full flex-col font-mono text-neutral-100 bg-neutral-900/10 backdrop-blur-sm'>
+              {/* Header */}
           <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>
             <NavigationBar
               profile={profile}

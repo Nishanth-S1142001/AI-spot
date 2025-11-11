@@ -669,8 +669,8 @@ export default function ChatSandbox() {
   return (
     <>
       <NeonBackground />
-      <div className='relative flex min-h-screen w-full flex-col font-mono text-neutral-100'>
-        {/* Sticky Header */}
+      <div className='flex h-screen w-full flex-col font-mono text-neutral-100 bg-neutral-900/10 backdrop-blur-sm'>
+          {/* Sticky Header */}
         <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>
           <div className='flex h-16 items-center justify-between px-6'>
             <div className='flex items-center space-x-4'>

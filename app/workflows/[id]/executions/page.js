@@ -312,7 +312,7 @@ export default function WorkflowExecutionsPage() {
     <>
       <NeonBackground />
       <SideBarLayout userProfile={userProfile}>
-        <div className="sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl">
+        <div className="sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-900/30 backdrop-blur-xl">
           <NavigationBar profile={profile} title={workflow?.name || 'Execution History'} />
         </div>
 
