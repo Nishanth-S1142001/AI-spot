@@ -8,6 +8,7 @@ import { useAuth } from '../../../../components/providers/AuthProvider'
 import { useLogout } from '../../../../lib/supabase/auth'
 import SideBarLayout from '../../../../components/sideBarLayout'
 import NeonBackground from '../../../../components/ui/background'
+import ConversationsSkeleton from '../../../../components/skeleton/ConversationsSkeleton'
 import LoadingState from '../../../../components/common/loading-state'
 import Pagination from '../../../../components/common/pagination'
 import SearchBar from '../../../../components/common/search-bar'
@@ -429,11 +430,21 @@ export default function AgentConversations() {
   const router = useRouter()
   const { user, profile, loading: authLoading } = useAuth()
   const { logout } = useLogout()
+
+  // Artificial delay so skeleton shows at least 3 seconds
+  const [delayedLoading, setDelayedLoading] = useState(true)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDelayedLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
+
   const userProfile = {
     name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
     email: user?.email || 'guest@example.com',
     avatar: profile?.avatar_url || null
   }
+
   // React Query hooks
   const {
     data: agent,
@@ -633,12 +644,12 @@ export default function AgentConversations() {
     toast.success('Refreshed conversations')
   }, [refetchConversations])
 
-  // Loading state
-  if (authLoading || agentLoading) {
+  // Show skeleton during delayed loading or initial loading
+  if (delayedLoading || authLoading || agentLoading) {
     return (
-      <LoadingState
-        message={authLoading ? 'Authenticating...' : 'Loading conversations...'}
-        className='min-h-screen'
+      <ConversationsSkeleton
+        userProfile={userProfile}
+        agentName={agent?.name || 'Agent'}
       />
     )
   }
@@ -657,8 +668,8 @@ export default function AgentConversations() {
     <>
       <NeonBackground />
       <SideBarLayout userProfile={userProfile}>
-      <div className='flex h-screen w-full flex-col font-mono text-neutral-100 bg-neutral-900/10 backdrop-blur-sm'>
-            {/* Header */}
+        <div className='flex h-screen w-full flex-col font-mono text-neutral-100 bg-neutral-900/10 backdrop-blur-sm'>
+          {/* Header */}
           <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>
             <NavigationBar
               profile={profile}

@@ -1,5 +1,5 @@
-import { Handle, Position } from 'reactflow'
 import { Cpu } from 'lucide-react'
+import { Handle, Position } from 'reactflow'
 
 export default function AIAgentNode({ data }) {
 

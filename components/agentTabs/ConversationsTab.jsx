@@ -1,16 +1,16 @@
 'use client'
 
-import { memo } from 'react'
 import { format } from 'date-fns'
+import { Bot, MessageSquare, Play, User } from 'lucide-react'
 import Link from 'next/link'
-import { MessageSquare, Bot, User, Play } from 'lucide-react'
+import { memo } from 'react'
 
-import Card from '../ui/card'
 import Button from '../ui/button'
+import Card from '../ui/card'
 
 /**
  * OPTIMIZED Conversations Tab Component
- * 
+ *
  * Improvements:
  * - Memoized message components
  * - Better chat bubble design
@@ -19,7 +19,9 @@ import Button from '../ui/button'
  */
 
 const ChatMessage = memo(({ message, isAgent }) => (
-  <div className={`flex items-start gap-3 ${isAgent ? 'flex-row' : 'flex-row-reverse'}`}>
+  <div
+    className={`flex items-start gap-3 ${isAgent ? 'flex-row' : 'flex-row-reverse'}`}
+  >
     {isAgent && (
       <div className='flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-orange-900/40'>
         <Bot className='h-4 w-4 text-orange-400' />
@@ -37,7 +39,7 @@ const ChatMessage = memo(({ message, isAgent }) => (
           : 'bg-gradient-to-br from-blue-600 to-blue-700 text-white'
       }`}
     >
-      <p className='whitespace-pre-wrap text-sm'>{message}</p>
+      <p className='text-sm whitespace-pre-wrap'>{message}</p>
     </div>
   </div>
 ))
@@ -110,7 +112,8 @@ export default function ConversationsTab({ conversations = [], agentId }) {
             Recent Conversations
           </h3>
           <p className='mt-1 text-sm text-neutral-400'>
-            {conversations.length} total conversation{conversations.length !== 1 ? 's' : ''}
+            {conversations.length} total conversation
+            {conversations.length !== 1 ? 's' : ''}
           </p>
         </div>
         <Link href={`/agents/${agentId}/playground`}>
@@ -126,11 +129,15 @@ export default function ConversationsTab({ conversations = [], agentId }) {
         <div className='custom-scrollbar max-h-[calc(100vh-300px)] space-y-6 overflow-y-auto p-6'>
           {conversations.map((conv, index) => {
             const currentDate = new Date(conv.created_at)
-            const prevDate = index > 0 ? new Date(conversations[index - 1].created_at) : null
-            const showTimestamp =
-              !prevDate ||
-              currentDate.toDateString() !== prevDate.toDateString() ||
-              Math.abs(currentDate - prevDate) > 5 * 60 * 1000
+            const prevDate =
+              index > 0 ? new Date(conversations[index - 1].created_at) : null
+            const showTimestamp = useMemo(() => {
+              if (!prevDate) return true
+              return (
+                currentDate.toDateString() !== prevDate.toDateString() ||
+                Math.abs(currentDate - prevDate) > 5 * 60 * 1000
+              )
+            }, [currentDate, prevDate])
 
             return (
               <ConversationBlock
@@ -151,7 +158,9 @@ export default function ConversationsTab({ conversations = [], agentId }) {
             <p className='text-sm text-neutral-400'>Total Messages</p>
             <p className='mt-1 text-2xl font-bold text-blue-400'>
               {conversations.reduce((sum, c) => {
-                return sum + (c.user_message ? 1 : 0) + (c.agent_response ? 1 : 0)
+                return (
+                  sum + (c.user_message ? 1 : 0) + (c.agent_response ? 1 : 0)
+                )
               }, 0)}
             </p>
           </div>
@@ -161,7 +170,7 @@ export default function ConversationsTab({ conversations = [], agentId }) {
           <div className='text-center'>
             <p className='text-sm text-neutral-400'>Unique Sessions</p>
             <p className='mt-1 text-2xl font-bold text-green-400'>
-              {new Set(conversations.map(c => c.session_id)).size}
+              {new Set(conversations.map((c) => c.session_id)).size}
             </p>
           </div>
         </Card>
@@ -170,7 +179,12 @@ export default function ConversationsTab({ conversations = [], agentId }) {
           <div className='text-center'>
             <p className='text-sm text-neutral-400'>Response Rate</p>
             <p className='mt-1 text-2xl font-bold text-purple-400'>
-              {Math.round((conversations.filter(c => c.agent_response).length / conversations.length) * 100)}%
+              {Math.round(
+                (conversations.filter((c) => c.agent_response).length /
+                  conversations.length) *
+                  100
+              )}
+              %
             </p>
           </div>
         </Card>

@@ -1,62 +1,62 @@
 'use client'
 import { useParams, useRouter } from 'next/navigation'
 import {
+  lazy,
+  memo,
+  Suspense,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
-  useState,
-  memo,
-  lazy,
-  Suspense
+  useState
 } from 'react'
-import '../../../styles/workflow-builder.css'
 import ReactFlow, {
   addEdge,
   Background,
   Controls,
   MarkerType,
   MiniMap,
+  Panel,
   useEdgesState,
-  useNodesState,
-  Panel
+  useNodesState
 } from 'reactflow'
 import 'reactflow/dist/style.css'
+import '../../../styles/workflow-builder.css'
 
 import {
   Clock,
-  X,
   Code,
   Cpu,
+  Eye,
   GitBranch,
+  GripVertical,
+  Maximize2,
+  Minimize2,
+  Play,
   Repeat,
   Rotate3D,
-  Send,
-  Trash2,
-  Zap,
-  GripVertical,
-  Sparkles,
   Save,
-  Play,
-  Eye,
-  Maximize2,
-  Minimize2
+  Send,
+  Sparkles,
+  Trash2,
+  X,
+  Zap
 } from 'lucide-react'
-import Button from '../../../../components/ui/button'
-import FormInput from '../../../../components/ui/formInputField'
 import LoadingState from '../../../../components/common/loading-state'
 import NavigationBar from '../../../../components/navigationBar/navigationBar'
 import { useAuth } from '../../../../components/providers/AuthProvider'
 import SideBarLayout from '../../../../components/sideBarLayout'
+import WorkflowBuilderPageSkeleton from '../../../../components/skeleton/WorkflowBuilderPageSkeleton'
 import NeonBackground from '../../../../components/ui/background'
+import Button from '../../../../components/ui/button'
 import Card from '../../../../components/ui/card'
-import { useLogout } from '../../../../lib/supabase/auth'
+import FormInput from '../../../../components/ui/formInputField'
 import {
-  useWorkflow,
-  useSaveWorkflow,
   useExecuteWorkflow,
-  useToggleWorkflowStatus
+  useSaveWorkflow,
+  useToggleWorkflowStatus,
+  useWorkflow
 } from '../../../../lib/hooks/useWorkflowData'
+import { useLogout } from '../../../../lib/supabase/auth'
 
 /**
  * FULLY OPTIMIZED WORKFLOW BUILDER
@@ -66,7 +66,7 @@ import {
  * - Optimistic updates for better UX
  * - No manual state management for server data
  * - Consistent with Dashboard patterns
- * 
+ *
  * Performance Improvements:
  * - Lazy loading of heavy components
  * - Memoized callbacks and components
@@ -249,11 +249,11 @@ export default function WorkflowBuilderPage() {
   const { id } = useParams()
   const router = useRouter()
   const { logout } = useLogout()
-const userProfile = {
-  name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
-  email: user?.email || 'guest@example.com',
-  avatar: profile?.avatar_url || null
-}
+  const userProfile = {
+    name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
+    email: user?.email || 'guest@example.com',
+    avatar: profile?.avatar_url || null
+  }
   const reactFlowWrapper = useRef(null)
   const saveTimeoutRef = useRef(null)
 
@@ -661,16 +661,28 @@ const userProfile = {
 
     window.addEventListener('keydown', handleKeyPress)
     return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [handleSaveWorkflow, handleExecuteWorkflow, selectedNode, deleteSelectedNode])
-
+  }, [
+    handleSaveWorkflow,
+    handleExecuteWorkflow,
+    selectedNode,
+    deleteSelectedNode
+  ])
+  const [delayedLoading, setDelayedLoading] = useState(true)
+  useEffect(() => {
+    const timer = setTimeout(() => setDelayedLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
   // Loading state
-  if (authLoading || workflowLoading) {
+  if (delayedLoading) {
     return (
       <LoadingState
         message={authLoading ? 'Authenticating...' : 'Loading workflow...'}
         className='min-h-screen'
       />
     )
+  }
+  if (authLoading || workflowLoading) {
+    return <WorkflowBuilderPageSkeleton userProfile={userProfile} />
   }
 
   // Error state
@@ -684,10 +696,7 @@ const userProfile = {
             </div>
             <h3 className='mb-2 text-xl font-bold text-neutral-100'>Error</h3>
             <p className='text-sm text-neutral-400'>{workflowError.message}</p>
-            <Button
-              className='mt-6'
-              onClick={() => router.push('/workflows')}
-            >
+            <Button className='mt-6' onClick={() => router.push('/workflows')}>
               Back to Workflows
             </Button>
           </div>
@@ -700,8 +709,7 @@ const userProfile = {
     <>
       <NeonBackground />
       <SideBarLayout userProfile={userProfile}>
-         <div className='flex h-screen w-full flex-col font-mono text-neutral-100 bg-neutral-900/10 backdrop-blur-sm'>
-     
+        <div className='flex h-screen w-full flex-col bg-neutral-900/10 font-mono text-neutral-100 backdrop-blur-sm'>
           {/* Header */}
           {!isFullscreen && (
             <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>
@@ -780,7 +788,9 @@ const userProfile = {
                   {/* Execute Button */}
                   <Button
                     onClick={handleExecuteWorkflow}
-                    disabled={!isActive || isExecuting || executeWorkflow.isPending}
+                    disabled={
+                      !isActive || isExecuting || executeWorkflow.isPending
+                    }
                     size='sm'
                     className='flex items-center gap-2 bg-gradient-to-r from-green-600 to-green-500 shadow-lg shadow-green-500/20 hover:from-green-500 hover:to-green-400 disabled:cursor-not-allowed disabled:opacity-50'
                   >

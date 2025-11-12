@@ -1,30 +1,29 @@
 'use client'
 
-import { useState, useCallback, useMemo, memo } from 'react'
-import { 
-  MessageCircle, 
-  Settings, 
+import {
   BarChart3,
   Loader2,
+  MessageCircle,
   Power,
+  Settings,
   TestTube
 } from 'lucide-react'
+import { memo, useCallback, useMemo, useState } from 'react'
 import Button from '../ui/button'
-import LoadingState from '../common/loading-state'
 
 // Import all view components
-import { 
-  SetupView, 
-  SettingsView, 
-  WebhookView, 
-  AnalyticsView, 
-  TestView 
+import {
+  AnalyticsView,
+  SettingsView,
+  SetupView,
+  TestView,
+  WebhookView
 } from './SmsTabViews'
 
 // Import React Query hooks
-import { 
-  useSmsConfig,
+import {
   useCreateSmsConfig,
+  useSmsConfig,
   useUpdateSmsConfig
 } from '../../lib/hooks/useAgentData'
 
@@ -149,9 +148,9 @@ export default function SmsTab({ agentId, userId }) {
   }, [])
 
   // Loading state
-  if (isLoading) {
-    return <LoadingState message='Loading SMS configuration...' />
-  }
+  // if (isLoading) {
+  //   return <LoadingState message='Loading SMS configuration...' />
+  // }
 
   // Error state
   if (error) {

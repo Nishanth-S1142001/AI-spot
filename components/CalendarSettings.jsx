@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Calendar, Clock, Globe, Mail, Settings, Save, Check } from 'lucide-react'
-import Card from './ui/card'
-import Button from './ui/button'
+import { Calendar, Check, Clock, Globe, Mail, Save, Settings } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
+import Button from './ui/button'
+import Card from './ui/card'
 
 /**
  * Calendar Settings Component
@@ -139,14 +139,14 @@ export default function CalendarSettings({ agent, id }) {
     }))
   }
 
-  if (loading) {
-    return (
-      <div className='flex items-center justify-center py-12'>
-        <Clock className='h-8 w-8 animate-spin text-orange-500' />
-        <span className='ml-3 text-neutral-400'>Loading settings...</span>
-      </div>
-    )
-  }
+  // if (loading) {
+  //   return (
+  //     <div className='flex items-center justify-center py-12'>
+  //       <Clock className='h-8 w-8 animate-spin text-orange-500' />
+  //       <span className='ml-3 text-neutral-400'>Loading settings...</span>
+  //     </div>
+  //   )
+  // }
 
   return (
     <div className='space-y-6'>

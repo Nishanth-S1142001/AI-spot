@@ -1,12 +1,20 @@
 'use client'
 
+import {
+  AlertCircle,
+  CheckCircle2,
+  ExternalLink,
+  Key,
+  Settings
+} from 'lucide-react'
 import { useState } from 'react'
-import { Key, CheckCircle2, AlertCircle, Loader2, ExternalLink, Settings } from 'lucide-react'
-import { useApiKeys, useSaveApiKey, useDeleteApiKey } from '../../lib/hooks/useApiKeys'
 import { useUpdateAgent } from '../../lib/hooks/useAgentData'
+import {
+  useApiKeys
+} from '../../lib/hooks/useApiKeys'
+import ApiKeyInput from '../ApiKeyInput'
 import Button from '../ui/button'
 import Card from '../ui/card'
-import ApiKeyInput from '../ApiKeyInput'
 
 export default function ApiKeySection({ agent, agentId }) {
   const [showKeyInput, setShowKeyInput] = useState(false)
@@ -31,9 +39,10 @@ export default function ApiKeySection({ agent, agentId }) {
         type: 'platform',
         label: 'Platform Credits',
         status: 'active',
-        description: 'Using platform API key - credits will be deducted per usage',
+        description:
+          'Using platform API key - credits will be deducted per usage',
         icon: '💳',
-        color: 'blue',
+        color: 'blue'
       }
     }
 
@@ -45,7 +54,7 @@ export default function ApiKeySection({ agent, agentId }) {
         description: `Using your ${currentUserKey.provider.toUpperCase()} key - you pay for usage directly`,
         icon: '🔑',
         color: 'green',
-        lastUsed: currentUserKey.last_used_at,
+        lastUsed: currentUserKey.last_used_at
       }
     }
 
@@ -55,7 +64,7 @@ export default function ApiKeySection({ agent, agentId }) {
       status: 'error',
       description: 'Agent has no valid API key',
       icon: '⚠️',
-      color: 'red',
+      color: 'red'
     }
   }
 
@@ -66,7 +75,7 @@ export default function ApiKeySection({ agent, agentId }) {
     try {
       await updateAgentMutation.mutateAsync({
         use_platform_key: true,
-        api_key_id: null,
+        api_key_id: null
       })
     } catch (error) {
       console.error('Failed to switch to platform key:', error)
@@ -78,7 +87,7 @@ export default function ApiKeySection({ agent, agentId }) {
     try {
       await updateAgentMutation.mutateAsync({
         use_platform_key: false,
-        api_key_id: keyId,
+        api_key_id: keyId
       })
       setShowKeyInput(false)
       setIsChangingKey(false)
@@ -87,16 +96,16 @@ export default function ApiKeySection({ agent, agentId }) {
     }
   }
 
-  if (keysLoading) {
-    return (
-      <Card className='p-6'>
-        <div className='flex items-center gap-3'>
-          <Loader2 className='h-5 w-5 animate-spin text-neutral-400' />
-          <span className='text-sm text-neutral-400'>Loading API key status...</span>
-        </div>
-      </Card>
-    )
-  }
+  // if (keysLoading) {
+  //   return (
+  //     <Card className='p-6'>
+  //       <div className='flex items-center gap-3'>
+  //         <Loader2 className='h-5 w-5 animate-spin text-neutral-400' />
+  //         <span className='text-sm text-neutral-400'>Loading API key status...</span>
+  //       </div>
+  //     </Card>
+  //   )
+  // }
 
   return (
     <Card className='p-6'>
@@ -106,8 +115,12 @@ export default function ApiKeySection({ agent, agentId }) {
             <Key className='h-5 w-5 text-orange-400' />
           </div>
           <div>
-            <h3 className='text-lg font-semibold text-neutral-100'>API Key Configuration</h3>
-            <p className='text-sm text-neutral-400'>Control which API key powers this agent</p>
+            <h3 className='text-lg font-semibold text-neutral-100'>
+              API Key Configuration
+            </h3>
+            <p className='text-sm text-neutral-400'>
+              Control which API key powers this agent
+            </p>
           </div>
         </div>
       </div>
@@ -127,7 +140,9 @@ export default function ApiKeySection({ agent, agentId }) {
             <div className='text-2xl'>{keyStatus.icon}</div>
             <div className='flex-1'>
               <div className='mb-1 flex items-center gap-2'>
-                <h4 className='font-semibold text-neutral-100'>{keyStatus.label}</h4>
+                <h4 className='font-semibold text-neutral-100'>
+                  {keyStatus.label}
+                </h4>
                 {keyStatus.status === 'active' && (
                   <CheckCircle2 className='h-4 w-4 text-green-500' />
                 )}
@@ -135,11 +150,13 @@ export default function ApiKeySection({ agent, agentId }) {
                   <AlertCircle className='h-4 w-4 text-red-500' />
                 )}
               </div>
-              <p className='text-sm text-neutral-400'>{keyStatus.description}</p>
+              <p className='text-sm text-neutral-400'>
+                {keyStatus.description}
+              </p>
               {keyStatus.lastUsed && (
                 <p className='mt-2 text-xs text-neutral-500'>
-                  Last used: {new Date(keyStatus.lastUsed).toLocaleDateString()} at{' '}
-                  {new Date(keyStatus.lastUsed).toLocaleTimeString()}
+                  Last used: {new Date(keyStatus.lastUsed).toLocaleDateString()}{' '}
+                  at {new Date(keyStatus.lastUsed).toLocaleTimeString()}
                 </p>
               )}
             </div>
@@ -162,7 +179,9 @@ export default function ApiKeySection({ agent, agentId }) {
       {isChangingKey && (
         <div className='space-y-4'>
           <div className='rounded-lg border border-neutral-700 bg-neutral-900/50 p-4'>
-            <h4 className='mb-4 font-semibold text-neutral-200'>Select API Key Source</h4>
+            <h4 className='mb-4 font-semibold text-neutral-200'>
+              Select API Key Source
+            </h4>
 
             {/* Option 1: Platform Key */}
             <button
@@ -177,7 +196,9 @@ export default function ApiKeySection({ agent, agentId }) {
               <div className='flex items-center gap-3'>
                 <div className='text-2xl'>💳</div>
                 <div className='flex-1'>
-                  <div className='font-semibold text-neutral-100'>Use Platform Credits</div>
+                  <div className='font-semibold text-neutral-100'>
+                    Use Platform Credits
+                  </div>
                   <div className='text-sm text-neutral-400'>
                     Pay-as-you-go using your account credits
                   </div>
@@ -191,7 +212,9 @@ export default function ApiKeySection({ agent, agentId }) {
             {/* Option 2: Existing User Keys */}
             {userKeys.length > 0 && (
               <div className='mb-3 space-y-2'>
-                <p className='text-sm font-medium text-neutral-300'>Your API Keys:</p>
+                <p className='text-sm font-medium text-neutral-300'>
+                  Your API Keys:
+                </p>
                 {userKeys.map((key) => (
                   <button
                     key={key.id}
@@ -206,7 +229,9 @@ export default function ApiKeySection({ agent, agentId }) {
                     <div className='flex items-center gap-3'>
                       <div className='text-2xl'>🔑</div>
                       <div className='flex-1'>
-                        <div className='font-semibold text-neutral-100'>{key.key_name}</div>
+                        <div className='font-semibold text-neutral-100'>
+                          {key.key_name}
+                        </div>
                         <div className='text-sm text-neutral-400 capitalize'>
                           {key.provider} • Last used:{' '}
                           {key.last_used_at
@@ -236,7 +261,9 @@ export default function ApiKeySection({ agent, agentId }) {
             ) : (
               <div className='rounded-lg border border-neutral-700 bg-neutral-950/50 p-4'>
                 <ApiKeyInput
-                  provider={agent.model?.includes('gpt') ? 'openai' : 'anthropic'}
+                  provider={
+                    agent.model?.includes('gpt') ? 'openai' : 'anthropic'
+                  }
                   onKeySaved={(keyId) => {
                     switchToUserKey(keyId)
                     setShowKeyInput(false)
@@ -280,14 +307,16 @@ export default function ApiKeySection({ agent, agentId }) {
             <p className='mb-2 font-medium text-neutral-300'>How it works:</p>
             <ul className='space-y-1 text-xs'>
               <li>
-                • <strong>Platform Credits:</strong> We use our API key and charge you credits per
-                usage
+                • <strong>Platform Credits:</strong> We use our API key and
+                charge you credits per usage
               </li>
               <li>
-                • <strong>Your API Key:</strong> You provide your own OpenAI/Anthropic key and pay
-                them directly
+                • <strong>Your API Key:</strong> You provide your own
+                OpenAI/Anthropic key and pay them directly
               </li>
-              <li>• Switching keys takes effect immediately for new conversations</li>
+              <li>
+                • Switching keys takes effect immediately for new conversations
+              </li>
             </ul>
           </div>
         </div>

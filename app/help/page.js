@@ -25,16 +25,16 @@ import NeonBackground from '../../components/ui/background'
 import Button from '../../components/ui/button'
 import Card from '../../components/ui/card'
 import { useLogout } from '../../lib/supabase/auth'
-import { 
-  useFAQs, 
-  useSearchFAQs, 
-  useGroupedFAQs, 
-  useFAQFeedback 
+import {
+  useFAQs,
+  useSearchFAQs,
+  useGroupedFAQs,
+  useFAQFeedback
 } from '../../lib/hooks/useFAQHooks'
-
+import FAQPageSkeleton from '../../components/skeleton/HelpSkeleton'
 /**
  * FULLY OPTIMIZED FAQ Page Component - TABBED VERSION
- * 
+ *
  * Features:
  * - Tabbed category navigation
  * - Search functionality
@@ -50,31 +50,31 @@ const CATEGORY_CONFIG = {
     activeColors: 'bg-blue-600/20 border-blue-600 text-blue-400',
     iconColor: 'text-blue-400'
   },
-  'Agents': {
+  Agents: {
     icon: Zap,
     colors: 'from-orange-900/40 to-orange-950/20 border-orange-600/30',
     activeColors: 'bg-orange-600/20 border-orange-600 text-orange-400',
     iconColor: 'text-orange-400'
   },
-  'Billing': {
+  Billing: {
     icon: CreditCard,
     colors: 'from-green-900/40 to-green-950/20 border-green-600/30',
     activeColors: 'bg-green-600/20 border-green-600 text-green-400',
     iconColor: 'text-green-400'
   },
-  'Security': {
+  Security: {
     icon: Shield,
     colors: 'from-red-900/40 to-red-950/20 border-red-600/30',
     activeColors: 'bg-red-600/20 border-red-600 text-red-400',
     iconColor: 'text-red-400'
   },
-  'Team': {
+  Team: {
     icon: Users,
     colors: 'from-purple-900/40 to-purple-950/20 border-purple-600/30',
     activeColors: 'bg-purple-600/20 border-purple-600 text-purple-400',
     iconColor: 'text-purple-400'
   },
-  'Support': {
+  Support: {
     icon: MessageSquare,
     colors: 'from-cyan-900/40 to-cyan-950/20 border-cyan-600/30',
     activeColors: 'bg-cyan-600/20 border-cyan-600 text-cyan-400',
@@ -95,10 +95,13 @@ const DEFAULT_CONFIG = {
 const FAQItem = memo(({ faq, isOpen, onToggle, onFeedback }) => {
   const { mutate: submitFeedback } = useFAQFeedback()
 
-  const handleFeedback = useCallback((helpful) => {
-    submitFeedback({ faqId: faq.id, helpful })
-    onFeedback?.(faq.id, helpful)
-  }, [submitFeedback, faq.id, onFeedback])
+  const handleFeedback = useCallback(
+    (helpful) => {
+      submitFeedback({ faqId: faq.id, helpful })
+      onFeedback?.(faq.id, helpful)
+    },
+    [submitFeedback, faq.id, onFeedback]
+  )
 
   return (
     <Card className='border-neutral-700/50 bg-gradient-to-br from-neutral-900/40 to-neutral-950/20 transition-all hover:border-neutral-600/50'>
@@ -109,27 +112,29 @@ const FAQItem = memo(({ faq, isOpen, onToggle, onFeedback }) => {
           className='flex w-full items-start justify-between gap-4 text-left transition-colors hover:text-orange-400'
           aria-expanded={isOpen}
         >
-          <div className='flex items-start gap-3 flex-1'>
-            <HelpCircle className='h-5 w-5 text-orange-400 flex-shrink-0 mt-0.5' />
+          <div className='flex flex-1 items-start gap-3'>
+            <HelpCircle className='mt-0.5 h-5 w-5 flex-shrink-0 text-orange-400' />
             <h3 className='font-semibold text-neutral-100'>{faq.question}</h3>
           </div>
           {isOpen ? (
-            <ChevronUp className='h-5 w-5 text-neutral-400 flex-shrink-0' />
+            <ChevronUp className='h-5 w-5 flex-shrink-0 text-neutral-400' />
           ) : (
-            <ChevronDown className='h-5 w-5 text-neutral-400 flex-shrink-0' />
+            <ChevronDown className='h-5 w-5 flex-shrink-0 text-neutral-400' />
           )}
         </button>
 
         {/* Answer */}
         {isOpen && (
           <div className='space-y-4 border-t border-neutral-800/50 pt-4'>
-            <p className='text-neutral-300 leading-relaxed pl-8'>
+            <p className='pl-8 leading-relaxed text-neutral-300'>
               {faq.answer}
             </p>
 
             {/* Helpful Feedback */}
             <div className='flex items-center gap-4 border-t border-neutral-800/50 pt-3 pl-8'>
-              <span className='text-sm text-neutral-500'>Was this helpful?</span>
+              <span className='text-sm text-neutral-500'>
+                Was this helpful?
+              </span>
               <div className='flex gap-2'>
                 <button
                   onClick={() => handleFeedback(true)}
@@ -209,26 +214,29 @@ TabContent.displayName = 'TabContent'
  * Memoized Quick Links Component
  */
 const QuickLinks = memo(() => {
-  const links = useMemo(() => [
-    {
-      href: '/feedback',
-      icon: Mail,
-      title: 'Contact Support',
-      description: 'Get help from our team'
-    },
-    {
-      href: '/usage-policy',
-      icon: BookOpen,
-      title: 'Documentation',
-      description: 'Browse our guides'
-    },
-    {
-      href: '/agents/create-nlp',
-      icon: Zap,
-      title: 'Get Started',
-      description: 'Create your first agent'
-    }
-  ], [])
+  const links = useMemo(
+    () => [
+      {
+        href: '/feedback',
+        icon: Mail,
+        title: 'Contact Support',
+        description: 'Get help from our team'
+      },
+      {
+        href: '/usage-policy',
+        icon: BookOpen,
+        title: 'Documentation',
+        description: 'Browse our guides'
+      },
+      {
+        href: '/agents/create-nlp',
+        icon: Zap,
+        title: 'Get Started',
+        description: 'Create your first agent'
+      }
+    ],
+    []
+  )
 
   return (
     <div className='grid gap-4 sm:grid-cols-3'>
@@ -295,7 +303,11 @@ export default function FAQPage() {
     isLoading: faqsLoading,
     error: faqsError
   } = useFAQs()
-
+  const [delayedLoading, setDelayedLoading] = useState(true)
+  useEffect(() => {
+    const timer = setTimeout(() => setDelayedLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
   // Memoized search results and grouping
   const filteredFAQs = useSearchFAQs(faqs, searchTerm)
   const groupedFAQs = useGroupedFAQs(filteredFAQs)
@@ -303,7 +315,7 @@ export default function FAQPage() {
   // Get current tab's FAQs
   const currentTabFAQs = useMemo(() => {
     if (activeTab === 'all') return filteredFAQs
-    const group = groupedFAQs.find(g => g.category === activeTab)
+    const group = groupedFAQs.find((g) => g.category === activeTab)
     return group?.faqs || []
   }, [activeTab, filteredFAQs, groupedFAQs])
 
@@ -344,15 +356,18 @@ export default function FAQPage() {
     setOpenItems(new Set()) // Close all when switching tabs
   }, [])
 
-  const handleSearch = useCallback((e) => {
-    setSearchTerm(e.target.value)
-    if (e.target.value && activeTab !== 'all') {
-      setActiveTab('all') // Switch to "All" when searching
-    }
-  }, [activeTab])
+  const handleSearch = useCallback(
+    (e) => {
+      setSearchTerm(e.target.value)
+      if (e.target.value && activeTab !== 'all') {
+        setActiveTab('all') // Switch to "All" when searching
+      }
+    },
+    [activeTab]
+  )
 
   // Loading state
-  if (authLoading || faqsLoading) {
+  if (delayedLoading) {
     return (
       <LoadingState
         message={authLoading ? 'Loading...' : 'Loading FAQs...'}
@@ -360,7 +375,9 @@ export default function FAQPage() {
       />
     )
   }
-
+  if (authLoading || faqsLoading) {
+    return <FAQPageSkeleton userProfile={userProfile} />
+  }
   // Error state
   if (faqsError) {
     return (
@@ -385,8 +402,8 @@ export default function FAQPage() {
     <>
       <NeonBackground />
       <SideBarLayout>
-      <div className='flex h-screen w-full flex-col font-mono text-neutral-100 bg-neutral-900/10 backdrop-blur-sm'>
-           {/* Header */}
+        <div className='flex h-screen w-full flex-col bg-neutral-900/10 font-mono text-neutral-100 backdrop-blur-sm'>
+          {/* Header */}
           <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>
             <NavigationBar
               profile={profile}
@@ -403,13 +420,13 @@ export default function FAQPage() {
               {/* Search Bar */}
               <Card className='mb-8 border-orange-600/20 bg-gradient-to-br from-orange-950/10 to-neutral-950/50'>
                 <div className='relative'>
-                  <Search className='absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400' />
+                  <Search className='absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-neutral-400' />
                   <input
                     type='text'
                     placeholder='Search FAQs...'
                     value={searchTerm}
                     onChange={handleSearch}
-                    className='w-full rounded-lg border border-neutral-700/50 bg-neutral-900/50 py-3 pl-12 pr-4 text-neutral-100 placeholder-neutral-500 outline-none transition-colors focus:border-orange-600/50 focus:bg-neutral-900'
+                    className='w-full rounded-lg border border-neutral-700/50 bg-neutral-900/50 py-3 pr-4 pl-12 text-neutral-100 placeholder-neutral-500 transition-colors outline-none focus:border-orange-600/50 focus:bg-neutral-900'
                     aria-label='Search FAQs'
                   />
                 </div>
@@ -418,7 +435,10 @@ export default function FAQPage() {
               {/* Tabs Navigation */}
               {!searchTerm && groupedFAQs.length > 0 && (
                 <div className='mb-6'>
-                  <div className='custom-scrollbar flex gap-2 overflow-x-auto pb-2' role='tablist'>
+                  <div
+                    className='custom-scrollbar flex gap-2 overflow-x-auto pb-2'
+                    role='tablist'
+                  >
                     {/* All Tab */}
                     <TabButton
                       category='All'
@@ -426,7 +446,7 @@ export default function FAQPage() {
                       isActive={activeTab === 'all'}
                       onClick={() => handleTabChange('all')}
                     />
-                    
+
                     {/* Category Tabs */}
                     {groupedFAQs.map((group) => (
                       <TabButton
@@ -445,13 +465,11 @@ export default function FAQPage() {
               {currentTabFAQs.length > 0 && (
                 <div className='mb-6 flex items-center justify-between'>
                   <p className='text-sm text-neutral-400'>
-                    {searchTerm ? (
-                      `Found ${currentTabFAQs.length} result${currentTabFAQs.length !== 1 ? 's' : ''}`
-                    ) : activeTab === 'all' ? (
-                      `${faqs.length} questions across ${groupedFAQs.length} categories`
-                    ) : (
-                      `${currentTabFAQs.length} question${currentTabFAQs.length !== 1 ? 's' : ''} in ${activeTab}`
-                    )}
+                    {searchTerm
+                      ? `Found ${currentTabFAQs.length} result${currentTabFAQs.length !== 1 ? 's' : ''}`
+                      : activeTab === 'all'
+                        ? `${faqs.length} questions across ${groupedFAQs.length} categories`
+                        : `${currentTabFAQs.length} question${currentTabFAQs.length !== 1 ? 's' : ''} in ${activeTab}`}
                   </p>
                   <div className='flex gap-2'>
                     <Button

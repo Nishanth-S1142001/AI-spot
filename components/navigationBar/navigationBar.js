@@ -44,7 +44,8 @@ export default function NavigationBar({
       '/workflows',
       '/executions',
       '/webhook',
-      '/integrations'
+      '/integrations',
+      '/analytics'
     ]
 
     if (hiddenMenuPaths.some((path) => pathname.includes(path))) {

@@ -21,6 +21,7 @@ import {
 import FormInput from '../../../../components/ui/formInputField'
 import Button from '../../../../components/ui/button'
 import Card from '../../../../components/ui/card'
+import EditAgentSkeleton from '../../../../components/skeleton/EditAgentSkeleton'
 import LoadingState from '../../../../components/common/loading-state'
 import NeonBackground from '../../../../components/ui/background'
 import NavigationBar from '../../../../components/navigationBar/navigationBar'
@@ -156,6 +157,14 @@ export default function EditAgent() {
   const { user, profile, loading: authLoading } = useAuth()
   const { logout } = useLogout()
 
+  // Artificial delay so skeleton shows at least 3 seconds
+  const [delayedLoading, setDelayedLoading] = useState(true)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDelayedLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
+
   // React Query hooks
   const { 
     data: agent, 
@@ -184,6 +193,13 @@ export default function EditAgent() {
   const [draft, setDraft] = useState('')
   const [isEditing, setIsEditing] = useState(false)
   const [promptError, setPromptError] = useState('')
+
+  // User profile for skeleton
+  const userProfile = {
+    name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
+    email: user?.email || 'guest@example.com',
+    avatar: profile?.avatar_url || null
+  }
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -295,12 +311,12 @@ export default function EditAgent() {
     return `border-neutral-700/50 bg-neutral-900/30 hover:bg-neutral-900/50 ${colors.hoverBorder} text-neutral-400 hover:text-neutral-200`
   }, [])
 
-  // Loading states
-  if (authLoading || agentLoading) {
+  // Show skeleton during delayed loading or initial loading
+  if (delayedLoading || authLoading || agentLoading) {
     return (
-      <LoadingState
-        message={authLoading ? 'Authenticating...' : 'Loading agent...'}
-        className='min-h-screen'
+      <EditAgentSkeleton
+        userProfile={userProfile}
+        agentName={agent?.name || 'Agent'}
       />
     )
   }

@@ -22,11 +22,12 @@ import {
   useKnowledgeSources,
   useSendChatMessage,
   useAddKnowledge,
-  useDeleteKnowledgeSource,
+  useDeleteKnowledgeSource
 } from '../../../../lib/hooks/useAgentData'
 
 import NeonBackground from '../../../../components/ui/background'
 import NavigationBar from '../../../../components/navigationBar/navigationBar'
+import PlaygroundSkeleton from '../../../../components/skeleton/PlaygroundSkeleton'
 import LoadingState from '../../../../components/common/loading-state'
 import SideBarLayout from '../../../../components/sideBarLayout'
 import Card from '../../../../components/ui/card'
@@ -107,28 +108,31 @@ ChatMessage.displayName = 'ChatMessage'
 // Knowledge Source Card Component
 const KnowledgeSourceCard = memo(({ source, onDelete, isDeleting }) => {
   const [expanded, setExpanded] = useState(false)
-  
+
   return (
     <div className='rounded-lg border border-purple-600/20 bg-neutral-900/50 p-4'>
       <div className='flex items-start justify-between gap-3'>
-        <div className='flex items-start gap-3 flex-1'>
-          <FileText className='h-5 w-5 text-purple-400 flex-shrink-0 mt-0.5' />
-          <div className='flex-1 min-w-0'>
-            <h4 className='text-sm font-medium text-neutral-200 truncate'>
+        <div className='flex flex-1 items-start gap-3'>
+          <FileText className='mt-0.5 h-5 w-5 flex-shrink-0 text-purple-400' />
+          <div className='min-w-0 flex-1'>
+            <h4 className='truncate text-sm font-medium text-neutral-200'>
               {source.file_name || 'Knowledge Entry'}
             </h4>
-            <p className='text-xs text-neutral-500 mt-1'>
-              {source.vector_count || 0} vectors • {new Date(source.created_at).toLocaleDateString()}
+            <p className='mt-1 text-xs text-neutral-500'>
+              {source.vector_count || 0} vectors •{' '}
+              {new Date(source.created_at).toLocaleDateString()}
             </p>
             {source.content && (
               <div className='mt-2'>
-                <p className={`text-sm text-neutral-300 ${expanded ? '' : 'line-clamp-3'}`}>
+                <p
+                  className={`text-sm text-neutral-300 ${expanded ? '' : 'line-clamp-3'}`}
+                >
                   {source.content}
                 </p>
                 {source.content.length > 200 && (
                   <button
                     onClick={() => setExpanded(!expanded)}
-                    className='text-xs text-purple-400 hover:text-purple-300 mt-1'
+                    className='mt-1 text-xs text-purple-400 hover:text-purple-300'
                   >
                     {expanded ? 'Show less' : 'Show more'}
                   </button>
@@ -141,7 +145,7 @@ const KnowledgeSourceCard = memo(({ source, onDelete, isDeleting }) => {
           <button
             onClick={() => onDelete(source.id)}
             disabled={isDeleting}
-            className='text-red-400 hover:text-red-300 transition-colors disabled:opacity-50'
+            className='text-red-400 transition-colors hover:text-red-300 disabled:opacity-50'
             title='Delete knowledge source'
           >
             <Trash2 className='h-4 w-4' />
@@ -216,6 +220,14 @@ export default function AgentPlayground() {
   const { user, profile, loading: authLoading } = useAuth()
   const { logout } = useLogout()
 
+  // Artificial delay so skeleton shows at least 3 seconds
+  const [delayedLoading, setDelayedLoading] = useState(true)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDelayedLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
+
   // React Query hooks
   const {
     data: agent,
@@ -223,20 +235,19 @@ export default function AgentPlayground() {
     error: agentError
   } = useAgent(id)
 
-  const {
-    data: knowledgeSources = [],
-    isLoading: sourcesLoading
-  } = useKnowledgeSources(id, user?.id)
+  const { data: knowledgeSources = [], isLoading: sourcesLoading } =
+    useKnowledgeSources(id, user?.id)
 
   const sendChatMutation = useSendChatMessage(id)
   const addKnowledgeMutation = useAddKnowledge(id)
   const deleteSourceMutation = useDeleteKnowledgeSource(id)
 
   const userProfile = {
-  name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
-  email: user?.email || 'guest@example.com',
-  avatar: profile?.avatar_url || null
-}
+    name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
+    email: user?.email || 'guest@example.com',
+    avatar: profile?.avatar_url || null
+  }
+
   // Refs
   const chatEndRef = useRef(null)
 
@@ -317,7 +328,8 @@ export default function AgentPlayground() {
 
   // Send instructions
   const sendInstructions = useCallback(async () => {
-    if (!instructionsInput.trim() || !agent || addKnowledgeMutation.isPending) return
+    if (!instructionsInput.trim() || !agent || addKnowledgeMutation.isPending)
+      return
 
     const instructions = instructionsInput.trim()
     setInstructionsInput('')
@@ -342,7 +354,8 @@ export default function AgentPlayground() {
   // Delete knowledge source
   const deleteKnowledgeSource = useCallback(
     async (sourceId) => {
-      if (!confirm('Are you sure you want to delete this knowledge source?')) return
+      if (!confirm('Are you sure you want to delete this knowledge source?'))
+        return
 
       try {
         await deleteSourceMutation.mutateAsync(sourceId)
@@ -369,13 +382,13 @@ export default function AgentPlayground() {
     [sendChatMutation.isPending, addKnowledgeMutation.isPending]
   )
 
-  // Loading States
+  // Show skeleton during delayed loading or initial loading
   if (authLoading || agentLoading) {
+    return <PlaygroundSkeleton userProfile={userProfile} />
+  }
+  if (delayedLoading) {
     return (
-      <LoadingState 
-        message={authLoading ? 'Authenticating...' : 'Loading playground...'} 
-        className='min-h-screen' 
-      />
+      <LoadingState message='Loading playground...' className='min-h-screen' />
     )
   }
 
@@ -390,8 +403,8 @@ export default function AgentPlayground() {
     <>
       <NeonBackground />
       <SideBarLayout userProfile={userProfile}>
-      <div className='flex h-screen w-full flex-col font-mono text-neutral-100 bg-neutral-900/10 backdrop-blur-sm'>
-           {/* Header */}
+        <div className='flex h-screen w-full flex-col bg-neutral-900/10 font-mono text-neutral-100 backdrop-blur-sm'>
+          {/* Header */}
           <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>
             <NavigationBar
               profile={profile}
@@ -494,10 +507,9 @@ export default function AgentPlayground() {
                         Knowledge Sources
                       </h3>
                       <p className='text-xs text-neutral-400'>
-                        {sourcesLoading ? 
-                          'Loading...' : 
-                          `${knowledgeSources.length} source${knowledgeSources.length !== 1 ? 's' : ''}`
-                        }
+                        {sourcesLoading
+                          ? 'Loading...'
+                          : `${knowledgeSources.length} source${knowledgeSources.length !== 1 ? 's' : ''}`}
                       </p>
                     </div>
                     <div
@@ -539,7 +551,7 @@ export default function AgentPlayground() {
                       {sourcesLoading ? (
                         <div className='flex items-center justify-center py-8'>
                           <div className='text-center'>
-                            <Sparkles className='h-8 w-8 animate-spin text-purple-400 mx-auto' />
+                            <Sparkles className='mx-auto h-8 w-8 animate-spin text-purple-400' />
                             <p className='mt-2 text-sm text-neutral-400'>
                               Loading knowledge sources...
                             </p>
@@ -563,9 +575,10 @@ export default function AgentPlayground() {
                         </>
                       ) : (
                         <div className='rounded-lg border border-purple-600/20 bg-neutral-900/50 p-8 text-center'>
-                          <FileText className='h-12 w-12 text-neutral-600 mx-auto mb-3' />
+                          <FileText className='mx-auto mb-3 h-12 w-12 text-neutral-600' />
                           <p className='text-sm text-neutral-400'>
-                            No knowledge sources yet. Add some below to teach your agent!
+                            No knowledge sources yet. Add some below to teach
+                            your agent!
                           </p>
                         </div>
                       )}

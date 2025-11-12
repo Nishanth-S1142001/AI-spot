@@ -27,7 +27,7 @@ import Card from '../../components/ui/card'
 import { useAgents, useDashboardAnalytics } from '../../lib/hooks/useAgentData'
 import { useLogout } from '../../lib/supabase/auth'
 import BottomModal from '../../components/ui/modal'
-
+import DashboardSkeleton from '../../components/skeleton/DashboardSkeleton'
 /**
  * Memoized Agent Card Component - Uses Interface field
  */
@@ -228,7 +228,12 @@ export default function Dashboard() {
     isLoading: agentsLoading,
     error: agentsError
   } = useAgents(user?.id)
+  const [delayedLoading, setDelayedLoading] = useState(true)
 
+  useEffect(() => {
+    const timer = setTimeout(() => setDelayedLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
   const { data: analytics, isLoading: analyticsLoading } =
     useDashboardAnalytics(agents)
 
@@ -252,7 +257,7 @@ export default function Dashboard() {
   }, [])
 
   // Loading state
-  if (authLoading || agentsLoading) {
+  if (delayedLoading) {
     return (
       <LoadingState
         message={authLoading ? 'Authenticating...' : 'Loading dashboard...'}
@@ -260,7 +265,9 @@ export default function Dashboard() {
       />
     )
   }
-
+  if (authLoading) {
+    return <DashboardSkeleton userProfile={userProfile} />
+  }
   // Error state
   if (agentsError) {
     return (
@@ -289,8 +296,8 @@ export default function Dashboard() {
     <>
       <NeonBackground />
       <SideBarLayout userProfile={userProfile}>
-         <div className='flex h-screen w-full flex-col font-mono text-neutral-100 bg-neutral-900/10 backdrop-blur-sm'>
-        {/* Header */}
+        <div className='flex h-screen w-full flex-col bg-neutral-900/10 font-mono text-neutral-100 backdrop-blur-sm'>
+          {/* Header */}
           <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-900/30 backdrop-blur-xl'>
             <NavigationBar
               profile={profile}

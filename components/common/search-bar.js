@@ -1,7 +1,7 @@
 'use client'
 
 import { Search, X } from 'lucide-react'
-import { useState, useCallback, useEffect, useRef, memo } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 
 function SearchBar({ 
   value = '',

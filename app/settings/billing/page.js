@@ -27,15 +27,16 @@ import {
   useDownloadInvoice,
   useAddPaymentMethod
 } from '../../../lib/hooks/useBillingData'
+import BillingSettingsPageSkeleton from '../../../components/skeleton/BillingSettingsPageSkeleton'
 
 /**
  * FULLY OPTIMIZED Billing Settings Page
- * 
+ *
  * React Query Integration:
  * - Automatic billing data fetching with caching
  * - Optimistic updates for payment method deletion
  * - Mutation hooks for all actions
- * 
+ *
  * Performance:
  * - Memoized components
  * - Stable handlers
@@ -78,7 +79,7 @@ const PaymentMethodCard = memo(({ card, onDelete }) => {
   }, [card.id, onDelete])
 
   return (
-    <div className='flex items-center justify-between p-4 rounded-lg bg-neutral-900/50 border border-neutral-800 hover:border-neutral-700 transition-colors'>
+    <div className='flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-900/50 p-4 transition-colors hover:border-neutral-700'>
       <div className='flex items-center gap-4'>
         <div className='flex h-12 w-12 items-center justify-center rounded-lg bg-blue-900/40'>
           {getCardIcon(card.brand)}
@@ -94,14 +95,14 @@ const PaymentMethodCard = memo(({ card, onDelete }) => {
               </span>
             )}
           </div>
-          <p className='text-sm text-neutral-400 mt-1'>
+          <p className='mt-1 text-sm text-neutral-400'>
             Expires {card.expMonth}/{card.expYear}
           </p>
         </div>
       </div>
       <button
         onClick={handleDelete}
-        className='text-red-400 hover:text-red-300 transition-colors'
+        className='text-red-400 transition-colors hover:text-red-300'
         aria-label='Delete payment method'
       >
         <Trash2 className='h-4 w-4' />
@@ -116,45 +117,46 @@ PaymentMethodCard.displayName = 'PaymentMethodCard'
  */
 const AddCardForm = memo(({ onCancel, onSubmit }) => {
   return (
-    <div className='mt-6 p-6 rounded-lg bg-neutral-900/50 border border-blue-600/30'>
-      <h3 className='font-semibold text-neutral-200 mb-4'>
-        Add New Card
-      </h3>
+    <div className='mt-6 rounded-lg border border-blue-600/30 bg-neutral-900/50 p-6'>
+      <h3 className='mb-4 font-semibold text-neutral-200'>Add New Card</h3>
       <div className='space-y-4'>
         <div>
-          <label className='block text-sm font-medium text-neutral-300 mb-2'>
+          <label className='mb-2 block text-sm font-medium text-neutral-300'>
             Card Number
           </label>
           <input
             type='text'
             placeholder='1234 5678 9012 3456'
-            className='w-full rounded-lg bg-neutral-900 border border-neutral-800 px-4 py-2 text-neutral-100 placeholder:text-neutral-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20'
+            className='w-full rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-2 text-neutral-100 placeholder:text-neutral-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none'
           />
         </div>
         <div className='grid grid-cols-2 gap-4'>
           <div>
-            <label className='block text-sm font-medium text-neutral-300 mb-2'>
+            <label className='mb-2 block text-sm font-medium text-neutral-300'>
               Expiry Date
             </label>
             <input
               type='text'
               placeholder='MM/YY'
-              className='w-full rounded-lg bg-neutral-900 border border-neutral-800 px-4 py-2 text-neutral-100 placeholder:text-neutral-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20'
+              className='w-full rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-2 text-neutral-100 placeholder:text-neutral-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none'
             />
           </div>
           <div>
-            <label className='block text-sm font-medium text-neutral-300 mb-2'>
+            <label className='mb-2 block text-sm font-medium text-neutral-300'>
               CVC
             </label>
             <input
               type='text'
               placeholder='123'
-              className='w-full rounded-lg bg-neutral-900 border border-neutral-800 px-4 py-2 text-neutral-100 placeholder:text-neutral-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20'
+              className='w-full rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-2 text-neutral-100 placeholder:text-neutral-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none'
             />
           </div>
         </div>
         <div className='flex gap-3'>
-          <Button onClick={onSubmit} className='flex-1 bg-blue-600 hover:bg-blue-700'>
+          <Button
+            onClick={onSubmit}
+            className='flex-1 bg-blue-600 hover:bg-blue-700'
+          >
             Add Card
           </Button>
           <Button onClick={onCancel} variant='outline' className='flex-1'>
@@ -181,16 +183,14 @@ const InvoiceRow = memo(({ invoice, onDownload }) => {
   }, [invoice.id, onDownload])
 
   return (
-    <tr className='border-b border-neutral-800/50 hover:bg-neutral-900/30 transition-colors'>
+    <tr className='border-b border-neutral-800/50 transition-colors hover:bg-neutral-900/30'>
       <td className='py-4'>
         <div className='flex items-center gap-2 text-sm text-neutral-300'>
           <Calendar className='h-4 w-4 text-neutral-500' />
           {formatDate(invoice.date)}
         </div>
       </td>
-      <td className='py-4 text-sm text-neutral-300'>
-        {invoice.description}
-      </td>
+      <td className='py-4 text-sm text-neutral-300'>{invoice.description}</td>
       <td className='py-4'>
         <div className='flex items-center gap-1 text-sm font-medium text-neutral-200'>
           <DollarSign className='h-4 w-4' />
@@ -198,14 +198,16 @@ const InvoiceRow = memo(({ invoice, onDownload }) => {
         </div>
       </td>
       <td className='py-4'>
-        <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ring-1 capitalize ${statusColor}`}>
+        <span
+          className={`inline-flex rounded-full px-2 py-1 text-xs font-medium capitalize ring-1 ${statusColor}`}
+        >
           {invoice.status}
         </span>
       </td>
       <td className='py-4 text-right'>
         <button
           onClick={handleDownload}
-          className='inline-flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors'
+          className='inline-flex items-center gap-2 text-sm text-blue-400 transition-colors hover:text-blue-300'
         >
           <Download className='h-4 w-4' />
           Download
@@ -219,44 +221,46 @@ InvoiceRow.displayName = 'InvoiceRow'
 /**
  * Memoized Payment Methods Section
  */
-const PaymentMethodsSection = memo(({ paymentMethods, onDelete, showAddCard, onToggleAddCard }) => {
-  return (
-    <Card className='border-blue-600/20 bg-gradient-to-br from-blue-950/10 to-neutral-950/50'>
-      <div className='mb-6 flex items-center justify-between'>
-        <div>
-          <div className='flex items-center gap-3 mb-2'>
-            <CreditCard className='h-5 w-5 text-blue-400' />
-            <h2 className='text-xl font-semibold text-neutral-100'>
-              Payment Methods
-            </h2>
+const PaymentMethodsSection = memo(
+  ({ paymentMethods, onDelete, showAddCard, onToggleAddCard }) => {
+    return (
+      <Card className='border-blue-600/20 bg-gradient-to-br from-blue-950/10 to-neutral-950/50'>
+        <div className='mb-6 flex items-center justify-between'>
+          <div>
+            <div className='mb-2 flex items-center gap-3'>
+              <CreditCard className='h-5 w-5 text-blue-400' />
+              <h2 className='text-xl font-semibold text-neutral-100'>
+                Payment Methods
+              </h2>
+            </div>
+            <p className='text-sm text-neutral-400'>
+              Manage your saved payment methods
+            </p>
           </div>
-          <p className='text-sm text-neutral-400'>
-            Manage your saved payment methods
-          </p>
+          <Button
+            onClick={onToggleAddCard}
+            className='flex items-center gap-2 bg-blue-600 hover:bg-blue-700'
+          >
+            <Plus className='h-4 w-4' />
+            Add Card
+          </Button>
         </div>
-        <Button
-          onClick={onToggleAddCard}
-          className='flex items-center gap-2 bg-blue-600 hover:bg-blue-700'
-        >
-          <Plus className='h-4 w-4' />
-          Add Card
-        </Button>
-      </div>
 
-      {/* Payment Methods List */}
-      <div className='space-y-4'>
-        {paymentMethods.map((card) => (
-          <PaymentMethodCard key={card.id} card={card} onDelete={onDelete} />
-        ))}
-      </div>
+        {/* Payment Methods List */}
+        <div className='space-y-4'>
+          {paymentMethods.map((card) => (
+            <PaymentMethodCard key={card.id} card={card} onDelete={onDelete} />
+          ))}
+        </div>
 
-      {/* Add Card Form */}
-      {showAddCard && (
-        <AddCardForm onCancel={onToggleAddCard} onSubmit={onToggleAddCard} />
-      )}
-    </Card>
-  )
-})
+        {/* Add Card Form */}
+        {showAddCard && (
+          <AddCardForm onCancel={onToggleAddCard} onSubmit={onToggleAddCard} />
+        )}
+      </Card>
+    )
+  }
+)
 PaymentMethodsSection.displayName = 'PaymentMethodsSection'
 
 /**
@@ -266,7 +270,7 @@ const BillingHistorySection = memo(({ billingHistory, onDownload }) => {
   return (
     <Card className='border-green-600/20 bg-gradient-to-br from-green-950/10 to-neutral-950/50'>
       <div className='mb-6'>
-        <div className='flex items-center gap-3 mb-2'>
+        <div className='mb-2 flex items-center gap-3'>
           <Receipt className='h-5 w-5 text-green-400' />
           <h2 className='text-xl font-semibold text-neutral-100'>
             Billing History
@@ -313,7 +317,7 @@ const BillingHistorySection = memo(({ billingHistory, onDownload }) => {
 
       {billingHistory.length === 0 && (
         <div className='py-12 text-center'>
-          <Receipt className='h-12 w-12 text-neutral-600 mx-auto mb-4' />
+          <Receipt className='mx-auto mb-4 h-12 w-12 text-neutral-600' />
           <p className='text-neutral-400'>No billing history yet</p>
         </div>
       )}
@@ -328,13 +332,16 @@ BillingHistorySection.displayName = 'BillingHistorySection'
 const HeaderSection = memo(() => {
   return (
     <>
-      <Link href='/settings' className='inline-flex items-center gap-2 text-orange-500 hover:text-orange-400 mb-6 transition-colors'>
+      <Link
+        href='/settings'
+        className='mb-6 inline-flex items-center gap-2 text-orange-500 transition-colors hover:text-orange-400'
+      >
         <ArrowLeft className='h-4 w-4' />
         Back to Settings
       </Link>
 
       <div className='mb-8'>
-        <div className='flex items-center gap-3 mb-2'>
+        <div className='mb-2 flex items-center gap-3'>
           <CreditCard className='h-8 w-8 text-blue-500' />
           <h1 className='text-3xl font-bold text-neutral-100'>
             Billing Settings
@@ -356,13 +363,14 @@ const SupportSection = memo(() => {
   return (
     <Card className='border-neutral-800/50 bg-neutral-900/20'>
       <div className='flex items-start gap-4'>
-        <DollarSign className='h-6 w-6 text-orange-400 mt-1' />
+        <DollarSign className='mt-1 h-6 w-6 text-orange-400' />
         <div>
-          <h4 className='font-semibold text-neutral-200 mb-2'>
+          <h4 className='mb-2 font-semibold text-neutral-200'>
             Need help with billing?
           </h4>
-          <p className='text-sm text-neutral-400 mb-3'>
-            Contact our support team for billing inquiries, refunds, or account credits.
+          <p className='mb-3 text-sm text-neutral-400'>
+            Contact our support team for billing inquiries, refunds, or account
+            credits.
           </p>
           <Button variant='outline' size='sm'>
             Contact Support
@@ -394,11 +402,14 @@ export default function BillingSettingsPage() {
   const { mutate: addPaymentMethod } = useAddPaymentMethod()
 
   // Memoize user profile for SideBarLayout
-  const userProfile = useMemo(() => ({
-    name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
-    email: user?.email || 'guest@example.com',
-    avatar: profile?.avatar_url || null
-  }), [profile, user])
+  const userProfile = useMemo(
+    () => ({
+      name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
+      email: user?.email || 'guest@example.com',
+      avatar: profile?.avatar_url || null
+    }),
+    [profile, user]
+  )
 
   // Memoize payment methods and billing history
   const paymentMethods = useMemo(
@@ -412,53 +423,67 @@ export default function BillingSettingsPage() {
   )
 
   // Stable handlers - MUST be declared before conditional returns
-  const handleDeleteCard = useCallback((cardId) => {
-    if (!confirm('Are you sure you want to remove this payment method?')) {
-      return
-    }
-
-    deletePaymentMethod(
-      { userId: user.id, cardId },
-      {
-        onSuccess: () => {
-          toast.success('Payment method removed')
-        },
-        onError: (error) => {
-          toast.error(error.message || 'Failed to remove payment method')
-        }
+  const handleDeleteCard = useCallback(
+    (cardId) => {
+      if (!confirm('Are you sure you want to remove this payment method?')) {
+        return
       }
-    )
-  }, [user?.id, deletePaymentMethod])
 
-  const handleDownloadInvoice = useCallback((invoiceId) => {
-    downloadInvoice(
-      { invoiceId },
-      {
-        onSuccess: () => {
-          toast.success('Invoice downloaded')
-        },
-        onError: (error) => {
-          toast.error(error.message || 'Failed to download invoice')
+      deletePaymentMethod(
+        { userId: user.id, cardId },
+        {
+          onSuccess: () => {
+            toast.success('Payment method removed')
+          },
+          onError: (error) => {
+            toast.error(error.message || 'Failed to remove payment method')
+          }
         }
-      }
-    )
-  }, [downloadInvoice])
+      )
+    },
+    [user?.id, deletePaymentMethod]
+  )
 
+  const handleDownloadInvoice = useCallback(
+    (invoiceId) => {
+      downloadInvoice(
+        { invoiceId },
+        {
+          onSuccess: () => {
+            toast.success('Invoice downloaded')
+          },
+          onError: (error) => {
+            toast.error(error.message || 'Failed to download invoice')
+          }
+        }
+      )
+    },
+    [downloadInvoice]
+  )
+  const [delayedLoading, setDelayedLoading] = useState(true)
+  useEffect(() => {
+    const timer = setTimeout(() => setDelayedLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
   const handleToggleAddCard = useCallback(() => {
-    setShowAddCard(prev => !prev)
+    setShowAddCard((prev) => !prev)
   }, [])
 
   // NOW we can do conditional logic - after all hooks are called
   // Loading state
-  if (authLoading || billingLoading) {
+  if (authLoading) {
     return (
       <LoadingState
-        message={authLoading ? 'Authenticating...' : 'Loading billing settings...'}
+        message={
+          authLoading ? 'Authenticating...' : 'Loading billing settings...'
+        }
         className='min-h-screen'
       />
     )
   }
-
+  if (authLoading || billingLoading) {
+    return <BillingSettingsPageSkeleton userProfile={userProfile} />
+  }
   // Error state
   if (billingError) {
     return (
@@ -488,8 +513,8 @@ export default function BillingSettingsPage() {
     <>
       <NeonBackground />
       <SideBarLayout userProfile={userProfile}>
-     <div className='flex h-screen w-full flex-col font-mono text-neutral-100 bg-neutral-900/10 backdrop-blur-sm'>
-             {/* Header */}
+        <div className='flex h-screen w-full flex-col bg-neutral-900/10 font-mono text-neutral-100 backdrop-blur-sm'>
+          {/* Header */}
           <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>
             <NavigationBar
               profile={profile}

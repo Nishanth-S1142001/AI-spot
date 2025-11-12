@@ -1,19 +1,19 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import Card from '../ui/card'
-import Button from '../ui/button'
-import KnowledgeUploadSection from '../KnowledgeUploadSection'
 import {
-  FileText,
-  Database,
-  Zap,
   AlertCircle,
   CheckCircle,
+  Database,
+  FileText,
   Link as LinkIcon,
-  Wrench
+  Wrench,
+  Zap
 } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
+import KnowledgeUploadSection from '../KnowledgeUploadSection'
+import Button from '../ui/button'
+import Card from '../ui/card'
 
 export default function KnowledgeTab({ agent, agentId, userId }) {
   const [knowledgeSources, setKnowledgeSources] = useState([])
@@ -86,18 +86,18 @@ export default function KnowledgeTab({ agent, agentId, userId }) {
     (s) => s.type === 'instruction'
   ).length
 
-  if (loading) {
-    return (
-      <div className='flex items-center justify-center py-16'>
-        <div className='text-center'>
-          <Database className='mx-auto h-12 w-12 animate-pulse text-purple-400' />
-          <p className='mt-4 text-sm text-neutral-400'>
-            Loading knowledge base...
-          </p>
-        </div>
-      </div>
-    )
-  }
+  // if (loading) {
+  //   return (
+  //     <div className='flex items-center justify-center py-16'>
+  //       <div className='text-center'>
+  //         <Database className='mx-auto h-12 w-12 animate-pulse text-purple-400' />
+  //         <p className='mt-4 text-sm text-neutral-400'>
+  //           Loading knowledge base...
+  //         </p>
+  //       </div>
+  //     </div>
+  //   )
+  // }
 
   if (error) {
     return (

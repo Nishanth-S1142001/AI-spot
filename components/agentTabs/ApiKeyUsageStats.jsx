@@ -1,7 +1,7 @@
 'use client'
 
+import { BarChart3, DollarSign, Key, TrendingUp } from 'lucide-react'
 import { useMemo } from 'react'
-import { BarChart3, TrendingUp, DollarSign, Key } from 'lucide-react'
 import Card from '../ui/card'
 
 export default function ApiKeyUsageStats({ analytics = [] }) {

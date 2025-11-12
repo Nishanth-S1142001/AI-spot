@@ -13,15 +13,15 @@
 
 import {
   ChevronDown,
+  ChevronUp,
   LockKeyhole,
   LockKeyholeOpen,
-  ChevronUp,
   LogOut
 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState, useCallback, useMemo, memo } from 'react'
+import { memo, useCallback, useMemo, useState } from 'react'
 import { useLogout } from '../lib/supabase/auth'
 
 /**

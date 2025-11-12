@@ -1,33 +1,33 @@
 'use client'
 
 import {
+  AlertCircle,
   ArrowLeft,
+  ArrowRight,
+  Bot,
   Check,
   Crown,
-  TrendingUp,
-  Users,
-  Zap,
   MessageSquare,
-  Bot,
-  AlertCircle,
-  ArrowRight
+  TrendingUp,
+  Zap
 } from 'lucide-react'
 import Link from 'next/link'
-import { memo, useMemo, useCallback } from 'react'
+import { memo, useCallback, useMemo } from 'react'
 import toast from 'react-hot-toast'
 import LoadingState from '../../../components/common/loading-state'
 import NavigationBar from '../../../components/navigationBar/navigationBar'
 import { useAuth } from '../../../components/providers/AuthProvider'
 import SideBarLayout from '../../../components/sideBarLayout'
+import SubscriptionsPageSkeleton from '../../../components/skeleton/SubscriptionsPageSkeleton'
 import NeonBackground from '../../../components/ui/background'
 import Button from '../../../components/ui/button'
 import Card from '../../../components/ui/card'
-import { useLogout } from '../../../lib/supabase/auth'
 import {
+  useCancelSubscription,
   useSubscriptionUsage,
-  useUpgradeSubscription,
-  useCancelSubscription
+  useUpgradeSubscription
 } from '../../../lib/hooks/useSubscriptionData'
+import { useLogout } from '../../../lib/supabase/auth'
 
 /**
  * FULLY OPTIMIZED Subscription Settings Page
@@ -443,7 +443,6 @@ PlansSection.displayName = 'PlansSection'
 export default function SubscriptionsPage() {
   const { user, profile, loading: authLoading, refreshProfile } = useAuth()
   const { logout } = useLogout()
-  
 
   // React Query hooks - MUST be called before any conditional returns
   const {
@@ -515,7 +514,12 @@ export default function SubscriptionsPage() {
 
   // NOW we can do conditional logic - after all hooks are called
   // Loading state
-  if (authLoading || usageLoading) {
+  const [delayedLoading, setDelayedLoading] = useState(true)
+  useEffect(() => {
+    const timer = setTimeout(() => setDelayedLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
+  if (delayedLoading) {
     return (
       <LoadingState
         message={
@@ -524,6 +528,9 @@ export default function SubscriptionsPage() {
         className='min-h-screen'
       />
     )
+  }
+  if (authLoading || usageLoading) {
+    return <SubscriptionsPageSkeleton userProfile={userProfile} />
   }
 
   // Error state
@@ -555,8 +562,8 @@ export default function SubscriptionsPage() {
     <>
       <NeonBackground />
       <SideBarLayout userProfile={userProfile}>
-   <div className='flex h-screen w-full flex-col font-mono text-neutral-100 bg-neutral-900/10 backdrop-blur-sm'>
-              {/* Header */}
+        <div className='flex h-screen w-full flex-col bg-neutral-900/10 font-mono text-neutral-100 backdrop-blur-sm'>
+          {/* Header */}
           <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>
             <NavigationBar
               profile={profile}

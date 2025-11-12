@@ -14,8 +14,8 @@ import {
   CheckCircle2
 } from 'lucide-react'
 import Link from 'next/link'
-import { memo, useMemo, useCallback } from 'react'
-import LoadingState from '../../components/common/loading-state'
+import { memo, useMemo, useState, useEffect } from 'react'
+import AboutSkeleton from '../../components/skeleton/AboutSkeleton'
 import NavigationBar from '../../components/navigationBar/navigationBar'
 import { useAuth } from '../../components/providers/AuthProvider'
 import SideBarLayout from '../../components/sideBarLayout'
@@ -33,6 +33,7 @@ import { useLogout } from '../../lib/supabase/auth'
  * - Proper hook ordering (before any conditionals)
  * - Consistent with Dashboard/FAQ page patterns
  * - Performance-optimized rendering
+ * - Skeleton loading for better UX
  */
 
 // Static data - defined outside component to prevent recreation
@@ -434,6 +435,14 @@ export default function AboutPage() {
   const { user, profile, loading: authLoading } = useAuth()
   const { logout } = useLogout()
 
+  // Artificial delay so skeleton shows at least 3 seconds
+  const [delayedLoading, setDelayedLoading] = useState(true)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDelayedLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
+
   // Memoize user profile for SideBarLayout
   const userProfile = useMemo(() => ({
     name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
@@ -441,14 +450,9 @@ export default function AboutPage() {
     avatar: profile?.avatar_url || null
   }), [profile, user])
 
-  // Loading state
-  if (authLoading) {
-    return (
-      <LoadingState
-        message='Loading...'
-        className='min-h-screen'
-      />
-    )
+  // Show skeleton during delayed loading
+  if (delayedLoading || authLoading) {
+    return <AboutSkeleton userProfile={userProfile} />
   }
 
   return (
@@ -467,7 +471,7 @@ export default function AboutPage() {
           </div>
 
           {/* Main Content */}
-          <div className='custom-scrollbar flex-1 overflow-y-auto bg-neutral-950/80  '>
+          <div className='custom-scrollbar flex-1 overflow-y-auto bg-neutral-950/80'>
             <div className='mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8'>
               <HeroSection />
               <StatsSection />

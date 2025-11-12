@@ -1,29 +1,29 @@
 'use client'
 
 import {
-  FileText,
-  Shield,
   AlertCircle,
   CheckCircle2,
-  XCircle,
+  FileText,
+  Lock,
   Scale,
+  Shield,
   Users,
-  Lock
+  XCircle
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { memo, useMemo, useEffect } from 'react'
-import LoadingState from '../../components/common/loading-state'
+import { memo, useEffect, useMemo } from 'react'
 import NavigationBar from '../../components/navigationBar/navigationBar'
 import { useAuth } from '../../components/providers/AuthProvider'
 import SideBarLayout from '../../components/sideBarLayout'
+import UsagePolicyPageSkeleton from '../../components/skeleton/UsagePolicySkeleton'
 import NeonBackground from '../../components/ui/background'
 import Card from '../../components/ui/card'
 import { useLogout } from '../../lib/supabase/auth'
 
 /**
  * FULLY OPTIMIZED Usage Policy Page
- * 
+ *
  * Optimizations:
  * - Memoized components for better performance
  * - Stable data structures with useMemo
@@ -60,7 +60,7 @@ const QUICK_TIPS = [
   {
     icon: Users,
     title: 'Respect Other Users',
-    description: 'Don\'t abuse the platform or interfere with others',
+    description: "Don't abuse the platform or interfere with others",
     color: 'purple'
   },
   {
@@ -210,7 +210,7 @@ const POLICY_SECTIONS = [
       'You agree to indemnify and hold harmless AI-Spot from any claims arising from your use of the Service.',
       'This includes claims related to content created by your AI agents.',
       'You are responsible for defending against claims arising from your violation of these terms.',
-      'You will reimburse us for any damages, costs, and attorneys\' fees incurred.'
+      "You will reimburse us for any damages, costs, and attorneys' fees incurred."
     ]
   },
   {
@@ -289,7 +289,7 @@ const PolicySection = memo(({ section }) => {
   return (
     <Card
       id={section.id}
-      className='border-neutral-800/50 bg-neutral-900/20 scroll-mt-24'
+      className='scroll-mt-24 border-neutral-800/50 bg-neutral-900/20'
     >
       <div className='space-y-4'>
         <div className='flex items-start gap-4'>
@@ -297,14 +297,16 @@ const PolicySection = memo(({ section }) => {
             <Icon className='h-6 w-6 text-orange-400' />
           </div>
           <div className='flex-1'>
-            <h2 className='text-2xl font-bold text-neutral-100 mb-4'>
+            <h2 className='mb-4 text-2xl font-bold text-neutral-100'>
               {section.title}
             </h2>
             <ul className='space-y-3'>
               {section.content.map((item, idx) => (
                 <li key={idx} className='flex items-start gap-3'>
-                  <div className='h-1.5 w-1.5 rounded-full bg-orange-500 flex-shrink-0 mt-2' />
-                  <span className='text-neutral-300 leading-relaxed'>{item}</span>
+                  <div className='mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-orange-500' />
+                  <span className='leading-relaxed text-neutral-300'>
+                    {item}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -331,8 +333,8 @@ const HeaderSection = memo(() => {
         Usage Policy & Terms of Service
       </h1>
       <p className='mx-auto max-w-2xl text-lg text-neutral-400'>
-        Please read these terms carefully before using AI-Spot. By using our service, 
-        you agree to be bound by these terms.
+        Please read these terms carefully before using AI-Spot. By using our
+        service, you agree to be bound by these terms.
       </p>
       <div className='mt-6 flex items-center justify-center gap-2 text-sm text-neutral-500'>
         <span>Last Updated: November 4, 2025</span>
@@ -353,22 +355,30 @@ const ContactSection = memo(() => {
       <div className='space-y-4'>
         <div className='flex items-center gap-3'>
           <AlertCircle className='h-6 w-6 text-blue-400' />
-          <h2 className='text-2xl font-bold text-neutral-100'>Questions or Concerns?</h2>
+          <h2 className='text-2xl font-bold text-neutral-100'>
+            Questions or Concerns?
+          </h2>
         </div>
         <p className='text-neutral-300'>
-          If you have any questions about these terms or need clarification on any policy, 
-          please don&apos;t hesitate to contact us.
+          If you have any questions about these terms or need clarification on
+          any policy, please don&apos;t hesitate to contact us.
         </p>
         <div className='space-y-2 text-neutral-400'>
           <p>
             <strong className='text-neutral-300'>Email:</strong>{' '}
-            <a href='mailto:legal@ai-spot.com' className='text-blue-400 hover:text-blue-300'>
+            <a
+              href='mailto:legal@ai-spot.com'
+              className='text-blue-400 hover:text-blue-300'
+            >
               legal@ai-spot.com
             </a>
           </p>
           <p>
             <strong className='text-neutral-300'>Support:</strong>{' '}
-            <Link href='/feedback' className='text-blue-400 hover:text-blue-300'>
+            <Link
+              href='/feedback'
+              className='text-blue-400 hover:text-blue-300'
+            >
               Submit a ticket
             </Link>
           </p>
@@ -386,12 +396,13 @@ const AgreementSection = memo(() => {
   return (
     <Card className='mt-8 border-orange-600/20 bg-gradient-to-br from-orange-950/10 to-neutral-950/50'>
       <div className='space-y-4 text-center'>
-        <CheckCircle2 className='h-12 w-12 text-orange-400 mx-auto' />
+        <CheckCircle2 className='mx-auto h-12 w-12 text-orange-400' />
         <h3 className='text-xl font-bold text-neutral-100'>
           By Using AI-Spot, You Agree to These Terms
         </h3>
         <p className='text-neutral-400'>
-          Your continued use of the Service constitutes acceptance of these terms and any future modifications.
+          Your continued use of the Service constitutes acceptance of these
+          terms and any future modifications.
         </p>
       </div>
     </Card>
@@ -406,7 +417,7 @@ export default function UsagePolicyPage() {
   const router = useRouter()
   const { user, profile, loading: authLoading } = useAuth()
   const { logout } = useLogout()
- const userProfile = {
+  const userProfile = {
     name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
     email: user?.email || 'guest@example.com',
     avatar: profile?.avatar_url || null
@@ -421,15 +432,14 @@ export default function UsagePolicyPage() {
       router.push('/')
     }
   }, [authLoading, user, router])
-
+  const [delayedLoading, setDelayedLoading] = useState(true)
+  useEffect(() => {
+    const timer = setTimeout(() => setDelayedLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
   // Loading state - after all hooks
-  if (authLoading) {
-    return (
-      <LoadingState
-        message='Loading usage policy...'
-        className='min-h-screen'
-      />
-    )
+  if (delayedLoading || authLoading) {
+    return <UsagePolicyPageSkeleton userProfile={userProfile} />
   }
 
   // Don't render if not authenticated (optional - remove if page should be public)
@@ -441,7 +451,7 @@ export default function UsagePolicyPage() {
     <>
       <NeonBackground />
       <SideBarLayout userProfile={userProfile}>
-         <div className='flex h-screen w-full flex-col font-mono text-neutral-100 bg-neutral-900/10 backdrop-blur-sm'>
+        <div className='flex h-screen w-full flex-col bg-neutral-900/10 font-mono text-neutral-100 backdrop-blur-sm'>
           {/* Header */}
           <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>
             <NavigationBar
@@ -458,7 +468,9 @@ export default function UsagePolicyPage() {
 
               {/* Quick Tips */}
               <div className='mb-12'>
-                <h2 className='mb-6 text-2xl font-bold text-neutral-100'>Quick Guidelines</h2>
+                <h2 className='mb-6 text-2xl font-bold text-neutral-100'>
+                  Quick Guidelines
+                </h2>
                 <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
                   {quickTips.map((tip, index) => (
                     <QuickTipCard key={index} tip={tip} />

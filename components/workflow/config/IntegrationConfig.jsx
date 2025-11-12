@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import toast from 'react-hot-toast'
 import Button from '../../ui/button'
 import FormInput from '../../ui/formInputField'
-import toast from 'react-hot-toast'
 
 export default function IntegrationConfig({ config, onSave, onClose }) {
   const [integrations, setIntegrations] = useState([])

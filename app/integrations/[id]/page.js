@@ -6,6 +6,7 @@ import NavigationBar from '../../../components/navigationBar/navigationBar'
 import NeonBackground from '../../../components/ui/background'
 import SideBarLayout from '../../../components/sideBarLayout'
 import { useLogout } from '../../../lib/supabase/auth'
+import IntegrationSetupSkeleton from '../../../components/skeleton/IntegrationSetupSkeleton'
 import {
   ArrowLeft,
   Check,
@@ -394,7 +395,11 @@ export default function IntegrationSetupPage() {
   const [error, setError] = useState('')
 
   const config = INTEGRATION_CONFIGS[integrationId]
-
+  const [delayedLoading, setDelayedLoading] = useState(true)
+  useEffect(() => {
+    const timer = setTimeout(() => setDelayedLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
   // Load existing credentials
   useEffect(() => {
     if (existingIntegration?.credentials) {
@@ -500,8 +505,11 @@ export default function IntegrationSetupPage() {
 
   if (!config) return null
 
-  if (loadingIntegration) {
+  if (delayedLoading) {
     return <LoadingState message='Loading integration...' />
+  }
+  if (loadingIntegration) {
+    return <IntegrationSetupPage userProfile={userProfile} />
   }
 
   return (

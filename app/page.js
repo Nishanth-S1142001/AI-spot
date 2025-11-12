@@ -1,12 +1,12 @@
 'use client'
 
-import { useCallback, useReducer, lazy, Suspense } from 'react'
-import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import { useRouter } from 'next/navigation'
+import { lazy, Suspense, useCallback, useReducer } from 'react'
 
 // Static imports for critical components
-import NeonBackground from '../components/ui/background'
 import NavigationBar from '../components/navigationBar/navigationBar.js'
+import NeonBackground from '../components/ui/background'
 
 // Dynamic imports for non-critical components
 const BottomModal = dynamic(() => import('../components/ui/modal'), {

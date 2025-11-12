@@ -106,8 +106,8 @@ export const subMenuItems = {
       icon: <LayoutDashboard className='text-orange-500' size={20} />
     },
     {
-      name: 'Activity',
-      href: '/activity',
+      name: 'Analytics',
+      href: '/analytics',
       icon: <Activity className='text-orange-500' size={20} />
     }
   ],

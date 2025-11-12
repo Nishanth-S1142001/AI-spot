@@ -1,9 +1,9 @@
 'use client'
 
 import { ChevronDown, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import Link from 'next/link'
 
 /**
  * Improved SubSidebar Component

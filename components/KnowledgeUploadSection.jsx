@@ -3,8 +3,8 @@
  * Uses vector-based knowledge system for better scalability
  */
 
-import { FileText, Link as LinkIcon, Upload, X, CheckCircle, AlertCircle } from 'lucide-react'
-import { useCallback, useState, useRef } from 'react'
+import { AlertCircle, CheckCircle, FileText, Link as LinkIcon, Upload, X } from 'lucide-react'
+import { useCallback, useRef, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import toast from 'react-hot-toast'
 import Button from './ui/button'

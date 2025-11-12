@@ -1,10 +1,10 @@
 'use client'
 
+import { Check, Code, Copy, ExternalLink, Sparkles } from 'lucide-react'
 import { useState } from 'react'
-import { Copy, Check, Code, ExternalLink, Sparkles } from 'lucide-react'
 
-import Card from '../ui/card'
 import Button from '../ui/button'
+import Card from '../ui/card'
 
 /**
  * OPTIMIZED Embed Tab Component

@@ -1,26 +1,26 @@
 'use client'
 
-import { 
-  User, 
-  CreditCard, 
-  Crown, 
+import {
+  CreditCard,
+  Crown,
   Settings as SettingsIcon,
-  Shield
+  Shield,
+  User
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { memo, useMemo, useEffect } from 'react'
-import LoadingState from '../../components/common/loading-state'
+import { memo, useEffect, useMemo } from 'react'
 import NavigationBar from '../../components/navigationBar/navigationBar'
 import { useAuth } from '../../components/providers/AuthProvider'
 import SideBarLayout from '../../components/sideBarLayout'
+import SettingsPageSkeleton from '../../components/skeleton/SettingsPageSkeleton'
 import NeonBackground from '../../components/ui/background'
 import Card from '../../components/ui/card'
 import { useLogout } from '../../lib/supabase/auth'
 
 /**
  * FULLY OPTIMIZED Settings Overview Page
- * 
+ *
  * Optimizations:
  * - Memoized components for better performance
  * - Stable data structures with useMemo
@@ -63,22 +63,22 @@ const SettingsCard = memo(({ section }) => {
 
   return (
     <Link href={section.href}>
-      <Card 
+      <Card
         className={`group cursor-pointer border bg-gradient-to-br transition-all hover:scale-[1.02] hover:shadow-lg ${colors.bg} ${colors.border} ${colors.hover}`}
       >
         <div className='space-y-4'>
           {/* Header */}
           <div className='flex items-start gap-4'>
-            <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg ${colors.icon}`}>
+            <div
+              className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg ${colors.icon}`}
+            >
               <Icon className='h-6 w-6' />
             </div>
             <div className='flex-1'>
-              <h3 className='text-xl font-bold text-neutral-100 mb-1'>
+              <h3 className='mb-1 text-xl font-bold text-neutral-100'>
                 {section.title}
               </h3>
-              <p className='text-sm text-neutral-400'>
-                {section.description}
-              </p>
+              <p className='text-sm text-neutral-400'>{section.description}</p>
             </div>
           </div>
 
@@ -107,11 +107,9 @@ SettingsCard.displayName = 'SettingsCard'
 const HeaderSection = memo(() => {
   return (
     <div className='mb-8'>
-      <div className='flex items-center gap-3 mb-2'>
+      <div className='mb-2 flex items-center gap-3'>
         <SettingsIcon className='h-8 w-8 text-orange-500' />
-        <h1 className='text-4xl font-bold text-neutral-100'>
-          Settings
-        </h1>
+        <h1 className='text-4xl font-bold text-neutral-100'>Settings</h1>
       </div>
       <p className='text-neutral-400'>
         Manage your account settings and preferences
@@ -128,14 +126,15 @@ const SecurityInfoSection = memo(() => {
   return (
     <div className='mt-8 rounded-lg border border-neutral-800/50 bg-neutral-900/20 p-6'>
       <div className='flex items-start gap-4'>
-        <Shield className='h-6 w-6 text-green-400 mt-1 flex-shrink-0' />
+        <Shield className='mt-1 h-6 w-6 flex-shrink-0 text-green-400' />
         <div>
-          <h4 className='font-semibold text-neutral-200 mb-2'>
+          <h4 className='mb-2 font-semibold text-neutral-200'>
             Your data is secure
           </h4>
           <p className='text-sm text-neutral-400'>
-            We use industry-standard encryption to protect your data. 
-            Your personal information is never shared with third parties without your consent.
+            We use industry-standard encryption to protect your data. Your
+            personal information is never shared with third parties without your
+            consent.
           </p>
         </div>
       </div>
@@ -151,38 +150,48 @@ export default function SettingsPage() {
   const router = useRouter()
   const { user, profile, loading: authLoading } = useAuth()
   const { logout } = useLogout()
- const userProfile = {
+  const userProfile = {
     name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
     email: user?.email || 'guest@example.com',
     avatar: profile?.avatar_url || null
   }
   // Memoize settings sections to prevent recreation on every render
-  const settingsSections = useMemo(() => [
-    {
-      title: 'General',
-      description: 'Manage your profile, account preferences, and security settings',
-      icon: User,
-      href: '/settings/general',
-      color: 'orange',
-      items: ['Profile Information', 'Password & Security', 'Notification Preferences']
-    },
-    {
-      title: 'Billing',
-      description: 'View and manage your payment methods, invoices, and billing history',
-      icon: CreditCard,
-      href: '/settings/billing',
-      color: 'blue',
-      items: ['Payment Methods', 'Billing History', 'Invoices']
-    },
-    {
-      title: 'Subscription',
-      description: 'Manage your subscription plan, view usage, and upgrade options',
-      icon: Crown,
-      href: '/settings/subscription',
-      color: 'purple',
-      items: ['Current Plan', 'Usage Statistics', 'Upgrade Options']
-    }
-  ], [])
+  const settingsSections = useMemo(
+    () => [
+      {
+        title: 'General',
+        description:
+          'Manage your profile, account preferences, and security settings',
+        icon: User,
+        href: '/settings/general',
+        color: 'orange',
+        items: [
+          'Profile Information',
+          'Password & Security',
+          'Notification Preferences'
+        ]
+      },
+      {
+        title: 'Billing',
+        description:
+          'View and manage your payment methods, invoices, and billing history',
+        icon: CreditCard,
+        href: '/settings/billing',
+        color: 'blue',
+        items: ['Payment Methods', 'Billing History', 'Invoices']
+      },
+      {
+        title: 'Subscription',
+        description:
+          'Manage your subscription plan, view usage, and upgrade options',
+        icon: Crown,
+        href: '/settings/subscription',
+        color: 'purple',
+        items: ['Current Plan', 'Usage Statistics', 'Upgrade Options']
+      }
+    ],
+    []
+  )
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -191,14 +200,14 @@ export default function SettingsPage() {
     }
   }, [authLoading, user, router])
 
+  const [delayedLoading, setDelayedLoading] = useState(true)
+  useEffect(() => {
+    const timer = setTimeout(() => setDelayedLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
   // Loading state - after all hooks
-  if (authLoading) {
-    return (
-      <LoadingState
-        message='Loading settings...'
-        className='min-h-screen'
-      />
-    )
+  if (delayedLoading || authLoading) {
+    return <SettingsPageSkeleton userProfile={userProfile} />
   }
 
   // Don't render if not authenticated
@@ -210,7 +219,7 @@ export default function SettingsPage() {
     <>
       <NeonBackground />
       <SideBarLayout userProfile={userProfile}>
-        <div className='flex h-screen w-full flex-col font-mono text-neutral-100 bg-neutral-900/10 backdrop-blur-sm'>
+        <div className='flex h-screen w-full flex-col bg-neutral-900/10 font-mono text-neutral-100 backdrop-blur-sm'>
           {/* Header */}
           <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>
             <NavigationBar

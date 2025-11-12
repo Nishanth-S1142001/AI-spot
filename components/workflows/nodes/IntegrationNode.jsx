@@ -1,5 +1,5 @@
-import { Handle, Position } from 'reactflow'
 import { Zap } from 'lucide-react'
+import { Handle, Position } from 'reactflow'
 
 export default function IntegrationNode({ data, selected }) {
    const getExecutionColor = () => {

@@ -36,10 +36,10 @@ import {
   useCreateWorkflow,
   useDeleteWorkflow
 } from '../../lib/hooks/useWorkflowData'
-
+import WorkflowExecutionsPageSkeleton from '../../components/skeleton/WorkflowExecutionsPageSkeleton'
 /**
  * FULLY OPTIMIZED Workflows List Page
- * 
+ *
  * React Query Integration:
  * - Automatic data fetching with caching
  * - Optimistic updates for better UX
@@ -482,11 +482,11 @@ export default function WorkflowsPage() {
   const router = useRouter()
   const { user, profile, loading: authLoading } = useAuth()
   const { logout } = useLogout()
-const userProfile = {
-  name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
-  email: user?.email || 'guest@example.com',
-  avatar: profile?.avatar_url || null
-}
+  const userProfile = {
+    name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
+    email: user?.email || 'guest@example.com',
+    avatar: profile?.avatar_url || null
+  }
   // Local UI state - MUST be declared before any conditional returns
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -596,7 +596,7 @@ const userProfile = {
   // Handlers - MUST be before conditional returns
   const handleCreateClick = useCallback(() => setShowCreateModal(true), [])
   const handleCloseModal = useCallback(() => setShowCreateModal(false), [])
-  
+
   const handleCreateSuccess = useCallback(() => {
     setShowCreateModal(false)
   }, [])
@@ -638,7 +638,7 @@ const userProfile = {
   )
 
   const handleSearch = useCallback((query) => setSearchQuery(query), [])
-  
+
   const handlePageChange = useCallback((page) => {
     setCurrentPage(page)
     document
@@ -664,9 +664,14 @@ const userProfile = {
   useEffect(() => {
     setCurrentPage(1)
   }, [searchQuery, statusFilter, triggerFilter])
+  const [delayedLoading, setDelayedLoading] = useState(true)
+  useEffect(() => {
+    const timer = setTimeout(() => setDelayedLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
 
   // Loading state
-  if (authLoading || workflowsLoading) {
+  if (delayedLoading) {
     return (
       <LoadingState
         message='Loading workflows...'
@@ -675,7 +680,9 @@ const userProfile = {
       />
     )
   }
-
+  if (authLoading || workflowsLoading) {
+    return <WorkflowExecutionsPageSkeleton userProfile={userProfile} />
+  }
   // Don't render if not authenticated
   if (!user) {
     return null
@@ -685,7 +692,7 @@ const userProfile = {
     <>
       <NeonBackground />
       <SideBarLayout userProfile={userProfile}>
-        <div className='relative flex h-screen w-full flex-col font-mono bg-neutral-900/30 text-neutral-100'>
+        <div className='relative flex h-screen w-full flex-col bg-neutral-900/30 font-mono text-neutral-100'>
           {/* Header */}
           <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>
             <NavigationBar
@@ -751,10 +758,7 @@ const userProfile = {
               {/* Workflows Section */}
               <div id='workflows-section'>
                 {workflows.length === 0 ? (
-                  <EmptyState
-                    onCreate={handleCreateClick}
-                    hasSearch={false}
-                  />
+                  <EmptyState onCreate={handleCreateClick} hasSearch={false} />
                 ) : (
                   <>
                     {/* Header with Search and Filters */}
@@ -810,11 +814,9 @@ const userProfile = {
                                   : 'bg-neutral-800/30 text-neutral-400 hover:bg-neutral-800/50'
                               }`}
                             >
-                              {status.charAt(0).toUpperCase() +
-                                status.slice(1)}
+                              {status.charAt(0).toUpperCase() + status.slice(1)}
                               {status === 'all' && ` (${statistics.total})`}
-                              {status === 'active' &&
-                                ` (${statistics.active})`}
+                              {status === 'active' && ` (${statistics.active})`}
                               {status === 'draft' && ` (${statistics.draft})`}
                             </button>
                           ))}
@@ -840,8 +842,7 @@ const userProfile = {
                               >
                                 {trigger.charAt(0).toUpperCase() +
                                   trigger.slice(1)}
-                                {trigger === 'all' &&
-                                  ` (${statistics.total})`}
+                                {trigger === 'all' && ` (${statistics.total})`}
                                 {trigger === 'webhook' &&
                                   ` (${statistics.byTrigger.webhook})`}
                                 {trigger === 'schedule' &&
@@ -883,7 +884,9 @@ const userProfile = {
                               workflow={workflow}
                               onEdit={() => handleEditWorkflow(workflow.id)}
                               onDelete={() => handleDeleteWorkflow(workflow.id)}
-                              onDuplicate={() => handleDuplicateWorkflow(workflow)}
+                              onDuplicate={() =>
+                                handleDuplicateWorkflow(workflow)
+                              }
                               onView={() => handleViewExecutions(workflow.id)}
                               searchQuery={searchQuery}
                             />

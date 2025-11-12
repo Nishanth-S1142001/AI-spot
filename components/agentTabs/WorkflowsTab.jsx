@@ -1,11 +1,11 @@
 'use client'
 
-import { memo } from 'react'
+import { Calendar, ChevronRight, Mail, Plus, Webhook as WebhookIcon, Zap } from 'lucide-react'
 import Link from 'next/link'
-import { Zap, Plus, Edit, ChevronRight, Calendar, Mail, Webhook as WebhookIcon } from 'lucide-react'
+import { memo } from 'react'
 
-import Card from '../ui/card'
 import Button from '../ui/button'
+import Card from '../ui/card'
 
 /**
  * OPTIMIZED Workflows Tab Component

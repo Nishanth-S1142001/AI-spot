@@ -2,82 +2,87 @@
 import {
   Aperture,
   BarChart3,
-  Code,
-  MessageSquare,
-  Zap,
   Calendar,
-  Settings,
+  Code,
   FileText,
+  Instagram,
   Loader2,
+  MessageSquare,
   Phone,
-  Instagram
+  Settings,
+  Zap
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useParams, useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
-import LoadingState from '../../../../components/common/loading-state'
 import NavigationBar from '../../../../components/navigationBar/navigationBar'
 import { useAuth } from '../../../../components/providers/AuthProvider'
 import SideBarLayout from '../../../../components/sideBarLayout'
+import AgentManagementSkeleton from '../../../../components/skeleton/AgentManagementSkeleton'
+import AnalyticsTabSkeleton from '../../../../components/skeleton/AnalyticsTabSkeleton'
+import ApiKeySectionSkeleton from '../../../../components/skeleton/ApiKeySectionSkeleton'
+import CalendarSettingsSkeleton from '../../../../components/skeleton/CalendarSettingsSkeleton'
+import CalendarTabSkeleton from '../../../../components/skeleton/CalendarTabSkeleton'
+import ConversationsTabSkeleton from '../../../../components/skeleton/ConversationsTabSkeleton'
+import EmbedTabSkeleton from '../../../../components/skeleton/EmbedTabSkeleton'
+import KnowledgeTabSkeleton from '../../../../components/skeleton/KnowledgeTabSkeleton'
+import OverviewTabSkeleton from '../../../../components/skeleton/OverviewTabSkeleton'
+import SmsTabSkeleton from '../../../../components/skeleton/SmsTabSkeleton'
+import WorkflowsTabSkeleton from '../../../../components/skeleton/WorkflowsTabSkeleton'
 import NeonBackground from '../../../../components/ui/background'
-import { useLogout } from '../../../../lib/supabase/auth'
-import ApiKeySection from '../../../../components/agentTabs/ApiKeySection'
-import ApiKeyUsageStats from '../../../../components/agentTabs/ApiKeyUsageStats'
 import {
   useAgent,
-  useConversation,
   useAnalytics,
-  useToggleAgentStatus,
+  useConversation,
   useDeleteAgent,
+  usePrefetchAnalytics,
   usePrefetchConversations,
-  usePrefetchAnalytics
+  useToggleAgentStatus
 } from '../../../../lib/hooks/useAgentData'
+import { useLogout } from '../../../../lib/supabase/auth'
 
 // Dynamic imports
 const OverviewTab = dynamic(
   () => import('../../../../components/agentTabs/OverviewTab'),
-  { loading: () => <TabLoadingSkeleton />, ssr: false }
+  { loading: () => <OverviewTabSkeleton />, ssr: false }
 )
 const ConversationsTab = dynamic(
   () => import('../../../../components/agentTabs/ConversationsTab'),
-  { loading: () => <TabLoadingSkeleton />, ssr: false }
+  { loading: () => <ConversationsTabSkeleton />, ssr: false }
 )
 const AnalyticsTab = dynamic(
   () => import('../../../../components/agentTabs/AnalyticsTab'),
-  { loading: () => <TabLoadingSkeleton />, ssr: false }
+  { loading: () => <AnalyticsTabSkeleton />, ssr: false }
 )
 const WorkflowsTab = dynamic(
   () => import('../../../../components/agentTabs/WorkflowsTab'),
-  { loading: () => <TabLoadingSkeleton />, ssr: false }
+  { loading: () => <WorkflowsTabSkeleton />, ssr: false }
 )
 const EmbedTab = dynamic(
   () => import('../../../../components/agentTabs/EmbedTab'),
-  { loading: () => <TabLoadingSkeleton />, ssr: false }
+  { loading: () => <EmbedTabSkeleton />, ssr: false }
 )
 const CalendarBookingTab = dynamic(
   () => import('../../../../components/agentTabs/CalendarBookingTab'),
-  { loading: () => <TabLoadingSkeleton />, ssr: false }
+  { loading: () => <CalendarTabSkeleton />, ssr: false }
 )
 const CalendarSettings = dynamic(
   () => import('../../../../components/CalendarSettings'),
-  { loading: () => <TabLoadingSkeleton />, ssr: false }
+  { loading: () => <CalendarSettingsSkeleton />, ssr: false }
 )
 const KnowledgeTab = dynamic(
   () => import('../../../../components/agentTabs/KnowledgeTab'),
-  { loading: () => <TabLoadingSkeleton />, ssr: false }
+  { loading: () => <KnowledgeTabSkeleton />, ssr: false }
 )
 const SmsTab = dynamic(
   () => import('../../../../components/agentTabs/SmsTab'),
-  { loading: () => <TabLoadingSkeleton />, ssr: false }
+  { loading: () => <SmsTabSkeleton />, ssr: false }
 )
-const ApiKeyUsageTab = dynamic(
-  () => import('../../../../components/agentTabs/ApiKeyUsageStats'),
-  { loading: () => <TabLoadingSkeleton />, ssr: false }
-)
+
 const ApiKeySectionTab = dynamic(
   () => import('../../../../components/agentTabs/ApiKeySection'),
-  { loading: () => <TabLoadingSkeleton />, ssr: false }
+  { loading: () => <ApiKeySectionSkeleton />, ssr: false }
 )
 
 function TabLoadingSkeleton() {
@@ -107,7 +112,7 @@ const ALL_TABS = [
     description: 'Api Key Setting',
     condition: () => true // Always show
   },
- 
+
   {
     id: 'knowledge',
     name: 'Knowledge',
@@ -180,6 +185,15 @@ export default function AgentManagement() {
   const { logout } = useLogout()
   const [activeTab, setActiveTab] = useState('overview')
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // Artificial delay so skeleton shows at least 3 seconds
+  const [delayedLoading, setDelayedLoading] = useState(true)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDelayedLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
+
   const userProfile = {
     name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
     email: user?.email || 'guest@example.com',
@@ -230,7 +244,7 @@ export default function AgentManagement() {
       toast.error('Agent not found')
       router.push('/agents/dashboard')
     }
-  }, [agentError, agentLoading, router])
+  }, [agentError, agentLoading, router, isDeleting])
 
   // Ensure active tab is visible, otherwise switch to overview
   useEffect(() => {
@@ -295,14 +309,9 @@ export default function AgentManagement() {
     [prefetchConversations, prefetchAnalytics]
   )
 
-  // Loading state
-  if (authLoading || agentLoading) {
-    return (
-      <LoadingState
-        message={authLoading ? 'Authenticating...' : 'Loading Agent...'}
-        className='min-h-screen'
-      />
-    )
+  // Show skeleton during delayed loading or initial loading
+  if (delayedLoading || authLoading || agentLoading) {
+    return <AgentManagementSkeleton userProfile={userProfile} />
   }
 
   // No agent found
@@ -314,8 +323,8 @@ export default function AgentManagement() {
     <>
       <NeonBackground />
       <SideBarLayout userProfile={userProfile}>
-    <div className='flex h-screen w-full flex-col font-mono text-neutral-100 bg-neutral-900/10 backdrop-blur-sm'>
-              {/* Header */}
+        <div className='flex h-screen w-full flex-col bg-neutral-900/10 font-mono text-neutral-100 backdrop-blur-sm'>
+          {/* Header */}
           <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>
             <NavigationBar
               profile={profile}
@@ -425,7 +434,7 @@ export default function AgentManagement() {
                 )}
 
                 {activeTab === 'apiKeySection' && (
-                  <ApiKeySection agent={agent} agentId={id} />
+                  <ApiKeySectionTab agent={agent} agentId={id} />
                 )}
 
                 {/* {activeTab === 'apiKeyUsageStats' && (
@@ -438,7 +447,7 @@ export default function AgentManagement() {
 
                 {activeTab === 'conversations' &&
                   (conversationsLoading ? (
-                    <TabLoadingSkeleton />
+                    <ConversationsTabSkeleton />
                   ) : (
                     <ConversationsTab
                       conversations={conversations}
@@ -448,7 +457,7 @@ export default function AgentManagement() {
 
                 {activeTab === 'analytics' &&
                   (analyticsLoading ? (
-                    <TabLoadingSkeleton />
+                    <AnalyticsTabSkeleton />
                   ) : (
                     <AnalyticsTab
                       conversations={conversations}

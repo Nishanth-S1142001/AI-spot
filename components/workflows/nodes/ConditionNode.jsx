@@ -1,5 +1,5 @@
-import { Handle, Position } from 'reactflow'
 import { GitBranch } from 'lucide-react'
+import { Handle, Position } from 'reactflow'
 
 export default function ConditionNode({ data }) {
   const getExecutionColor = () => {

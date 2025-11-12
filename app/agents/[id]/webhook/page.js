@@ -22,7 +22,14 @@ import {
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useParams, useRouter } from 'next/navigation'
-import { useState, useCallback, useMemo, memo, Suspense, useEffect } from 'react'
+import {
+  useState,
+  useCallback,
+  useMemo,
+  memo,
+  Suspense,
+  useEffect
+} from 'react'
 import LoadingState from '../../../../components/common/loading-state'
 import NavigationBar from '../../../../components/navigationBar/navigationBar'
 import { useAuth } from '../../../../components/providers/AuthProvider'
@@ -32,6 +39,7 @@ import Badge from '../../../../components/ui/badge'
 import Button from '../../../../components/ui/button'
 import Card from '../../../../components/ui/card'
 import { useLogout } from '../../../../lib/supabase/auth'
+import WebhookManagementSkeleton from '../../../../components/skeleton/WebhookManagementSkeleton'
 import {
   useAgent,
   useWebhooks,
@@ -42,27 +50,30 @@ import {
   useDeleteWebhook,
   useToggleWebhook,
   useRegenerateWebhookKey,
-  useCopyWebhookUrl,
+  useCopyWebhookUrl
 } from '../../../../lib/hooks/useAgentData'
-
+import CreateWebhookModalSkeleton from '../../../../components/skeleton/CreateWebhookModalSkeleton'
+import EditWebhookModalSkeleton from '../../../../components/skeleton/EditWebhookModalSkeleton'
+import TestWebhookModalSkeleton from '../../../../components/skeleton/TestWebhookModalSkeleton'
+import SecurityModalSkeleton from '../../../../components/skeleton/SecurityModalSkeleton'
 // Dynamic imports for modals
 const CreateWebhookModal = dynamic(
   () => import('./modals/CreateWebhookModal'),
   {
-    loading: () => <ModalLoadingSkeleton />,
+    loading: () => <CreateWebhookModalSkeleton />,
     ssr: false
   }
 )
 const EditWebhookModal = dynamic(() => import('./modals/EditWebhookModal'), {
-  loading: () => <ModalLoadingSkeleton />,
+  loading: () => <EditWebhookModalSkeleton />,
   ssr: false
 })
 const TestWebhookModal = dynamic(() => import('./modals/TestWebhookModal'), {
-  loading: () => <ModalLoadingSkeleton />,
+  loading: () => <TestWebhookModalSkeleton />,
   ssr: false
 })
 const SecurityModal = dynamic(() => import('./modals/SecurityModal'), {
-  loading: () => <ModalLoadingSkeleton />,
+  loading: () => <SecurityModalSkeleton />,
   ssr: false
 })
 
@@ -254,7 +265,7 @@ WebhookCard.displayName = 'WebhookCard'
 // Invocation row component
 const InvocationRow = memo(({ invocation }) => {
   const [showDetails, setShowDetails] = useState(false)
-  
+
   return (
     <div className='rounded-lg border border-neutral-800/50 bg-neutral-950/30 p-4 transition-colors hover:bg-neutral-950/50'>
       <div className='flex items-center justify-between'>
@@ -294,12 +305,16 @@ const InvocationRow = memo(({ invocation }) => {
       {showDetails && invocation.request_body && (
         <div className='mt-4 rounded-lg border border-neutral-800/50 bg-neutral-900/50 p-3'>
           <pre className='custom-scrollbar max-h-48 overflow-auto text-xs text-neutral-400'>
-            {JSON.stringify({ 
-              request_body: invocation.request_body,
-              response_body: invocation.response_body,
-              error_message: invocation.error_message,
-              request_method: invocation.request_method
-            }, null, 2)}
+            {JSON.stringify(
+              {
+                request_body: invocation.request_body,
+                response_body: invocation.response_body,
+                error_message: invocation.error_message,
+                request_method: invocation.request_method
+              },
+              null,
+              2
+            )}
           </pre>
         </div>
       )}
@@ -344,10 +359,10 @@ export default function AgentWebhookPage() {
   const stats = useWebhookStats(selectedWebhook?.id)
 
   const userProfile = {
-  name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
-  email: user?.email || 'guest@example.com',
-  avatar: profile?.avatar_url || null
-}
+    name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
+    email: user?.email || 'guest@example.com',
+    avatar: profile?.avatar_url || null
+  }
   // Mutations
   const createWebhookMutation = useCreateWebhook(id)
   const updateWebhookMutation = useUpdateWebhook(id)
@@ -486,10 +501,7 @@ export default function AgentWebhookPage() {
   // Loading state
   if (authLoading || agentLoading || webhooksLoading) {
     return (
-      <LoadingState
-        message='Loading webhooks...'
-        className='min-h-screen'
-      />
+      <LoadingState message='Loading webhooks...' className='min-h-screen' />
     )
   }
 
@@ -513,13 +525,33 @@ export default function AgentWebhookPage() {
       </div>
     )
   }
+  // Artificial delay so skeleton shows at least 3 seconds
+  const [delayedLoading, setDelayedLoading] = useState(true)
 
+  useEffect(() => {
+    const timer = setTimeout(() => setDelayedLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
   if (!agent) {
     return (
       <LoadingState message='Agent not found...' className='min-h-screen' />
     )
   }
+  if (delayedLoading) {
+    return (
+      <LoadingState message='Loading Webhooks...' className='min-h-screen' />
+    )
+  }
 
+  // Loading state - show skeleton
+  if (authLoading || agentLoading || webhooksLoading) {
+    return (
+      <WebhookManagementSkeleton
+        userProfile={userProfile}
+        agentName={agent?.name || 'Agent'}
+      />
+    )
+  }
   // Don't render if not authenticated
   if (!user) {
     return null
@@ -529,8 +561,8 @@ export default function AgentWebhookPage() {
     <>
       <NeonBackground />
       <SideBarLayout userProfile={userProfile}>
-     <div className='flex h-screen w-full flex-col font-mono text-neutral-100 bg-neutral-900/10 backdrop-blur-sm'>
-             {/* Header */}
+        <div className='flex h-screen w-full flex-col bg-neutral-900/10 font-mono text-neutral-100 backdrop-blur-sm'>
+          {/* Header */}
           <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>
             <NavigationBar
               profile={profile}
@@ -643,7 +675,9 @@ export default function AgentWebhookPage() {
                                 onClick={() => refetchInvocations()}
                                 disabled={invocationsLoading}
                               >
-                                <RefreshCw className={`mr-2 h-3 w-3 ${invocationsLoading ? 'animate-spin' : ''}`} />
+                                <RefreshCw
+                                  className={`mr-2 h-3 w-3 ${invocationsLoading ? 'animate-spin' : ''}`}
+                                />
                                 Refresh
                               </Button>
                               <Button

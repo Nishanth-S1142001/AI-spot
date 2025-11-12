@@ -29,15 +29,15 @@ import SideBarLayout from '../../components/sideBarLayout'
 import { useLogout } from '../../lib/supabase/auth'
 import NavigationBar from '../../components/navigationBar/navigationBar'
 import { useSubmitFeedback } from '../../lib/hooks/useAgentData'
-
+import FeedbackPageSkeleton from '../../components/skeleton/FeedbackSkeleton'
 /**
  * FULLY OPTIMIZED Feedback Page
- * 
+ *
  * React Query Integration:
  * - Mutation for form submission
  * - Automatic success/error handling
  * - Consistent with other pages
- * 
+ *
  * Performance:
  * - Memoized components (already good)
  * - Optimized form validation
@@ -170,10 +170,10 @@ export default function FeedbackPage() {
   const router = useRouter()
   const { logout } = useLogout()
   const userProfile = {
-  name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
-  email: user?.email || 'guest@example.com',
-  avatar: profile?.avatar_url || null
-}
+    name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
+    email: user?.email || 'guest@example.com',
+    avatar: profile?.avatar_url || null
+  }
   // React Query mutation
   const submitFeedbackMutation = useSubmitFeedback()
 
@@ -182,7 +182,11 @@ export default function FeedbackPage() {
   const [rating, setRating] = useState(0)
   const [submitted, setSubmitted] = useState(false)
   const [attachments, setAttachments] = useState([])
-
+  const [delayedLoading, setDelayedLoading] = useState(true)
+  useEffect(() => {
+    const timer = setTimeout(() => setDelayedLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
   const fileInputRef = useRef(null)
 
   const {
@@ -256,7 +260,9 @@ export default function FeedbackPage() {
     if (validFiles.length !== files.length) {
       // Some files were invalid
       const invalidCount = files.length - validFiles.length
-      console.warn(`${invalidCount} file(s) skipped (max 5MB, PNG/JPG/GIF/PDF only)`)
+      console.warn(
+        `${invalidCount} file(s) skipped (max 5MB, PNG/JPG/GIF/PDF only)`
+      )
     }
 
     if (validFiles.length > 0) {
@@ -301,7 +307,15 @@ export default function FeedbackPage() {
         // Error already handled by mutation
       }
     },
-    [selectedType, rating, attachments, user, profile, reset, submitFeedbackMutation]
+    [
+      selectedType,
+      rating,
+      attachments,
+      user,
+      profile,
+      reset,
+      submitFeedbackMutation
+    ]
   )
 
   // Show rating section only for relevant types
@@ -311,7 +325,7 @@ export default function FeedbackPage() {
   )
 
   // Loading state
-  if (authLoading) {
+  if (delayedLoading) {
     return (
       <LoadingState
         message='Loading feedback form...'
@@ -319,7 +333,9 @@ export default function FeedbackPage() {
       />
     )
   }
-
+  if (authLoading) {
+    return <FeedbackPageSkeleton userProfile={userProfile} />
+  }
   // Not authenticated
   if (!user) {
     return null
@@ -330,8 +346,8 @@ export default function FeedbackPage() {
     return (
       <>
         <NeonBackground />
-     <div className='flex h-screen w-full flex-col font-mono text-neutral-100 bg-neutral-900/10 backdrop-blur-sm'>
-             <Card className='w-full max-w-md border-green-600/30 bg-gradient-to-br from-green-900/10 to-neutral-950/50 p-8'>
+        <div className='flex h-screen w-full flex-col bg-neutral-900/10 font-mono text-neutral-100 backdrop-blur-sm'>
+          <Card className='w-full max-w-md border-green-600/30 bg-gradient-to-br from-green-900/10 to-neutral-950/50 p-8'>
             <div className='relative mx-auto mb-6 flex h-20 w-20 items-center justify-center'>
               <div className='absolute inset-0 animate-ping rounded-full bg-green-500/20' />
               <div className='relative flex h-16 w-16 items-center justify-center rounded-full bg-green-900/40 ring-2 ring-green-500/50'>

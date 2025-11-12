@@ -42,6 +42,7 @@ import {
   useRegenerateWebhookKey,
   useCopyWebhookUrl
 } from '../../lib/hooks/useAgentData'
+import WebhookManagementSkeleton from '../../components/skeleton/WebhookManagementSkeleton'
 
 /**
  * FULLY OPTIMIZED Webhooks Dashboard Component
@@ -412,7 +413,7 @@ export default function WebhooksDashboard() {
   const { user, profile, loading: authLoading } = useAuth()
   const { logout } = useLogout()
   const router = useRouter()
-  
+
   const userProfile = {
     name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
     email: user?.email || 'guest@example.com',
@@ -423,7 +424,8 @@ export default function WebhooksDashboard() {
   const { data: agents = [], isLoading: agentsLoading } = useAgents(user?.id)
 
   // ✅ FIX: Use single hook to fetch all webhooks instead of calling useWebhooks in a loop
-  const { data: webhooksByAgent = {}, isLoading: webhooksLoading } = useAllWebhooks(agents)
+  const { data: webhooksByAgent = {}, isLoading: webhooksLoading } =
+    useAllWebhooks(agents)
 
   // Local UI state only
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -536,15 +538,19 @@ export default function WebhooksDashboard() {
       router.push('/')
     }
   }, [authLoading, user, router])
-
+  const [delayedLoading, setDelayedLoading] = useState(true)
+  useEffect(() => {
+    const timer = setTimeout(() => setDelayedLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
   // Loading state
-  if (authLoading || agentsLoading || webhooksLoading) {
+  if (delayedLoading) {
     return (
       <LoadingState
         message={
-          authLoading 
-            ? 'Authenticating...' 
-            : webhooksLoading 
+          authLoading
+            ? 'Authenticating...'
+            : webhooksLoading
               ? 'Loading webhooks...'
               : 'Loading your webhooks...'
         }
@@ -552,13 +558,16 @@ export default function WebhooksDashboard() {
       />
     )
   }
+  if (delayedLoading || authLoading || agentsLoading || webhooksLoading) {
+    return <WebhookManagementSkeleton userProfile={userProfile} />
+  }
 
   return (
     <>
       <NeonBackground />
       <SideBarLayout userProfile={userProfile}>
-       <div className='flex h-screen w-full flex-col font-mono text-neutral-100 bg-neutral-900/10 backdrop-blur-sm'>
-           {/* Header */}
+        <div className='flex h-screen w-full flex-col bg-neutral-900/10 font-mono text-neutral-100 backdrop-blur-sm'>
+          {/* Header */}
           <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>
             <NavigationBar
               profile={profile}

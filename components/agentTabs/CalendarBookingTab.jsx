@@ -1,40 +1,39 @@
 'use client'
 
-import { useState, useCallback, useMemo, memo } from 'react'
-import { 
-  Calendar, 
-  Clock, 
-  Mail, 
-  Phone, 
-  User, 
-  Check, 
-  X, 
-  RefreshCw, 
-  ExternalLink, 
-  AlertCircle 
+import { format, isAfter, isBefore, parseISO, startOfDay } from 'date-fns'
+import {
+  AlertCircle,
+  Calendar,
+  Check,
+  Clock,
+  ExternalLink,
+  Mail,
+  Phone,
+  RefreshCw,
+  User,
+  X
 } from 'lucide-react'
-import Card from '../ui/card'
+import { memo, useCallback, useMemo, useState } from 'react'
 import Button from '../ui/button'
-import { format, parseISO, isAfter, isBefore, startOfDay } from 'date-fns'
-import LoadingState from '../common/loading-state'
+import Card from '../ui/card'
 
 // Import React Query hooks
 import {
   useBookings,
+  useBookingStats,
   useCalendarConfig,
-  useUpdateBooking,
-  useBookingStats
+  useUpdateBooking
 } from '../../lib/hooks/useAgentData'
 
 /**
  * FULLY OPTIMIZED Calendar Booking Tab Component
- * 
+ *
  * React Query Integration:
  * - Automatic data fetching with caching
  * - Optimistic updates
  * - Auto-refresh every 5 minutes
  * - No manual state management for server data
- * 
+ *
  * Performance:
  * - Memoized components
  * - Memoized filtering logic
@@ -47,9 +46,7 @@ import {
 // =====================================================
 const StatCard = memo(({ value, label, colorClass }) => (
   <div className='text-center'>
-    <div className={`text-3xl font-bold text-${colorClass}-400`}>
-      {value}
-    </div>
+    <div className={`text-3xl font-bold text-${colorClass}-400`}>{value}</div>
     <div className='text-sm text-neutral-400'>{label}</div>
   </div>
 ))
@@ -67,11 +64,13 @@ const CalendarConfigCard = memo(({ calendar }) => {
         <h3 className='text-lg font-semibold text-orange-400'>
           Calendar Configuration
         </h3>
-        <span className={`rounded-full px-3 py-1 text-xs font-medium ${
-          calendar.is_active 
-            ? 'bg-green-900/40 text-green-300' 
-            : 'bg-red-900/40 text-red-300'
-        }`}>
+        <span
+          className={`rounded-full px-3 py-1 text-xs font-medium ${
+            calendar.is_active
+              ? 'bg-green-900/40 text-green-300'
+              : 'bg-red-900/40 text-red-300'
+          }`}
+        >
           {calendar.is_active ? 'Active' : 'Inactive'}
         </span>
       </div>
@@ -90,9 +89,7 @@ const CalendarConfigCard = memo(({ calendar }) => {
         </div>
         <div>
           <span className='text-neutral-400'>Timezone:</span>
-          <p className='font-medium text-neutral-200'>
-            {calendar.timezone}
-          </p>
+          <p className='font-medium text-neutral-200'>{calendar.timezone}</p>
         </div>
         <div>
           <span className='text-neutral-400'>Advance Booking:</span>
@@ -104,11 +101,11 @@ const CalendarConfigCard = memo(({ calendar }) => {
       {calendar.calendly_url && (
         <div className='mt-4 flex items-center gap-2'>
           <ExternalLink className='h-4 w-4 text-orange-400' />
-          <a 
-            href={calendar.calendly_url} 
-            target='_blank' 
+          <a
+            href={calendar.calendly_url}
+            target='_blank'
             rel='noopener noreferrer'
-            className='text-sm text-orange-400 hover:text-orange-300 underline'
+            className='text-sm text-orange-400 underline hover:text-orange-300'
           >
             Calendly Booking Page
           </a>
@@ -124,13 +121,16 @@ CalendarConfigCard.displayName = 'CalendarConfigCard'
 // =====================================================
 const DebugInfoCard = memo(({ allBookings, filter, filteredCount }) => {
   const today = format(new Date(), 'yyyy-MM-dd')
-  
+
   return (
-    <Card className='bg-neutral-900 border-neutral-700'>
-      <h4 className='text-sm font-semibold text-orange-400 mb-2'>Debug Information</h4>
-      <div className='space-y-2 text-xs font-mono'>
+    <Card className='border-neutral-700 bg-neutral-900'>
+      <h4 className='mb-2 text-sm font-semibold text-orange-400'>
+        Debug Information
+      </h4>
+      <div className='space-y-2 font-mono text-xs'>
         <div className='text-neutral-400'>
-          Total bookings fetched: <span className='text-white'>{allBookings.length}</span>
+          Total bookings fetched:{' '}
+          <span className='text-white'>{allBookings.length}</span>
         </div>
         <div className='text-neutral-400'>
           Current filter: <span className='text-white'>{filter}</span>
@@ -142,12 +142,32 @@ const DebugInfoCard = memo(({ allBookings, filter, filteredCount }) => {
           Today's date: <span className='text-white'>{today}</span>
         </div>
         <div className='mt-4'>
-          <div className='text-neutral-400 mb-2'>Status breakdown:</div>
-          <div className='pl-4 space-y-1'>
-            <div>Confirmed: <span className='text-green-400'>{allBookings.filter(b => b.status === 'confirmed').length}</span></div>
-            <div>Pending: <span className='text-yellow-400'>{allBookings.filter(b => b.status === 'pending').length}</span></div>
-            <div>Cancelled: <span className='text-red-400'>{allBookings.filter(b => b.status === 'cancelled').length}</span></div>
-            <div>Completed: <span className='text-blue-400'>{allBookings.filter(b => b.status === 'completed').length}</span></div>
+          <div className='mb-2 text-neutral-400'>Status breakdown:</div>
+          <div className='space-y-1 pl-4'>
+            <div>
+              Confirmed:{' '}
+              <span className='text-green-400'>
+                {allBookings.filter((b) => b.status === 'confirmed').length}
+              </span>
+            </div>
+            <div>
+              Pending:{' '}
+              <span className='text-yellow-400'>
+                {allBookings.filter((b) => b.status === 'pending').length}
+              </span>
+            </div>
+            <div>
+              Cancelled:{' '}
+              <span className='text-red-400'>
+                {allBookings.filter((b) => b.status === 'cancelled').length}
+              </span>
+            </div>
+            <div>
+              Completed:{' '}
+              <span className='text-blue-400'>
+                {allBookings.filter((b) => b.status === 'completed').length}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -159,12 +179,7 @@ DebugInfoCard.displayName = 'DebugInfoCard'
 // =====================================================
 // MEMOIZED BOOKING CARD COMPONENT
 // =====================================================
-const BookingCard = memo(({ 
-  booking, 
-  onCancel, 
-  isUpdating, 
-  debugMode 
-}) => {
+const BookingCard = memo(({ booking, onCancel, isUpdating, debugMode }) => {
   const getStatusBadge = (status) => {
     const badges = {
       confirmed: 'bg-green-900/40 text-green-300 border border-green-600',
@@ -178,12 +193,14 @@ const BookingCard = memo(({
   }
 
   return (
-    <Card className='hover:border-orange-600/50 transition'>
+    <Card className='transition hover:border-orange-600/50'>
       <div className='flex flex-col gap-4 md:flex-row md:items-center md:justify-between'>
         {/* Booking Info */}
         <div className='flex-1 space-y-3'>
           <div className='flex items-center gap-3'>
-            <span className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusBadge(booking.status)}`}>
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusBadge(booking.status)}`}
+            >
               {booking.status}
             </span>
             <span className='text-sm text-neutral-500'>
@@ -227,7 +244,8 @@ const BookingCard = memo(({
 
           {booking.customer_notes && (
             <div className='text-sm text-neutral-400'>
-              <span className='font-medium'>Notes:</span> {booking.customer_notes}
+              <span className='font-medium'>Notes:</span>{' '}
+              {booking.customer_notes}
             </div>
           )}
 
@@ -244,8 +262,12 @@ const BookingCard = memo(({
           )}
 
           {debugMode && (
-            <div className='text-xs font-mono text-neutral-500 pt-2 border-t border-neutral-700'>
-              Raw date: {booking.booking_date} | Status: {booking.status} | Created: {booking.created_at ? format(parseISO(booking.created_at), 'MMM dd, HH:mm') : 'N/A'}
+            <div className='border-t border-neutral-700 pt-2 font-mono text-xs text-neutral-500'>
+              Raw date: {booking.booking_date} | Status: {booking.status} |
+              Created:{' '}
+              {booking.created_at
+                ? format(parseISO(booking.created_at), 'MMM dd, HH:mm')
+                : 'N/A'}
             </div>
           )}
         </div>
@@ -290,26 +312,20 @@ BookingCard.displayName = 'BookingCard'
 // MEMOIZED EMPTY STATE COMPONENT
 // =====================================================
 const EmptyState = memo(({ filter, allBookingsCount, onViewAll }) => (
-  <Card className='text-center py-12'>
-    <Calendar className='h-16 w-16 mx-auto text-neutral-600 mb-4' />
+  <Card className='py-12 text-center'>
+    <Calendar className='mx-auto mb-4 h-16 w-16 text-neutral-600' />
     <p className='text-neutral-400'>
-      {filter === 'all' 
-        ? 'No bookings found' 
-        : `No ${filter} bookings found`}
+      {filter === 'all' ? 'No bookings found' : `No ${filter} bookings found`}
     </p>
-    <p className='text-sm text-neutral-500 mt-2'>
-      {filter === 'all' 
+    <p className='mt-2 text-sm text-neutral-500'>
+      {filter === 'all'
         ? 'Bookings will appear here once users schedule appointments'
-        : allBookingsCount > 0 
+        : allBookingsCount > 0
           ? 'Try changing the filter to see other bookings'
           : 'No bookings have been created yet'}
     </p>
     {filter !== 'all' && allBookingsCount > 0 && (
-      <Button
-        onClick={onViewAll}
-        variant='outline'
-        className='mt-4'
-      >
+      <Button onClick={onViewAll} variant='outline' className='mt-4'>
         View All Bookings
       </Button>
     )}
@@ -334,7 +350,7 @@ const FilterTabs = memo(({ activeFilter, onFilterChange, counts }) => {
         <button
           key={filter.id}
           onClick={() => onFilterChange(filter.id)}
-          className={`px-4 py-2 text-sm font-medium rounded-t transition ${
+          className={`rounded-t px-4 py-2 text-sm font-medium transition ${
             activeFilter === filter.id
               ? 'bg-orange-700 text-white'
               : 'text-neutral-400 hover:text-neutral-200'
@@ -356,16 +372,9 @@ FilterTabs.displayName = 'FilterTabs'
 // =====================================================
 const CalendarBookingTab = memo(({ agent, id }) => {
   // React Query hooks - MUST be called before any conditional returns
-  const {
-    data: bookings = [],
-    isLoading,
-    error,
-    refetch
-  } = useBookings(id)
+  const { data: bookings = [], isLoading, error, refetch } = useBookings(id)
 
-  const {
-    data: calendar
-  } = useCalendarConfig(id)
+  const { data: calendar } = useCalendarConfig(id)
 
   const updateBooking = useUpdateBooking(id)
 
@@ -379,14 +388,16 @@ const CalendarBookingTab = memo(({ agent, id }) => {
   // Memoized filtered bookings - only recompute when bookings or filter changes
   const filteredBookings = useMemo(() => {
     const today = startOfDay(new Date())
-    
+
     if (filter === 'all') return bookings
-    
+
     if (filter === 'upcoming') {
-      return bookings.filter(b => {
+      return bookings.filter((b) => {
         try {
           const bookingDate = startOfDay(parseISO(b.booking_date))
-          const isUpcoming = isAfter(bookingDate, today) || format(bookingDate, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd')
+          const isUpcoming =
+            isAfter(bookingDate, today) ||
+            format(bookingDate, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd')
           return isUpcoming && b.status === 'confirmed'
         } catch (error) {
           console.error('Error parsing booking date:', b.booking_date, error)
@@ -394,9 +405,9 @@ const CalendarBookingTab = memo(({ agent, id }) => {
         }
       })
     }
-    
+
     if (filter === 'past') {
-      return bookings.filter(b => {
+      return bookings.filter((b) => {
         try {
           const bookingDate = startOfDay(parseISO(b.booking_date))
           return isBefore(bookingDate, today)
@@ -406,29 +417,31 @@ const CalendarBookingTab = memo(({ agent, id }) => {
         }
       })
     }
-    
+
     if (filter === 'cancelled') {
-      return bookings.filter(b => b.status === 'cancelled')
+      return bookings.filter((b) => b.status === 'cancelled')
     }
-    
+
     return bookings
   }, [bookings, filter])
 
   // Memoized filter counts
   const filterCounts = useMemo(() => {
     const today = startOfDay(new Date())
-    
-    const upcoming = bookings.filter(b => {
+
+    const upcoming = bookings.filter((b) => {
       try {
         const bookingDate = startOfDay(parseISO(b.booking_date))
-        const isUpcoming = isAfter(bookingDate, today) || format(bookingDate, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd')
+        const isUpcoming =
+          isAfter(bookingDate, today) ||
+          format(bookingDate, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd')
         return isUpcoming && b.status === 'confirmed'
       } catch {
         return false
       }
     }).length
 
-    const past = bookings.filter(b => {
+    const past = bookings.filter((b) => {
       try {
         const bookingDate = startOfDay(parseISO(b.booking_date))
         return isBefore(bookingDate, today)
@@ -437,7 +450,7 @@ const CalendarBookingTab = memo(({ agent, id }) => {
       }
     }).length
 
-    const cancelled = bookings.filter(b => b.status === 'cancelled').length
+    const cancelled = bookings.filter((b) => b.status === 'cancelled').length
 
     return {
       all: bookings.length,
@@ -452,15 +465,18 @@ const CalendarBookingTab = memo(({ agent, id }) => {
     setFilter(newFilter)
   }, [])
 
-  const handleCancelBooking = useCallback(async (bookingId) => {
-    if (!confirm('Are you sure you want to cancel this booking?')) return
+  const handleCancelBooking = useCallback(
+    async (bookingId) => {
+      if (!confirm('Are you sure you want to cancel this booking?')) return
 
-    await updateBooking.mutateAsync({
-      bookingId,
-      action: 'cancel',
-      reason: 'Cancelled by agent'
-    })
-  }, [updateBooking])
+      await updateBooking.mutateAsync({
+        bookingId,
+        action: 'cancel',
+        reason: 'Cancelled by agent'
+      })
+    },
+    [updateBooking]
+  )
 
   const handleViewAll = useCallback(() => {
     setFilter('all')
@@ -471,21 +487,21 @@ const CalendarBookingTab = memo(({ agent, id }) => {
   }, [refetch])
 
   const toggleDebugMode = useCallback(() => {
-    setDebugMode(prev => !prev)
+    setDebugMode((prev) => !prev)
   }, [])
 
   // Loading state
-  if (isLoading) {
-    return <LoadingState message='Loading bookings...' />
-  }
+  // if (isLoading) {
+  //   return <LoadingState message='Loading bookings...' />
+  // }
 
   // Error state
   if (error) {
     return (
-      <Card className='text-center py-12'>
-        <AlertCircle className='h-16 w-16 mx-auto text-red-400 mb-4' />
+      <Card className='py-12 text-center'>
+        <AlertCircle className='mx-auto mb-4 h-16 w-16 text-red-400' />
         <p className='text-red-400'>Failed to load bookings</p>
-        <p className='text-sm text-neutral-500 mt-2'>{error.message}</p>
+        <p className='mt-2 text-sm text-neutral-500'>{error.message}</p>
         <Button onClick={handleRefresh} variant='outline' className='mt-4'>
           Try Again
         </Button>
@@ -499,7 +515,7 @@ const CalendarBookingTab = memo(({ agent, id }) => {
       <div className='flex justify-end'>
         <button
           onClick={toggleDebugMode}
-          className='text-xs text-neutral-500 hover:text-neutral-300 flex items-center gap-1'
+          className='flex items-center gap-1 text-xs text-neutral-500 hover:text-neutral-300'
         >
           <AlertCircle className='h-3 w-3' />
           {debugMode ? 'Hide' : 'Show'} Debug Info
@@ -516,12 +532,24 @@ const CalendarBookingTab = memo(({ agent, id }) => {
       )}
 
       {/* Header with Stats */}
-      <Card className='bg-gradient-to-r from-orange-900/20 to-neutral-900/20 border-orange-600/30'>
+      <Card className='border-orange-600/30 bg-gradient-to-r from-orange-900/20 to-neutral-900/20'>
         <div className='grid grid-cols-1 gap-6 md:grid-cols-4'>
-          <StatCard value={stats.confirmed} label='Confirmed' colorClass='orange' />
+          <StatCard
+            value={stats.confirmed}
+            label='Confirmed'
+            colorClass='orange'
+          />
           <StatCard value={stats.pending} label='Pending' colorClass='yellow' />
-          <StatCard value={stats.cancelled} label='Cancelled' colorClass='red' />
-          <StatCard value={stats.completed} label='Completed' colorClass='blue' />
+          <StatCard
+            value={stats.cancelled}
+            label='Cancelled'
+            colorClass='red'
+          />
+          <StatCard
+            value={stats.completed}
+            label='Completed'
+            colorClass='blue'
+          />
         </div>
       </Card>
 

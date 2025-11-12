@@ -1,24 +1,24 @@
 'use client'
 
+import { AnimatePresence, motion } from 'framer-motion'
 import {
-  CheckCircle,
-  Loader2,
-  Send,
   Brain,
-  Search,
-  Zap,
-  Wrench,
-  Database,
-  Check,
-  Globe,
-  MessageSquare,
-  Instagram,
   Calendar,
+  Check,
+  CheckCircle,
+  Database,
+  Globe,
+  Instagram,
+  Loader2,
   Mail,
-  Sparkles
+  MessageSquare,
+  Search,
+  Send,
+  Sparkles,
+  Wrench,
+  Zap
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 
 const CONVERSATION_STEPS = {
   INITIAL: 'initial',

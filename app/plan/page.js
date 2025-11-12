@@ -28,15 +28,16 @@ import {
   useUpgradeSubscription,
   useCancelSubscription
 } from '../../lib/hooks/useSubscriptionData'
+import SubscriptionsPageSkeleton from '../../components/skeleton/SubscriptionsPageSkeleton'
 
 /**
  * FULLY OPTIMIZED Subscription Settings Page
- * 
+ *
  * React Query Integration:
  * - Automatic usage data fetching with caching
  * - Optimistic updates for subscription changes
  * - No manual state management
- * 
+ *
  * Performance:
  * - Memoized components
  * - Static data outside component
@@ -108,19 +109,25 @@ const PLANS_DATA = [
 const getColorClasses = (color, isSelected) => {
   const colors = {
     neutral: {
-      bg: isSelected ? 'from-neutral-900/60 to-neutral-950/40' : 'from-neutral-900/40 to-neutral-950/20',
+      bg: isSelected
+        ? 'from-neutral-900/60 to-neutral-950/40'
+        : 'from-neutral-900/40 to-neutral-950/20',
       border: isSelected ? 'border-neutral-500/50' : 'border-neutral-600/30',
       badge: 'bg-neutral-900/40 text-neutral-300',
       button: 'bg-neutral-600 hover:bg-neutral-700'
     },
     orange: {
-      bg: isSelected ? 'from-orange-900/60 to-orange-950/40' : 'from-orange-900/40 to-orange-950/20',
+      bg: isSelected
+        ? 'from-orange-900/60 to-orange-950/40'
+        : 'from-orange-900/40 to-orange-950/20',
       border: isSelected ? 'border-orange-500/50' : 'border-orange-600/30',
       badge: 'bg-orange-900/40 text-orange-300',
       button: 'bg-orange-600 hover:bg-orange-700'
     },
     purple: {
-      bg: isSelected ? 'from-purple-900/60 to-purple-950/40' : 'from-purple-900/40 to-purple-950/20',
+      bg: isSelected
+        ? 'from-purple-900/60 to-purple-950/40'
+        : 'from-purple-900/40 to-purple-950/20',
       border: isSelected ? 'border-purple-500/50' : 'border-purple-600/30',
       badge: 'bg-purple-900/40 text-purple-300',
       button: 'bg-purple-600 hover:bg-purple-700'
@@ -148,11 +155,8 @@ const UsageMetric = memo(({ icon: Icon, label, used, limit, color }) => {
     () => getUsagePercentage(used, limit),
     [used, limit]
   )
-  
-  const barColor = useMemo(
-    () => getUsageColor(percentage),
-    [percentage]
-  )
+
+  const barColor = useMemo(() => getUsageColor(percentage), [percentage])
 
   const isUnlimited = limit === -1
   const showWarning = !isUnlimited && percentage >= 80
@@ -165,13 +169,14 @@ const UsageMetric = memo(({ icon: Icon, label, used, limit, color }) => {
           <span className='font-medium text-neutral-200'>{label}</span>
         </div>
         <span className='text-sm text-neutral-400'>
-          {used.toLocaleString()} {isUnlimited ? '' : `/ ${limit.toLocaleString()}`}
+          {used.toLocaleString()}{' '}
+          {isUnlimited ? '' : `/ ${limit.toLocaleString()}`}
         </span>
       </div>
-      
+
       {!isUnlimited && (
         <>
-          <div className='h-2 bg-neutral-800 rounded-full overflow-hidden'>
+          <div className='h-2 overflow-hidden rounded-full bg-neutral-800'>
             <div
               className={`h-full ${barColor} transition-all`}
               style={{ width: `${percentage}%` }}
@@ -185,10 +190,8 @@ const UsageMetric = memo(({ icon: Icon, label, used, limit, color }) => {
           )}
         </>
       )}
-      
-      {isUnlimited && (
-        <p className='text-xs text-neutral-500'>Unlimited</p>
-      )}
+
+      {isUnlimited && <p className='text-xs text-neutral-500'>Unlimited</p>}
     </div>
   )
 })
@@ -198,15 +201,18 @@ UsageMetric.displayName = 'UsageMetric'
  * Memoized Usage Card Component
  */
 const UsageCard = memo(({ usage }) => {
-  const period = useMemo(() => ({
-    start: new Date(usage.period.start).toLocaleDateString(),
-    end: new Date(usage.period.end).toLocaleDateString()
-  }), [usage.period])
+  const period = useMemo(
+    () => ({
+      start: new Date(usage.period.start).toLocaleDateString(),
+      end: new Date(usage.period.end).toLocaleDateString()
+    }),
+    [usage.period]
+  )
 
   return (
     <Card className='border-purple-600/20 bg-gradient-to-br from-purple-950/10 to-neutral-950/50'>
       <div className='mb-6'>
-        <div className='flex items-center gap-3 mb-2'>
+        <div className='mb-2 flex items-center gap-3'>
           <TrendingUp className='h-5 w-5 text-purple-400' />
           <h2 className='text-xl font-semibold text-neutral-100'>
             Current Usage
@@ -257,8 +263,8 @@ const PlanCard = memo(({ plan, isCurrentPlan, currentTier, onUpgrade }) => {
 
   const canUpgrade = useMemo(() => {
     if (isCurrentPlan) return false
-    const currentIndex = PLANS_DATA.findIndex(p => p.id === currentTier)
-    const planIndex = PLANS_DATA.findIndex(p => p.id === plan.id)
+    const currentIndex = PLANS_DATA.findIndex((p) => p.id === currentTier)
+    const planIndex = PLANS_DATA.findIndex((p) => p.id === plan.id)
     return currentTier === 'free' || planIndex > currentIndex
   }, [isCurrentPlan, currentTier, plan.id])
 
@@ -283,7 +289,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, currentTier, onUpgrade }) => {
       )}
       {isCurrentPlan && (
         <div className='absolute -top-3 right-4'>
-          <span className='rounded-full bg-green-600 px-3 py-1 text-xs font-semibold text-white flex items-center gap-1'>
+          <span className='flex items-center gap-1 rounded-full bg-green-600 px-3 py-1 text-xs font-semibold text-white'>
             <Check className='h-3 w-3' />
             Current Plan
           </span>
@@ -293,17 +299,17 @@ const PlanCard = memo(({ plan, isCurrentPlan, currentTier, onUpgrade }) => {
       <div className='space-y-6'>
         {/* Plan Header */}
         <div>
-          <div className='flex items-center gap-3 mb-2'>
-            <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${colors.badge}`}>
+          <div className='mb-2 flex items-center gap-3'>
+            <div
+              className={`flex h-10 w-10 items-center justify-center rounded-lg ${colors.badge}`}
+            >
               <Icon className='h-5 w-5' />
             </div>
             <div>
               <h3 className='text-xl font-bold text-neutral-100'>
                 {plan.name}
               </h3>
-              <p className='text-xs text-neutral-400'>
-                {plan.description}
-              </p>
+              <p className='text-xs text-neutral-400'>{plan.description}</p>
             </div>
           </div>
         </div>
@@ -314,9 +320,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, currentTier, onUpgrade }) => {
             <span className='text-4xl font-bold text-neutral-100'>
               ${plan.price}
             </span>
-            <span className='text-sm text-neutral-400'>
-              {plan.billing}
-            </span>
+            <span className='text-sm text-neutral-400'>{plan.billing}</span>
           </div>
         </div>
 
@@ -324,18 +328,18 @@ const PlanCard = memo(({ plan, isCurrentPlan, currentTier, onUpgrade }) => {
         <ul className='space-y-3'>
           {plan.features.map((feature, idx) => (
             <li key={idx} className='flex items-start gap-3'>
-              <Check className='h-5 w-5 text-green-400 flex-shrink-0 mt-0.5' />
+              <Check className='mt-0.5 h-5 w-5 flex-shrink-0 text-green-400' />
               <span className='text-sm text-neutral-300'>{feature}</span>
             </li>
           ))}
         </ul>
 
         {/* Action Button */}
-        <div className='pt-6 border-t border-neutral-800'>
+        <div className='border-t border-neutral-800 pt-6'>
           {isCurrentPlan ? (
             <Button
               disabled
-              className='w-full bg-green-600/50 cursor-not-allowed'
+              className='w-full cursor-not-allowed bg-green-600/50'
             >
               Current Plan
             </Button>
@@ -348,11 +352,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, currentTier, onUpgrade }) => {
               <ArrowRight className='h-4 w-4' />
             </Button>
           ) : (
-            <Button
-              variant='outline'
-              className='w-full'
-              disabled
-            >
+            <Button variant='outline' className='w-full' disabled>
               Downgrade not available
             </Button>
           )}
@@ -370,18 +370,19 @@ const CancelSubscriptionCard = memo(({ onCancel }) => {
   return (
     <Card className='border-red-600/20 bg-gradient-to-br from-red-950/10 to-neutral-950/50'>
       <div className='flex items-start gap-4'>
-        <AlertCircle className='h-6 w-6 text-red-400 mt-1 flex-shrink-0' />
+        <AlertCircle className='mt-1 h-6 w-6 flex-shrink-0 text-red-400' />
         <div className='flex-1'>
-          <h4 className='font-semibold text-neutral-200 mb-2'>
+          <h4 className='mb-2 font-semibold text-neutral-200'>
             Cancel Subscription
           </h4>
-          <p className='text-sm text-neutral-400 mb-4'>
-            You will lose access to premium features at the end of your billing period. Your data will be preserved for 30 days.
+          <p className='mb-4 text-sm text-neutral-400'>
+            You will lose access to premium features at the end of your billing
+            period. Your data will be preserved for 30 days.
           </p>
           <Button
             onClick={onCancel}
             variant='outline'
-            className='text-red-400 border-red-600/30 hover:bg-red-900/20'
+            className='border-red-600/30 text-red-400 hover:bg-red-900/20'
           >
             Cancel Subscription
           </Button>
@@ -398,7 +399,7 @@ CancelSubscriptionCard.displayName = 'CancelSubscriptionCard'
 const HeaderSection = memo(() => {
   return (
     <div className='mb-8'>
-      <div className='flex items-center gap-3 mb-2'>
+      <div className='mb-2 flex items-center gap-3'>
         <Crown className='h-8 w-8 text-purple-500' />
         <h1 className='text-3xl font-bold text-neutral-100'>
           Subscription Settings
@@ -418,7 +419,7 @@ HeaderSection.displayName = 'HeaderSection'
 const PlansSection = memo(({ currentTier, onUpgrade }) => {
   return (
     <div>
-      <h2 className='text-2xl font-bold text-neutral-100 mb-6'>
+      <h2 className='mb-6 text-2xl font-bold text-neutral-100'>
         Available Plans
       </h2>
       <div className='grid gap-6 lg:grid-cols-3'>
@@ -443,7 +444,11 @@ PlansSection.displayName = 'PlansSection'
 export default function SubscriptionsPage() {
   const { user, profile, loading: authLoading, refreshProfile } = useAuth()
   const { logout } = useLogout()
-
+  const [delayedLoading, setDelayedLoading] = useState(true)
+  useEffect(() => {
+    const timer = setTimeout(() => setDelayedLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
   // React Query hooks - MUST be called before any conditional returns
   const {
     data: usage,
@@ -461,30 +466,40 @@ export default function SubscriptionsPage() {
   )
 
   // Memoize user profile for SideBarLayout
-  const userProfile = useMemo(() => ({
-    name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
-    email: user?.email || 'guest@example.com',
-    avatar: profile?.avatar_url || null
-  }), [profile, user])
+  const userProfile = useMemo(
+    () => ({
+      name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
+      email: user?.email || 'guest@example.com',
+      avatar: profile?.avatar_url || null
+    }),
+    [profile, user]
+  )
 
   // Stable handlers - MUST be declared before conditional returns
-  const handleUpgrade = useCallback(async (planId) => {
-    upgradeSubscription(
-      { userId: user.id, planId },
-      {
-        onSuccess: async () => {
-          await refreshProfile()
-          toast.success('Subscription upgraded successfully')
-        },
-        onError: (error) => {
-          toast.error(error.message || 'Failed to upgrade subscription')
+  const handleUpgrade = useCallback(
+    async (planId) => {
+      upgradeSubscription(
+        { userId: user.id, planId },
+        {
+          onSuccess: async () => {
+            await refreshProfile()
+            toast.success('Subscription upgraded successfully')
+          },
+          onError: (error) => {
+            toast.error(error.message || 'Failed to upgrade subscription')
+          }
         }
-      }
-    )
-  }, [user?.id, upgradeSubscription, refreshProfile])
+      )
+    },
+    [user?.id, upgradeSubscription, refreshProfile]
+  )
 
   const handleCancelSubscription = useCallback(async () => {
-    if (!confirm('Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period.')) {
+    if (
+      !confirm(
+        'Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period.'
+      )
+    ) {
       return
     }
 
@@ -505,9 +520,14 @@ export default function SubscriptionsPage() {
   // NOW we can do conditional logic - after all hooks are called
   // Loading state
   if (authLoading || usageLoading) {
+    return <YourSkeleton userProfile={userProfile} />
+  }
+  if (delayedLoading) {
     return (
       <LoadingState
-        message={authLoading ? 'Authenticating...' : 'Loading subscription settings...'}
+        message={
+          authLoading ? 'Authenticating...' : 'Loading subscription settings...'
+        }
         className='min-h-screen'
       />
     )
@@ -542,8 +562,8 @@ export default function SubscriptionsPage() {
     <>
       <NeonBackground />
       <SideBarLayout userProfile={userProfile}>
-       <div className='flex h-screen w-full flex-col font-mono text-neutral-100 bg-neutral-900/10 backdrop-blur-sm'>
-           {/* Header */}
+        <div className='flex h-screen w-full flex-col bg-neutral-900/10 font-mono text-neutral-100 backdrop-blur-sm'>
+          {/* Header */}
           <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>
             <NavigationBar
               profile={profile}

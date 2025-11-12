@@ -29,6 +29,7 @@ import {
   useIntegrationStats
 } from '../../lib/hooks/useIntegrationData'
 import { useLogout } from '../../lib/supabase/auth'
+import IntegrationsPageSkeleton from '../../components/skeleton/IntegrationsPageSkeleton'
 
 // ============================================
 // CONSTANTS
@@ -413,7 +414,7 @@ const IntegrationCard = memo(({ integration, isConnected, onClick }) => {
     >
       {/* Connected Badge */}
       {isConnected && (
-        <div className='absolute right-3 top-3'>
+        <div className='absolute top-3 right-3'>
           <div className='flex items-center gap-1 rounded-full bg-green-500/20 px-2 py-1 text-xs font-medium text-green-400 ring-1 ring-green-500/50'>
             <Check size={12} />
             Connected
@@ -457,7 +458,7 @@ const IntegrationCard = memo(({ integration, isConnected, onClick }) => {
       <Button
         className={`w-full rounded-lg border py-2 text-sm font-medium transition-all ${
           isConnected
-            ? 'border-neutral-700 bg-neutral-800 text-neutral-300 hover:bg-neutral-750'
+            ? 'hover:bg-neutral-750 border-neutral-700 bg-neutral-800 text-neutral-300'
             : 'border-orange-500/50 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20'
         }`}
       >
@@ -475,7 +476,7 @@ const CategoryButton = memo(({ category, isSelected, onClick }) => {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2 whitespace-nowrap rounded-lg border px-4 py-2 text-sm font-medium transition-all ${
+      className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium whitespace-nowrap transition-all ${
         isSelected
           ? 'border-orange-500 bg-orange-500/10 text-orange-400 shadow-lg shadow-orange-500/20'
           : 'border-neutral-800 bg-neutral-900/50 text-neutral-400 hover:border-neutral-700 hover:bg-neutral-800'
@@ -501,13 +502,17 @@ export default function IntegrationsPage() {
     avatar: profile?.avatar_url || null
   }
   const { logout } = useLogout()
-  
+
   // React Query hooks
   const { data: connectedIntegrations = [], isLoading } = useIntegrations(
     user?.id
   )
   const stats = useIntegrationStats(connectedIntegrations)
-
+  const [delayedLoading, setDelayedLoading] = useState(true)
+  useEffect(() => {
+    const timer = setTimeout(() => setDelayedLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
   // UI State
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
@@ -553,7 +558,12 @@ export default function IntegrationsPage() {
     },
     [router]
   )
-
+  if (delayedLoading) {
+    return <LoadingState message='Loading Integrations..' />
+  }
+  if (isLoading) {
+    return <YourSkeleton userProfile={userProfile} />
+  }
   return (
     <>
       {/* Fixed Background - Place outside SideBarLayout */}
@@ -616,7 +626,7 @@ export default function IntegrationsPage() {
               </div>
 
               {/* Category Filter */}
-              <div className='flex gap-2 overflow-x-auto  pb-2 lg:pb-0'>
+              <div className='flex gap-2 overflow-x-auto pb-2 lg:pb-0'>
                 {CATEGORIES.map((category) => (
                   <CategoryButton
                     key={category.id}

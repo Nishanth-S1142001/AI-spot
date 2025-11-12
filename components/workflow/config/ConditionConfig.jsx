@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Plus, Trash2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import toast from 'react-hot-toast'
 import Button from '../../ui/button'
 import FormInput from '../../ui/formInputField'
-import toast from 'react-hot-toast'
-import { Plus, Trash2 } from 'lucide-react'
 
 export default function ConditionConfig({ config, onSave, onClose }) {
   const [conditions, setConditions] = useState(

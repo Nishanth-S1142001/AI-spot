@@ -23,10 +23,11 @@ import SideBarLayout from '../../components/sideBarLayout'
 import NeonBackground from '../../components/ui/background'
 import Card from '../../components/ui/card'
 import { useLogout } from '../../lib/supabase/auth'
+import PrivacyPolicyPageSkeleton from '../../components/skeleton/PrivacyPolicyPageSkeleton'
 
 /**
  * FULLY OPTIMIZED Privacy Policy Page
- * 
+ *
  * Optimizations:
  * - All static data extracted outside component
  * - Heavy component memoization (10+ memoized components)
@@ -46,7 +47,8 @@ const HIGHLIGHTS_DATA = [
   {
     icon: Lock,
     title: 'Enterprise-Grade Security',
-    description: 'Bank-level encryption and security measures protect your data.',
+    description:
+      'Bank-level encryption and security measures protect your data.',
     color: 'blue'
   },
   {
@@ -183,7 +185,7 @@ const SECTIONS_DATA = [
         subtitle: '5.4 Third-Party Integrations',
         items: [
           'When you connect third-party services (e.g., Slack, Google Sheets)',
-          'Data sharing is governed by those third parties\' privacy policies',
+          "Data sharing is governed by those third parties' privacy policies",
           'You can disconnect integrations at any time'
         ]
       }
@@ -302,14 +304,14 @@ const SECTIONS_DATA = [
   },
   {
     id: 'children',
-    title: '11. Children\'s Privacy',
+    title: "11. Children's Privacy",
     icon: AlertTriangle,
     content: [
       'The Service is not intended for children under 18 years of age.',
       'We do not knowingly collect personal information from children under 18.',
       'If you believe we have collected information from a child, please contact us immediately.',
       'We will take steps to delete such information promptly.',
-      'Parents and guardians should monitor their children\'s online activities.'
+      "Parents and guardians should monitor their children's online activities."
     ]
   },
   {
@@ -393,8 +395,8 @@ HighlightCard.displayName = 'HighlightCard'
 const ContentItem = memo(({ text }) => {
   return (
     <li className='flex items-start gap-3'>
-      <div className='h-1.5 w-1.5 rounded-full bg-blue-500 flex-shrink-0 mt-2' />
-      <span className='text-neutral-300 leading-relaxed'>{text}</span>
+      <div className='mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-500' />
+      <span className='leading-relaxed text-neutral-300'>{text}</span>
     </li>
   )
 })
@@ -406,8 +408,8 @@ ContentItem.displayName = 'ContentItem'
 const SubsectionItem = memo(({ text }) => {
   return (
     <li className='flex items-start gap-3'>
-      <div className='h-1.5 w-1.5 rounded-full bg-blue-400 flex-shrink-0 mt-2' />
-      <span className='text-neutral-400 text-sm leading-relaxed'>{text}</span>
+      <div className='mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-400' />
+      <span className='text-sm leading-relaxed text-neutral-400'>{text}</span>
     </li>
   )
 })
@@ -418,8 +420,8 @@ SubsectionItem.displayName = 'SubsectionItem'
  */
 const Subsection = memo(({ subsection }) => {
   return (
-    <div className='pl-4 border-l-2 border-blue-600/30'>
-      <h3 className='font-semibold text-lg text-neutral-200 mb-3'>
+    <div className='border-l-2 border-blue-600/30 pl-4'>
+      <h3 className='mb-3 text-lg font-semibold text-neutral-200'>
         {subsection.subtitle}
       </h3>
       <ul className='space-y-2'>
@@ -441,7 +443,7 @@ const PolicySection = memo(({ section }) => {
   return (
     <Card
       id={section.id}
-      className='border-neutral-800/50 bg-neutral-900/20 scroll-mt-24'
+      className='scroll-mt-24 border-neutral-800/50 bg-neutral-900/20'
     >
       <div className='space-y-4'>
         <div className='flex items-start gap-4'>
@@ -449,10 +451,10 @@ const PolicySection = memo(({ section }) => {
             <Icon className='h-6 w-6 text-blue-400' />
           </div>
           <div className='flex-1'>
-            <h2 className='text-2xl font-bold text-neutral-100 mb-4'>
+            <h2 className='mb-4 text-2xl font-bold text-neutral-100'>
               {section.title}
             </h2>
-            
+
             {section.content && (
               <ul className='space-y-3'>
                 {section.content.map((item, idx) => (
@@ -491,7 +493,7 @@ const HeaderSection = memo(() => {
         Privacy Policy
       </h1>
       <p className='mx-auto max-w-2xl text-lg text-neutral-400'>
-        Your privacy is important to us. This policy explains how we collect, 
+        Your privacy is important to us. This policy explains how we collect,
         use, and protect your personal information.
       </p>
       <div className='mt-6 flex items-center justify-center gap-2 text-sm text-neutral-500'>
@@ -510,7 +512,9 @@ HeaderSection.displayName = 'HeaderSection'
 const HighlightsSection = memo(() => {
   return (
     <div className='mb-12'>
-      <h2 className='mb-6 text-2xl font-bold text-neutral-100'>Our Commitment to You</h2>
+      <h2 className='mb-6 text-2xl font-bold text-neutral-100'>
+        Our Commitment to You
+      </h2>
       <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
         {HIGHLIGHTS_DATA.map((highlight, index) => (
           <HighlightCard key={index} highlight={highlight} />
@@ -544,28 +548,42 @@ const ContactSection = memo(() => {
       <div className='space-y-4'>
         <div className='flex items-center gap-3'>
           <Mail className='h-6 w-6 text-green-400' />
-          <h2 className='text-2xl font-bold text-neutral-100'>Privacy Questions?</h2>
+          <h2 className='text-2xl font-bold text-neutral-100'>
+            Privacy Questions?
+          </h2>
         </div>
         <p className='text-neutral-300'>
-          We&apos;re committed to transparency and protecting your privacy. If you have questions 
-          or concerns about how we handle your data, please reach out.
+          We&apos;re committed to transparency and protecting your privacy. If
+          you have questions or concerns about how we handle your data, please
+          reach out.
         </p>
         <div className='space-y-2 text-neutral-400'>
           <p>
             <strong className='text-neutral-300'>Privacy Team:</strong>{' '}
-            <a href='mailto:privacy@ai-spot.com' className='text-green-400 hover:text-green-300'>
+            <a
+              href='mailto:privacy@ai-spot.com'
+              className='text-green-400 hover:text-green-300'
+            >
               privacy@ai-spot.com
             </a>
           </p>
           <p>
-            <strong className='text-neutral-300'>Data Protection Officer:</strong>{' '}
-            <a href='mailto:dpo@ai-spot.com' className='text-green-400 hover:text-green-300'>
+            <strong className='text-neutral-300'>
+              Data Protection Officer:
+            </strong>{' '}
+            <a
+              href='mailto:dpo@ai-spot.com'
+              className='text-green-400 hover:text-green-300'
+            >
               dpo@ai-spot.com
             </a>
           </p>
           <p>
             <strong className='text-neutral-300'>Support:</strong>{' '}
-            <Link href='/feedback' className='text-green-400 hover:text-green-300'>
+            <Link
+              href='/feedback'
+              className='text-green-400 hover:text-green-300'
+            >
               Submit a privacy request
             </Link>
           </p>
@@ -583,21 +601,22 @@ const CTASection = memo(() => {
   return (
     <Card className='mt-8 border-blue-600/20 bg-gradient-to-br from-blue-950/10 to-neutral-950/50'>
       <div className='space-y-4 text-center'>
-        <UserCheck className='h-12 w-12 text-blue-400 mx-auto' />
+        <UserCheck className='mx-auto h-12 w-12 text-blue-400' />
         <h3 className='text-xl font-bold text-neutral-100'>
           Exercise Your Privacy Rights
         </h3>
         <p className='text-neutral-400'>
-          You have the right to access, correct, or delete your personal data at any time.
+          You have the right to access, correct, or delete your personal data at
+          any time.
         </p>
         <div className='flex flex-wrap justify-center gap-4'>
           <Link href='/settings/general'>
-            <button className='rounded-lg bg-blue-600 px-6 py-2 font-medium text-white hover:bg-blue-700 transition-colors'>
+            <button className='rounded-lg bg-blue-600 px-6 py-2 font-medium text-white transition-colors hover:bg-blue-700'>
               Manage Your Data
             </button>
           </Link>
           <a href='mailto:privacy@ai-spot.com'>
-            <button className='rounded-lg border border-blue-600/30 px-6 py-2 font-medium text-blue-400 hover:bg-blue-900/20 transition-colors'>
+            <button className='rounded-lg border border-blue-600/30 px-6 py-2 font-medium text-blue-400 transition-colors hover:bg-blue-900/20'>
               Contact Privacy Team
             </button>
           </a>
@@ -616,28 +635,30 @@ export default function PrivacyPolicyPage() {
   const { logout } = useLogout()
 
   // Memoize user profile for SideBarLayout
-  const userProfile = useMemo(() => ({
-    name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
-    email: user?.email || 'guest@example.com',
-    avatar: profile?.avatar_url || null
-  }), [profile, user])
-
+  const userProfile = useMemo(
+    () => ({
+      name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
+      email: user?.email || 'guest@example.com',
+      avatar: profile?.avatar_url || null
+    }),
+    [profile, user]
+  )
+  const [delayedLoading, setDelayedLoading] = useState(true)
+  useEffect(() => {
+    const timer = setTimeout(() => setDelayedLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
   // Loading state
-  if (authLoading) {
-    return (
-      <LoadingState
-        message='Loading...'
-        className='min-h-screen'
-      />
-    )
+  if (delayedLoading || authLoading) {
+    return <YourSkeleton userProfile={userProfile} />
   }
 
   return (
     <>
       <NeonBackground />
       <SideBarLayout userProfile={userProfile}>
-     <div className='flex h-screen w-full flex-col font-mono text-neutral-100 bg-neutral-900/10 backdrop-blur-sm'>
-             {/* Header */}
+        <div className='flex h-screen w-full flex-col bg-neutral-900/10 font-mono text-neutral-100 backdrop-blur-sm'>
+          {/* Header */}
           <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>
             <NavigationBar
               profile={profile}

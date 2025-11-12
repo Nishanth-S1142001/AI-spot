@@ -38,16 +38,17 @@ import {
   useCopyTestLink,
   useSandboxSendChatMessage
 } from '../../../lib/hooks/useAgentData'
+import ChatSandboxSkeleton from '../../../components/skeleton/ChatSandboxSkeleton'
 
 /**
  * FULLY OPTIMIZED Chat Sandbox Component
- * 
+ *
  * React Query Integration:
  * - Automatic data fetching with caching
  * - Optimistic updates for better UX
  * - No manual state management for server data
  * - Consistent with Dashboard patterns
- * 
+ *
  * Performance:
  * - Memoized components
  * - Smart caching prevents re-fetching
@@ -113,107 +114,111 @@ Toast.displayName = 'Toast'
 /**
  * Memoized Sub Account Card Component
  */
-const SubAccountCard = memo(({ account, onDelete, onCopyLink, onResendInvite }) => {
-  const [copied, setCopied] = useState(false)
-  const [resending, setResending] = useState(false)
+const SubAccountCard = memo(
+  ({ account, onDelete, onCopyLink, onResendInvite }) => {
+    const [copied, setCopied] = useState(false)
+    const [resending, setResending] = useState(false)
 
-  const handleCopy = useCallback(() => {
-    onCopyLink(account)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }, [account, onCopyLink])
+    const handleCopy = useCallback(() => {
+      onCopyLink(account)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }, [account, onCopyLink])
 
-  const handleResend = useCallback(async () => {
-    setResending(true)
-    await onResendInvite(account.id)
-    setResending(false)
-  }, [account.id, onResendInvite])
+    const handleResend = useCallback(async () => {
+      setResending(true)
+      await onResendInvite(account.id)
+      setResending(false)
+    }, [account.id, onResendInvite])
 
-  const formatLastActive = useCallback((lastActive) => {
-    if (!lastActive) return 'Never'
-    return formatDistanceToNow(new Date(lastActive), { addSuffix: true })
-  }, [])
+    const formatLastActive = useCallback((lastActive) => {
+      if (!lastActive) return 'Never'
+      return formatDistanceToNow(new Date(lastActive), { addSuffix: true })
+    }, [])
 
-  const getStatusColor = useCallback((status) => {
-    switch (status) {
-      case 'active':
-        return 'bg-green-900/40 text-green-300 ring-1 ring-green-500/50'
-      case 'invited':
-        return 'bg-blue-900/40 text-blue-300 ring-1 ring-blue-500/50'
-      case 'suspended':
-        return 'bg-yellow-900/40 text-yellow-300 ring-1 ring-yellow-500/50'
-      case 'expired':
-        return 'bg-red-900/40 text-red-300 ring-1 ring-red-500/50'
-      default:
-        return 'bg-neutral-800 text-neutral-400'
-    }
-  }, [])
+    const getStatusColor = useCallback((status) => {
+      switch (status) {
+        case 'active':
+          return 'bg-green-900/40 text-green-300 ring-1 ring-green-500/50'
+        case 'invited':
+          return 'bg-blue-900/40 text-blue-300 ring-1 ring-blue-500/50'
+        case 'suspended':
+          return 'bg-yellow-900/40 text-yellow-300 ring-1 ring-yellow-500/50'
+        case 'expired':
+          return 'bg-red-900/40 text-red-300 ring-1 ring-red-500/50'
+        default:
+          return 'bg-neutral-800 text-neutral-400'
+      }
+    }, [])
 
-  return (
-    <div className='group rounded-lg border border-neutral-800/50 bg-gradient-to-br from-neutral-900/40 to-neutral-950/20 p-4 transition-all hover:border-orange-600/30 hover:from-orange-900/10'>
-      <div className='flex items-start justify-between'>
-        <div className='flex items-center gap-3'>
-          <div className='flex h-10 w-10 items-center justify-center rounded-full bg-orange-900/40 ring-1 ring-orange-500/50'>
-            <Users className='h-5 w-5 text-orange-400' />
+    return (
+      <div className='group rounded-lg border border-neutral-800/50 bg-gradient-to-br from-neutral-900/40 to-neutral-950/20 p-4 transition-all hover:border-orange-600/30 hover:from-orange-900/10'>
+        <div className='flex items-start justify-between'>
+          <div className='flex items-center gap-3'>
+            <div className='flex h-10 w-10 items-center justify-center rounded-full bg-orange-900/40 ring-1 ring-orange-500/50'>
+              <Users className='h-5 w-5 text-orange-400' />
+            </div>
+            <div>
+              <h4 className='font-semibold text-neutral-100'>{account.name}</h4>
+              <p className='text-sm text-neutral-400'>{account.email}</p>
+            </div>
           </div>
-          <div>
-            <h4 className='font-semibold text-neutral-100'>{account.name}</h4>
-            <p className='text-sm text-neutral-400'>{account.email}</p>
-          </div>
-        </div>
 
-        <div className='flex items-center gap-2'>
-          {account.status === 'invited' && (
-            <button
-              onClick={handleResend}
-              disabled={resending}
-              className='rounded-lg border border-neutral-700 bg-neutral-800/50 p-2 text-neutral-400 transition-colors hover:border-blue-500/50 hover:bg-blue-900/20 hover:text-blue-400 disabled:opacity-50'
-              title='Resend invitation'
-            >
-              <Mail className={`h-4 w-4 ${resending ? 'animate-pulse' : ''}`} />
-            </button>
-          )}
-          <button
-            onClick={handleCopy}
-            className='rounded-lg border border-neutral-700 bg-neutral-800/50 p-2 text-neutral-400 transition-colors hover:border-orange-500/50 hover:bg-orange-900/20 hover:text-orange-400'
-            title='Copy test link'
-          >
-            {copied ? (
-              <Check className='h-4 w-4 text-green-400' />
-            ) : (
-              <Copy className='h-4 w-4' />
+          <div className='flex items-center gap-2'>
+            {account.status === 'invited' && (
+              <button
+                onClick={handleResend}
+                disabled={resending}
+                className='rounded-lg border border-neutral-700 bg-neutral-800/50 p-2 text-neutral-400 transition-colors hover:border-blue-500/50 hover:bg-blue-900/20 hover:text-blue-400 disabled:opacity-50'
+                title='Resend invitation'
+              >
+                <Mail
+                  className={`h-4 w-4 ${resending ? 'animate-pulse' : ''}`}
+                />
+              </button>
             )}
-          </button>
-          <button
-            onClick={() => onDelete(account.id)}
-            className='rounded-lg border border-neutral-700 bg-neutral-800/50 p-2 text-neutral-400 transition-colors hover:border-red-500/50 hover:bg-red-900/20 hover:text-red-400'
-            title='Delete account'
-          >
-            <Trash2 className='h-4 w-4' />
-          </button>
+            <button
+              onClick={handleCopy}
+              className='rounded-lg border border-neutral-700 bg-neutral-800/50 p-2 text-neutral-400 transition-colors hover:border-orange-500/50 hover:bg-orange-900/20 hover:text-orange-400'
+              title='Copy test link'
+            >
+              {copied ? (
+                <Check className='h-4 w-4 text-green-400' />
+              ) : (
+                <Copy className='h-4 w-4' />
+              )}
+            </button>
+            <button
+              onClick={() => onDelete(account.id)}
+              className='rounded-lg border border-neutral-700 bg-neutral-800/50 p-2 text-neutral-400 transition-colors hover:border-red-500/50 hover:bg-red-900/20 hover:text-red-400'
+              title='Delete account'
+            >
+              <Trash2 className='h-4 w-4' />
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div className='mt-4 flex items-center justify-between border-t border-neutral-800/50 pt-3 text-xs text-neutral-500'>
-        <div className='flex items-center gap-4'>
-          <div className='flex items-center gap-1'>
-            <MessageCircle className='h-3 w-3' />
-            <span>{account.sessions_count || 0} sessions</span>
+        <div className='mt-4 flex items-center justify-between border-t border-neutral-800/50 pt-3 text-xs text-neutral-500'>
+          <div className='flex items-center gap-4'>
+            <div className='flex items-center gap-1'>
+              <MessageCircle className='h-3 w-3' />
+              <span>{account.sessions_count || 0} sessions</span>
+            </div>
+            <div className='flex items-center gap-1'>
+              <Clock className='h-3 w-3' />
+              <span>{formatLastActive(account.last_active_at)}</span>
+            </div>
           </div>
-          <div className='flex items-center gap-1'>
-            <Clock className='h-3 w-3' />
-            <span>{formatLastActive(account.last_active_at)}</span>
-          </div>
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${getStatusColor(account.status)}`}
+          >
+            {account.status || 'Invited'}
+          </span>
         </div>
-        <span
-          className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${getStatusColor(account.status)}`}
-        >
-          {account.status || 'Invited'}
-        </span>
       </div>
-    </div>
-  )
-})
+    )
+  }
+)
 SubAccountCard.displayName = 'SubAccountCard'
 
 /**
@@ -232,25 +237,28 @@ const InviteModal = memo(({ isOpen, onClose, onInvite, agentId }) => {
 
   const createTestAccount = useCreateTestAccount(agentId)
 
-  const handleSubmit = useCallback(async (e) => {
-    e.preventDefault()
-    setError('')
+  const handleSubmit = useCallback(
+    async (e) => {
+      e.preventDefault()
+      setError('')
 
-    try {
-      await createTestAccount.mutateAsync(inviteData)
-      setInviteData({
-        name: '',
-        email: '',
-        expiresInDays: 30,
-        maxSessions: 100,
-        sendEmail: true,
-        notes: ''
-      })
-      onClose()
-    } catch (err) {
-      setError(err.message)
-    }
-  }, [inviteData, createTestAccount, onClose])
+      try {
+        await createTestAccount.mutateAsync(inviteData)
+        setInviteData({
+          name: '',
+          email: '',
+          expiresInDays: 30,
+          maxSessions: 100,
+          sendEmail: true,
+          notes: ''
+        })
+        onClose()
+      } catch (err) {
+        setError(err.message)
+      }
+    },
+    [inviteData, createTestAccount, onClose]
+  )
 
   return (
     <BottomModal isOpen={isOpen} onClose={onClose}>
@@ -392,7 +400,11 @@ const InviteModal = memo(({ isOpen, onClose, onInvite, agentId }) => {
             <Button
               type='submit'
               className='flex-1'
-              disabled={createTestAccount.isPending || !inviteData.name || !inviteData.email}
+              disabled={
+                createTestAccount.isPending ||
+                !inviteData.name ||
+                !inviteData.email
+              }
             >
               {createTestAccount.isPending ? (
                 <>
@@ -495,10 +507,8 @@ export default function ChatSandbox() {
     error: agentError
   } = useAgent(id)
 
-  const {
-    data: testAccountsData,
-    isLoading: testAccountsLoading
-  } = useTestAccounts(id)
+  const { data: testAccountsData, isLoading: testAccountsLoading } =
+    useTestAccounts(id)
 
   const subAccounts = testAccountsData?.testAccounts || []
   const subAccountsStats = testAccountsData?.stats || null
@@ -634,14 +644,20 @@ export default function ChatSandbox() {
   const goToSubAccountsPage = useCallback(() => {
     router.push(`/agents/${id}/test-accounts`)
   }, [id, router])
-
+  const [delayedLoading, setDelayedLoading] = useState(true)
+  useEffect(() => {
+    const timer = setTimeout(() => setDelayedLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
   // Loading state
-  if (authLoading || agentLoading) {
+  if (delayedLoading) {
     return (
       <LoadingState message='Loading sandbox...' className='min-h-screen' />
     )
   }
-
+  if (authLoading || agentLoading) {
+    return <ChatSandboxSkeleton userProfile={userProfile} />
+  }
   // Error state
   if (agentError) {
     return (
@@ -669,8 +685,8 @@ export default function ChatSandbox() {
   return (
     <>
       <NeonBackground />
-      <div className='flex h-screen w-full flex-col font-mono text-neutral-100 bg-neutral-900/10 backdrop-blur-sm'>
-          {/* Sticky Header */}
+      <div className='flex h-screen w-full flex-col bg-neutral-900/10 font-mono text-neutral-100 backdrop-blur-sm'>
+        {/* Sticky Header */}
         <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>
           <div className='flex h-16 items-center justify-between px-6'>
             <div className='flex items-center space-x-4'>
@@ -1000,7 +1016,9 @@ export default function ChatSandbox() {
                       />
                       <Button
                         onClick={handleSendMessage}
-                        disabled={!chatInput.trim() || sendChatMessage.isPending}
+                        disabled={
+                          !chatInput.trim() || sendChatMessage.isPending
+                        }
                         className='px-6'
                       >
                         <Send className='h-4 w-4' />

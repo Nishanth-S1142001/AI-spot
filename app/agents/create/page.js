@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import CreateAgentSkeleton from '../../../components/skeleton/CreateAgentSkeleton'
 import toast from 'react-hot-toast'
 import ApiKeyInput from '../../../components/ApiKeyInput'
 import LoadingState from '../../../components/common/loading-state'
@@ -339,6 +340,13 @@ export default function CreateAgent() {
     interface: ''
   })
 
+  // Artificial delay so skeleton shows at least 3 seconds
+  const [delayedLoading, setDelayedLoading] = useState(true)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDelayedLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
   // Knowledge sources
   const { data: knowledgeSources = [], isLoading: sourcesLoading } =
     useKnowledgeSources(createdAgent?.id, user?.id)
@@ -544,8 +552,15 @@ export default function CreateAgent() {
   }, [prompt])
 
   // Loading states
-  if (authLoading) {
+
+  // Show skeleton for minimum 3 seconds
+  if (delayedLoading) {
     return <LoadingState message='Authenticating...' className='min-h-screen' />
+  }
+
+  // Loading state - show skeleton
+  if (authLoading) {
+    return <CreateAgentSkeleton userProfile={userProfile} />
   }
 
   const isCreatingAgent = createAgentMutation.isPending
@@ -565,8 +580,8 @@ export default function CreateAgent() {
   return (
     <>
       <NeonBackground />
-     <div className='flex h-screen w-full flex-col font-mono text-neutral-100 bg-neutral-900/10 backdrop-blur-sm'>
-            {/* Header */}
+      <div className='flex h-screen w-full flex-col bg-neutral-900/10 font-mono text-neutral-100 backdrop-blur-sm'>
+        {/* Header */}
         <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-900/30 backdrop-blur-xl'>
           <NavigationBar
             profile={profile}

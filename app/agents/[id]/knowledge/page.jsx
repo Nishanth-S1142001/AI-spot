@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useAuth } from '../../../../components/providers/AuthProvider'
 import {
   useAgent,
@@ -13,6 +13,7 @@ import KnowledgeUploadSection from '../../../../components/KnowledgeUploadSectio
 import NavigationBar from '../../../../components/navigationBar/navigationBar'
 import NeonBackground from '../../../../components/ui/background'
 import Card from '../../../../components/ui/card'
+import KnowledgeSkeleton from '../../../../components/skeleton/KnowledgeSkeleton'
 import LoadingState from '../../../../components/common/loading-state'
 
 import { FileText, Database, Zap, Loader2, Wrench, Link as LinkIcon } from 'lucide-react'
@@ -22,6 +23,14 @@ export default function AgentKnowledgePage() {
   const router = useRouter()
   const { user, profile, loading: authLoading } = useAuth()
   const { logout } = useLogout()
+
+  // Artificial delay so skeleton shows at least 3 seconds
+  const [delayedLoading, setDelayedLoading] = useState(true)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDelayedLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
 
   // React Query hooks
   const {
@@ -37,6 +46,13 @@ export default function AgentKnowledgePage() {
   } = useKnowledgeSources(id, user?.id)
 
   const updateSourceMutation = useUpdateKnowledgeSource(id)
+
+  // User profile for skeleton
+  const userProfile = {
+    name: profile?.full_name || user?.email?.split('@')[0] || 'Guest',
+    email: user?.email || 'guest@example.com',
+    avatar: profile?.avatar_url || null
+  }
 
   // Handle source updates
   const handleSourceAdded = useCallback(
@@ -72,23 +88,25 @@ export default function AgentKnowledgePage() {
   }, [knowledgeSources])
 
   // Redirect if not authenticated
-  if (!authLoading && !user) {
-    router.push('/')
-    return null
-  }
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/')
+    }
+  }, [authLoading, user, router])
 
   // Handle agent not found
-  if (agentError && !agentLoading) {
-    router.push('/agents')
-    return null
-  }
+  useEffect(() => {
+    if (agentError && !agentLoading) {
+      router.push('/agents')
+    }
+  }, [agentError, agentLoading, router])
 
-  // Loading state
-  if (authLoading || agentLoading) {
+  // Show skeleton during delayed loading or initial loading
+  if (delayedLoading || authLoading || agentLoading) {
     return (
-      <LoadingState
-        message={authLoading ? 'Authenticating...' : 'Loading knowledge base...'}
-        className='min-h-screen'
+      <KnowledgeSkeleton
+        userProfile={userProfile}
+        agentName={agent?.name || 'Agent'}
       />
     )
   }
@@ -105,8 +123,8 @@ export default function AgentKnowledgePage() {
   return (
     <>
       <NeonBackground />
-   <div className='flex h-screen w-full flex-col font-mono text-neutral-100 bg-neutral-900/10 backdrop-blur-sm'>
-             {/* Header */}
+      <div className='flex h-screen w-full flex-col font-mono text-neutral-100 bg-neutral-900/10 backdrop-blur-sm'>
+        {/* Header */}
         <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>
           <NavigationBar
             profile={profile}

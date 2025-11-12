@@ -31,13 +31,13 @@ import {
   useCreateTestAccount,
   useDeleteTestAccount,
   useUpdateTestAccount,
-  useCopyTestLink,
+  useCopyTestLink
 } from '../../../../lib/hooks/useAgentData'
 import NeonBackground from '../../../../components/ui/background'
 import Button from '../../../../components/ui/button'
 import Card from '../../../../components/ui/card'
 import BottomModal from '../../../../components/ui/modal'
-
+import SubAccountsSkeleton from '../../../../components/skeleton/SubAccountSkeleton'
 /**
  * Sub Account Card Component
  */
@@ -543,9 +543,19 @@ export default function SubAccountsManagementPage() {
       router.push('/')
     }
   }, [authLoading, user, router])
+  // Artificial delay so skeleton shows at least 3 seconds
+  const [delayedLoading, setDelayedLoading] = useState(true)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDelayedLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
 
   // Loading state
   if (authLoading || agentLoading || accountsLoading) {
+    return <SubAccountsSkeleton agentName={agent?.name || 'Agent'} />
+  }
+  if (delayedLoading) {
     return (
       <LoadingState
         message='Loading test accounts...'
@@ -566,7 +576,7 @@ export default function SubAccountsManagementPage() {
             </div>
             <h3 className='mb-2 text-xl font-bold text-neutral-100'>Error</h3>
             <p className='text-sm text-neutral-400'>{error.message}</p>
-            <div className='mt-6 flex gap-3 justify-center'>
+            <div className='mt-6 flex justify-center gap-3'>
               <Button variant='outline' onClick={() => router.push('/agents')}>
                 <ArrowLeft className='mr-2 h-4 w-4' />
                 Back to Agents
@@ -596,8 +606,8 @@ export default function SubAccountsManagementPage() {
   return (
     <>
       <NeonBackground />
-      <div className='flex h-screen w-full flex-col font-mono text-neutral-100 bg-neutral-900/10 backdrop-blur-sm'>
-          {/* Header */}
+      <div className='flex h-screen w-full flex-col bg-neutral-900/10 font-mono text-neutral-100 backdrop-blur-sm'>
+        {/* Header */}
         <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-xl'>
           <div className='mx-auto max-w-7xl px-6 py-4'>
             <div className='flex items-center justify-between'>
@@ -632,7 +642,7 @@ export default function SubAccountsManagementPage() {
             {/* Stats Cards */}
             <div className='mb-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4'>
               <Card className='border-orange-600/20 bg-gradient-to-br from-orange-900/20 to-neutral-950/50'>
-                <div className='p-4 flex items-center justify-between'>
+                <div className='flex items-center justify-between p-4'>
                   <div>
                     <p className='text-sm font-medium text-neutral-400'>
                       Total Accounts
@@ -651,7 +661,7 @@ export default function SubAccountsManagementPage() {
               </Card>
 
               <Card className='border-blue-600/20 bg-gradient-to-br from-blue-900/20 to-neutral-950/50'>
-                <div className='p-4 flex items-center justify-between'>
+                <div className='flex items-center justify-between p-4'>
                   <div>
                     <p className='text-sm font-medium text-neutral-400'>
                       Test Sessions
@@ -659,7 +669,9 @@ export default function SubAccountsManagementPage() {
                     <p className='mt-2 text-3xl font-bold text-blue-400'>
                       {stats.totalSessions || 0}
                     </p>
-                    <div className='mt-4 text-xs text-neutral-500'>All time</div>
+                    <div className='mt-4 text-xs text-neutral-500'>
+                      All time
+                    </div>
                   </div>
                   <div className='flex h-12 w-12 items-center justify-center rounded-full bg-blue-900/40'>
                     <MessageSquare className='h-6 w-6 text-blue-400' />
@@ -668,7 +680,7 @@ export default function SubAccountsManagementPage() {
               </Card>
 
               <Card className='border-green-600/20 bg-gradient-to-br from-green-900/20 to-neutral-950/50'>
-                <div className='p-4 flex items-center justify-between'>
+                <div className='flex items-center justify-between p-4'>
                   <div>
                     <p className='text-sm font-medium text-neutral-400'>
                       Avg Rating
@@ -687,7 +699,7 @@ export default function SubAccountsManagementPage() {
               </Card>
 
               <Card className='border-purple-600/20 bg-gradient-to-br from-purple-900/20 to-neutral-950/50'>
-                <div className='p-4 flex items-center justify-between'>
+                <div className='flex items-center justify-between p-4'>
                   <div>
                     <p className='text-sm font-medium text-neutral-400'>
                       Total Messages

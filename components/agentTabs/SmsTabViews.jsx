@@ -5,29 +5,24 @@
 
 'use client'
 
-import { memo, useState, useCallback } from 'react'
-import Card from '../ui/card'
-import Button from '../ui/button'
-import { 
-  MessageCircle, 
-  Copy, 
-  Check, 
-  Settings, 
-  Phone, 
-  Send, 
-  BarChart3,
+import {
   AlertCircle,
+  Check,
   CheckCircle,
+  Copy,
   Loader2,
-  ExternalLink,
-  Code,
-  Sparkles
+  MessageCircle,
+  Send,
+  Settings
 } from 'lucide-react'
+import { memo, useCallback, useState } from 'react'
+import Button from '../ui/button'
+import Card from '../ui/card'
 
 // Import React Query hooks
 import {
-  useTestSmsConnection,
-  useCopySmsWebhookUrl
+  useCopySmsWebhookUrl,
+  useTestSmsConnection
 } from '../../lib/hooks/useAgentData'
 
 // =====================================================

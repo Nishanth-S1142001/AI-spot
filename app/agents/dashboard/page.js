@@ -39,7 +39,7 @@ import {
   useDashboardAnalytics
 } from '../../../lib/hooks/useAgentData'
 import '../../styles/agent-dashboard-styles.css'
-
+import AgentsDashboardSkeleton from '../../../components/skeleton/AgentDashboardSkeleton'
 /**
  * Utility function to highlight matching characters in text
  */
@@ -356,7 +356,12 @@ export default function AgentsDashboard() {
     isLoading: agentsLoading,
     error: agentsError
   } = useAgents(user?.id)
+  const [delayedLoading, setDelayedLoading] = useState(true)
 
+  useEffect(() => {
+    const timer = setTimeout(() => setDelayedLoading(false), 3000)
+    return () => clearTimeout(timer)
+  }, [])
   const {
     data: analytics = {
       totalConversations: 0,
@@ -433,9 +438,7 @@ export default function AgentsDashboard() {
       router.push('/')
     }
   }, [authLoading, user, router])
-
-  // Loading states
-  if (authLoading || agentsLoading) {
+  if (delayedLoading) {
     return (
       <LoadingState
         message={authLoading ? 'Authenticating...' : 'Loading your agents...'}
@@ -443,6 +446,11 @@ export default function AgentsDashboard() {
       />
     )
   }
+
+  if (authLoading || agentsLoading) {
+    return <AgentsDashboardSkeleton userProfile={userProfile} />
+  }
+  // Loading states
 
   // Error state
   if (agentsError) {
@@ -472,8 +480,8 @@ export default function AgentsDashboard() {
     <>
       <NeonBackground />
       <SideBarLayout userProfile={userProfile}>
-     <div className='flex h-screen w-full flex-col font-mono text-neutral-100 bg-neutral-900/10 backdrop-blur-sm'>
-             {/* Header */}
+        <div className='flex h-screen w-full flex-col bg-neutral-900/10 font-mono text-neutral-100 backdrop-blur-sm'>
+          {/* Header */}
           <div className='sticky top-0 z-20 border-b border-neutral-800/50 bg-neutral-900/30 backdrop-blur-xl'>
             <NavigationBar
               profile={profile}

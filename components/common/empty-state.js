@@ -1,6 +1,6 @@
 'use client'
 
-import { Inbox, Bot, MessageSquare, FileX } from 'lucide-react'
+import { Bot, FileX, Inbox, MessageSquare } from 'lucide-react'
 
 const ICON_VARIANTS = {
   inbox: Inbox,

@@ -1,8 +1,7 @@
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react'
-import { Monitor, Brain, Layers } from 'lucide-react'
-import { TrendingUp, Users, Zap, Globe } from 'lucide-react'
+import { Brain, Globe, Layers, Monitor, TrendingUp, Users, Zap } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 
 const stats = [
   {
